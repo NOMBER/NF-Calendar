@@ -9,8 +9,8 @@
   import type { ICalendarSource } from "obsidian-calendar-ui";
   import { onDestroy } from "svelte";
 
-  import type { ISettings } from "src/settings";
-  import { activeFile, dailyNotes, settings, weeklyNotes } from "./stores";
+  import type { ISettings } from "src/settingsData";
+  import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./stores";
 
   let today: Moment;
 
@@ -29,10 +29,15 @@
     today = window.moment();
   }
 
+  export function getDisplayedMonth(): Moment {
+    return displayedMonth;
+  }
+
   function getToday(settings: ISettings) {
     configureGlobalMomentLocale(settings.localeOverride, settings.weekStart);
     dailyNotes.reindex();
     weeklyNotes.reindex();
+    monthlyNotes.reindex();
     return window.moment();
   }
 
@@ -65,5 +70,5 @@
   bind:displayedMonth
   localeData={today.localeData()}
   selectedId={$activeFile}
-  showWeekNums={$settings.showWeeklyNote}
+  showWeekNums={$settings.weekly.enabled}
 />

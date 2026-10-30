@@ -1,8 +1,8 @@
 {
   "id": "calendar-weekday-templates",
   "name": "Calendar (Weekday Templates)",
-  "description": "Calendar view of your daily notes with a separate daily note template for each weekday. Fork of Calendar by Liam Cain.",
-  "version": "1.0.0",
+  "description": "Calendar view + built-in daily/weekly/monthly notes: per-weekday and rule-based templates, important days, batch creation, statistics. Fork of Calendar by Liam Cain.",
+  "version": "2.0.0",
   "author": "Liam Cain (original Calendar), weekday templates fork",
   "authorUrl": "https://github.com/liamcain/obsidian-calendar-plugin",
   "isDesktopOnly": false,

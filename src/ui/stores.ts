@@ -1,70 +1,60 @@
 import type { TFile } from "obsidian";
-import {
-  getAllDailyNotes,
-  getAllWeeklyNotes,
-} from "obsidian-daily-notes-interface";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
-import { defaultSettings } from "src/settings";
-import type { ISettings } from "src/settings";
-
-import { getDateUIDFromFile } from "./utils";
-
-function createDailyNotesStore() {
-  let hasError = false;
-  const store = writable<Record<string, TFile>>(null);
-  return {
-    reindex: () => {
-      try {
-        const dailyNotes = getAllDailyNotes();
-        store.set(dailyNotes);
-        hasError = false;
-      } catch (err) {
-        if (!hasError) {
-          // Avoid error being shown multiple times
-          console.log("[Calendar] Failed to find daily notes folder", err);
-        }
-        store.set({});
-        hasError = true;
-      }
-    },
-    ...store,
-  };
-}
-
-function createWeeklyNotesStore() {
-  let hasError = false;
-  const store = writable<Record<string, TFile>>(null);
-  return {
-    reindex: () => {
-      try {
-        const weeklyNotes = getAllWeeklyNotes();
-        store.set(weeklyNotes);
-        hasError = false;
-      } catch (err) {
-        if (!hasError) {
-          // Avoid error being shown multiple times
-          console.log("[Calendar] Failed to find weekly notes folder", err);
-        }
-        store.set({});
-        hasError = true;
-      }
-    },
-    ...store,
-  };
-}
+import { getDateUID } from "src/core/dates";
+import type { Granularity } from "src/core/dates";
+import { getAllNotes, getDateFromFile } from "src/io/notes";
+import { defaultSettings } from "src/settingsData";
+import type { ISettings } from "src/settingsData";
 
 export const settings = writable<ISettings>(defaultSettings);
-export const dailyNotes = createDailyNotesStore();
-export const weeklyNotes = createWeeklyNotesStore();
+
+function createNotesStore(granularity: Granularity) {
+  let hasError = false;
+  const store = writable<Record<string, TFile>>({});
+  return {
+    reindex: () => {
+      try {
+        store.set(getAllNotes(window.app, get(settings), granularity));
+        hasError = false;
+      } catch (err) {
+        if (!hasError) {
+          console.log(`[Calendar] Failed to index ${granularity} notes`, err);
+        }
+        store.set({});
+        hasError = true;
+      }
+    },
+    ...store,
+  };
+}
+
+export const dailyNotes = createNotesStore("day");
+export const weeklyNotes = createNotesStore("week");
+export const monthlyNotes = createNotesStore("month");
+
+/** dateUID of a file if it is a daily or weekly note of this plugin. */
+export function getDateUIDFromFile(file: TFile | null): string | null {
+  if (!file) {
+    return null;
+  }
+  const s = get(settings);
+  let date = getDateFromFile(file, s, "day");
+  if (date) {
+    return getDateUID(date, "day");
+  }
+  date = getDateFromFile(file, s, "week");
+  if (date) {
+    return getDateUID(date, "week");
+  }
+  return null;
+}
 
 function createSelectedFileStore() {
   const store = writable<string>(null);
-
   return {
     setFile: (file: TFile) => {
-      const id = getDateUIDFromFile(file);
-      store.set(id);
+      store.set(getDateUIDFromFile(file));
     },
     ...store,
   };

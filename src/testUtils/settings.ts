@@ -1,30 +1,6 @@
-import type { ISettings } from "src/settings";
+import { makeDefaultSettings } from "src/settingsData";
+import type { ISettings } from "src/settingsData";
 
-export function getDefaultSettings(
-  overrides: Partial<ISettings> = {}
-): ISettings {
-  return Object.assign(
-    {},
-    {
-      weekStart: "sunday",
-      shouldConfirmBeforeCreate: false,
-      wordsPerDot: 50,
-      showWeeklyNote: false,
-      weeklyNoteFolder: "",
-      weeklyNoteFormat: "",
-      weeklyNoteTemplate: "",
-      localeOverride: "system-default",
-      useWeekdayTemplates: false,
-      weekdayTemplates: {
-        sunday: "",
-        monday: "",
-        tuesday: "",
-        wednesday: "",
-        thursday: "",
-        friday: "",
-        saturday: "",
-      },
-    },
-    overrides
-  );
+export function getDefaultSettings(overrides: Partial<ISettings> = {}): ISettings {
+  return { ...makeDefaultSettings(), shouldConfirmBeforeCreate: false, ...overrides };
 }
