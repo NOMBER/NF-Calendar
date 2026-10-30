@@ -1,11 +1,10 @@
 {
-  "id": "calendar",
-  "name": "Calendar",
-  "description": "Calendar view of your daily notes",
-  "version": "1.5.10",
-  "author": "Liam Cain",
-  "authorUrl": "https://github.com/liamcain/",
-  "fundingUrl": "https://www.buymeacoffee.com/liamcain",
+  "id": "calendar-weekday-templates",
+  "name": "Calendar (Weekday Templates)",
+  "description": "Calendar view of your daily notes with a separate daily note template for each weekday. Fork of Calendar by Liam Cain.",
+  "version": "1.0.0",
+  "author": "Liam Cain (original Calendar), weekday templates fork",
+  "authorUrl": "https://github.com/liamcain/obsidian-calendar-plugin",
   "isDesktopOnly": false,
-  "minAppVersion": "0.9.11"
+  "minAppVersion": "1.4.10"
 }

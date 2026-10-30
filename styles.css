@@ -9,3 +9,7 @@
 .settings-banner h4 {
   margin: 0;
 }
+
+.calendar-weekday-template-missing {
+  color: var(--text-error);
+}

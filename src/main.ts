@@ -1,13 +1,16 @@
 import type { Moment, WeekSpec } from "moment";
-import { App, Plugin, WorkspaceLeaf } from "obsidian";
+import { Plugin } from "obsidian";
+import type { App, WorkspaceLeaf } from "obsidian";
 
 import { VIEW_TYPE_CALENDAR } from "./constants";
 import { settings } from "./ui/stores";
+import { findDailyNote, openOrCreateDailyNote } from "./io/dailyNotes";
+import { activeFile } from "./ui/stores";
 import {
   appHasPeriodicNotesPluginLoaded,
   CalendarSettingsTab,
-  ISettings,
 } from "./settings";
+import type { ISettings } from "./settings";
 import CalendarView from "./view";
 
 declare global {
@@ -60,27 +63,44 @@ export default class CalendarPlugin extends Plugin {
         if (checking) {
           return !appHasPeriodicNotesPluginLoaded();
         }
-        this.view.openOrCreateWeeklyNote(window.moment(), false);
+        this.view?.openOrCreateWeeklyNote(window.moment(), false);
       },
+    });
+
+    this.addCommand({
+      id: "open-today-daily-note",
+      name: "Open today's daily note (weekday template)",
+      callback: () => this.openDailyNoteForOffset(0),
+    });
+
+    this.addCommand({
+      id: "open-tomorrow-daily-note",
+      name: "Open tomorrow's daily note (weekday template)",
+      callback: () => this.openDailyNoteForOffset(1),
     });
 
     this.addCommand({
       id: "reveal-active-note",
       name: "Reveal active note",
-      callback: () => this.view.revealActiveNote(),
+      callback: () => this.view?.revealActiveNote(),
     });
 
     await this.loadOptions();
 
     this.addSettingTab(new CalendarSettingsTab(this.app, this));
 
-    if (this.app.workspace.layoutReady) {
-      this.initLeaf();
-    } else {
-      this.registerEvent(
-        this.app.workspace.on("layout-ready", this.initLeaf.bind(this))
-      );
-    }
+    this.app.workspace.onLayoutReady(() => this.initLeaf());
+  }
+
+  async openDailyNoteForOffset(daysFromToday: number): Promise<void> {
+    const date = window.moment().startOf("day").add(daysFromToday, "day");
+    await openOrCreateDailyNote(
+      date,
+      false,
+      this.options,
+      findDailyNote(date),
+      (file) => activeFile.setFile(file)
+    );
   }
 
   initLeaf(): void {

@@ -13,6 +13,17 @@ export function getDefaultSettings(
       weeklyNoteFolder: "",
       weeklyNoteFormat: "",
       weeklyNoteTemplate: "",
+      localeOverride: "system-default",
+      useWeekdayTemplates: false,
+      weekdayTemplates: {
+        sunday: "",
+        monday: "",
+        tuesday: "",
+        wednesday: "",
+        thursday: "",
+        friday: "",
+        saturday: "",
+      },
     },
     overrides
   );

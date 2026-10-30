@@ -6,11 +6,12 @@ import {
   getWeeklyNote,
   getWeeklyNoteSettings,
 } from "obsidian-daily-notes-interface";
-import { FileView, TFile, ItemView, WorkspaceLeaf } from "obsidian";
+import { FileView, ItemView } from "obsidian";
+import type { TFile, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
 import { TRIGGER_ON_OPEN, VIEW_TYPE_CALENDAR } from "src/constants";
-import { tryToCreateDailyNote } from "src/io/dailyNotes";
+import { openOrCreateDailyNote } from "src/io/dailyNotes";
 import { tryToCreateWeeklyNote } from "src/io/weeklyNotes";
 import type { ISettings } from "src/settings";
 
@@ -74,7 +75,7 @@ export default class CalendarView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Calendar";
+    return "Calendar (Weekday Templates)";
   }
 
   getIcon(): string {
@@ -220,7 +221,7 @@ export default class CalendarView extends ItemView {
   }
 
   private updateActiveFile(): void {
-    const { view } = this.app.workspace.activeLeaf;
+    const view = this.app.workspace.activeLeaf?.view;
 
     let file = null;
     if (view instanceof FileView) {
@@ -237,7 +238,7 @@ export default class CalendarView extends ItemView {
     const { moment } = window;
     const { activeLeaf } = this.app.workspace;
 
-    if (activeLeaf.view instanceof FileView) {
+    if (activeLeaf?.view instanceof FileView) {
       // Check to see if the active note is a daily-note
       let date = getDateFromFile(activeLeaf.view.file, "day");
       if (date) {
@@ -273,9 +274,7 @@ export default class CalendarView extends ItemView {
       return;
     }
 
-    const leaf = inNewSplit
-      ? workspace.splitActiveLeaf()
-      : workspace.getUnpinnedLeaf();
+    const leaf = workspace.getLeaf(inNewSplit ? "split" : false);
     await leaf.openFile(existingFile);
 
     activeFile.setFile(existingFile);
@@ -286,28 +285,13 @@ export default class CalendarView extends ItemView {
     date: Moment,
     inNewSplit: boolean
   ): Promise<void> {
-    const { workspace } = this.app;
     const existingFile = getDailyNote(date, get(dailyNotes));
-    if (!existingFile) {
-      // File doesn't exist
-      tryToCreateDailyNote(
-        date,
-        inNewSplit,
-        this.settings,
-        (dailyNote: TFile) => {
-          activeFile.setFile(dailyNote);
-        }
-      );
-      return;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mode = (this.app.vault as any).getConfig("defaultViewMode");
-    const leaf = inNewSplit
-      ? workspace.splitActiveLeaf()
-      : workspace.getUnpinnedLeaf();
-    await leaf.openFile(existingFile, { active : true, mode });
-
-    activeFile.setFile(existingFile);
+    await openOrCreateDailyNote(
+      date,
+      inNewSplit,
+      this.settings,
+      existingFile,
+      (file: TFile) => activeFile.setFile(file)
+    );
   }
 }

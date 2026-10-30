@@ -1,8 +1,19 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
-import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
+import { PluginSettingTab, Setting } from "obsidian";
+import type { App } from "obsidian";
+import {
+  appHasDailyNotesPluginLoaded,
+  getDailyNoteSettings,
+} from "obsidian-daily-notes-interface";
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
 import { DEFAULT_WEEK_FORMAT, DEFAULT_WORDS_PER_DOT } from "src/constants";
+
+import {
+  EMPTY_WEEKDAY_TEMPLATES,
+  orderedWeekdays,
+} from "src/io/weekdayTemplates";
+import type { IWeekdayTemplates, WeekdayKey } from "src/io/weekdayTemplates";
+import { FileSuggest } from "src/ui/fileSuggest";
 
 import type CalendarPlugin from "./main";
 
@@ -18,6 +29,10 @@ export interface ISettings {
   weeklyNoteFolder: string;
 
   localeOverride: ILocaleOverride;
+
+  // Weekday templates for daily notes
+  useWeekdayTemplates: boolean;
+  weekdayTemplates: IWeekdayTemplates;
 }
 
 const weekdays = [
@@ -42,6 +57,9 @@ export const defaultSettings = Object.freeze({
   weeklyNoteFolder: "",
 
   localeOverride: "system-default",
+
+  useWeekdayTemplates: false,
+  weekdayTemplates: { ...EMPTY_WEEKDAY_TEMPLATES },
 });
 
 export function appHasPeriodicNotesPluginLoaded(): boolean {
@@ -81,6 +99,14 @@ export class CalendarSettingsTab extends PluginSettingTab {
     this.addWeekStartSetting();
     this.addConfirmCreateSetting();
     this.addShowWeeklyNoteSetting();
+
+    this.containerEl.createEl("h3", {
+      text: "Daily Note Templates by Weekday",
+    });
+    this.addUseWeekdayTemplatesSetting();
+    if (this.plugin.options.useWeekdayTemplates) {
+      this.addWeekdayTemplateSettings();
+    }
 
     if (
       this.plugin.options.showWeeklyNote &&
@@ -174,6 +200,90 @@ export class CalendarSettingsTab extends PluginSettingTab {
       });
   }
 
+  addUseWeekdayTemplatesSetting(): void {
+    new Setting(this.containerEl)
+      .setName("Use a separate template for each weekday")
+      .setDesc(
+        "When a daily note is created from the calendar (or with this plugin's commands), use the template of the weekday of THAT note's date. Empty fields fall back to the template from Daily Notes / Periodic Notes."
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.options.useWeekdayTemplates);
+        toggle.onChange(async (value) => {
+          await this.plugin.writeOptions(() => ({ useWeekdayTemplates: value }));
+          this.display();
+        });
+      });
+  }
+
+  addWeekdayTemplateSettings(): void {
+    const { moment } = window;
+    const fallback = getDailyNoteSettings()?.template || "";
+    this.containerEl.createEl("p", {
+      cls: "setting-item-description",
+      text: fallback
+        ? `Fallback for empty fields: '${fallback}' (from Daily Notes / Periodic Notes settings).`
+        : "Fallback for empty fields: no default daily note template is set, so an empty note will be created.",
+    });
+
+    const weekStart = this.plugin.options.weekStart;
+    const firstDay =
+      weekStart && weekStart !== "locale"
+        ? weekdays.indexOf(weekStart)
+        : window._bundledLocaleWeekSpec?.dow ?? moment.localeData().firstDayOfWeek();
+    const englishNames: Record<WeekdayKey, string> = {
+      sunday: "Sunday",
+      monday: "Monday",
+      tuesday: "Tuesday",
+      wednesday: "Wednesday",
+      thursday: "Thursday",
+      friday: "Friday",
+      saturday: "Saturday",
+    };
+
+    orderedWeekdays(firstDay < 0 ? 1 : firstDay).forEach((day) => {
+      const setting = new Setting(this.containerEl)
+        .setName(`${englishNames[day]} template`)
+        .setDesc("Path to a markdown file. Leave empty to use the fallback.");
+      setting.addSearch((search) => {
+        new FileSuggest(this.app, search.inputEl);
+        search.setPlaceholder("Templates/Daily " + englishNames[day]);
+        search.setValue(this.plugin.options.weekdayTemplates?.[day] || "");
+        search.onChange(async (value) => {
+          await this.plugin.writeOptions((old) => ({
+            weekdayTemplates: {
+              ...EMPTY_WEEKDAY_TEMPLATES,
+              ...(old.weekdayTemplates || {}),
+              [day]: value.trim(),
+            },
+          }));
+          this.validateTemplatePath(setting, value);
+        });
+        this.validateTemplatePath(setting, search.getValue());
+      });
+    });
+  }
+
+  validateTemplatePath(setting: Setting, value: string): void {
+    const path = (value || "").trim();
+    const desc = "Path to a markdown file. Leave empty to use the fallback.";
+    if (!path) {
+      setting.setDesc(desc);
+      setting.descEl.removeClass("calendar-weekday-template-missing");
+      return;
+    }
+    const withExt = path.endsWith(".md") ? path : `${path}.md`;
+    const found =
+      this.app.vault.getAbstractFileByPath(withExt) ||
+      this.app.metadataCache.getFirstLinkpathDest(path.replace(/\.md$/, ""), "");
+    if (found) {
+      setting.setDesc(desc);
+      setting.descEl.removeClass("calendar-weekday-template-missing");
+    } else {
+      setting.setDesc("⚠️ File not found. The fallback template will be used.");
+      setting.descEl.addClass("calendar-weekday-template-missing");
+    }
+  }
+
   addWeeklyNoteFormatSetting(): void {
     new Setting(this.containerEl)
       .setName("Weekly note format")
@@ -194,6 +304,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         "Choose the file you want to use as the template for your weekly notes"
       )
       .addText((textfield) => {
+        new FileSuggest(this.app, textfield.inputEl);
         textfield.setValue(this.plugin.options.weeklyNoteTemplate);
         textfield.onChange(async (value) => {
           this.plugin.writeOptions(() => ({ weeklyNoteTemplate: value }));

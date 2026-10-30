@@ -1,7 +1,7 @@
 import type { App } from "obsidian";
 
 /* eslint-disable */
-const mockApp: App = {
+const mockApp = {
   vault: {
     adapter: {
       exists: () => Promise.resolve(false),
@@ -84,4 +84,4 @@ const mockApp: App = {
 };
 /* eslint-enable */
 
-export default mockApp;
+export default mockApp as unknown as App;
