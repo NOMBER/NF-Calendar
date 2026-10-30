@@ -14,7 +14,12 @@ import type { ITemplateRule, RuleCondition } from "../rules";
 const d = (s: string) => moment(s, "YYYY-MM-DD");
 const all = () => true;
 
-function rule(id: string, condition: RuleCondition, template: string, extra: Partial<ITemplateRule> = {}): ITemplateRule {
+function rule(
+  id: string,
+  condition: RuleCondition,
+  template: string,
+  extra: Partial<ITemplateRule> = {},
+): ITemplateRule {
   return { id, name: id, enabled: true, condition, template, ...extra };
 }
 
@@ -41,7 +46,9 @@ describe("matchesCondition", () => {
     expect(matchesCondition(d("2026-07-14"), c)).toBe(true);
     expect(matchesCondition(d("2026-06-30"), c)).toBe(false);
     expect(matchesCondition(d("2026-07-15"), c)).toBe(false);
-    expect(matchesCondition(d("2026-07-05"), { type: "range", from: "2026-07-14", to: "2026-07-01" })).toBe(true);
+    expect(
+      matchesCondition(d("2026-07-05"), { type: "range", from: "2026-07-14", to: "2026-07-01" }),
+    ).toBe(true);
   });
 
   it("n-th weekday of month", () => {
@@ -144,7 +151,10 @@ describe("template priority", () => {
   });
 
   it("rules without a template file are ignored", () => {
-    const settings = { ...base, templateRules: [rule("x", { type: "date", date: "2026-10-30" }, "  ")] };
+    const settings = {
+      ...base,
+      templateRules: [rule("x", { type: "date", date: "2026-10-30" }, "  ")],
+    };
     expect(chooseTemplate(d("2026-10-30"), settings, "day", all).chosen?.source).toBe("weekday");
   });
 
@@ -154,13 +164,20 @@ describe("template priority", () => {
       defaultTemplate: "T/Week.md",
       templateRules: [
         rule("daily-only", { type: "annual", monthDay: "10-26" }, "T/D.md"),
-        rule("vacation", { type: "range", from: "2026-10-26", to: "2026-11-01" }, "T/VacationWeek.md", {
-          appliesTo: ["week"],
-        }),
+        rule(
+          "vacation",
+          { type: "range", from: "2026-10-26", to: "2026-11-01" },
+          "T/VacationWeek.md",
+          {
+            appliesTo: ["week"],
+          },
+        ),
       ],
     };
     // first day of the period is passed in by the caller
-    expect(chooseTemplate(d("2026-10-26"), settings, "week", all).chosen?.path).toBe("T/VacationWeek.md");
+    expect(chooseTemplate(d("2026-10-26"), settings, "week", all).chosen?.path).toBe(
+      "T/VacationWeek.md",
+    );
     expect(chooseTemplate(d("2026-11-02"), settings, "week", all).chosen?.path).toBe("T/Week.md");
     expect(chooseTemplate(d("2026-10-26"), settings, "month", all).chosen?.path).toBe("T/Week.md");
     expect(chooseTemplate(d("2026-10-26"), settings, "day", all).chosen?.path).toBe("T/D.md");

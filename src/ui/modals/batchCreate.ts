@@ -1,7 +1,7 @@
 import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
-import { t } from "src/i18n";
+import { t } from "src/core/i18n";
 
 export interface IBatchItem {
   dateLabel: string;
@@ -9,14 +9,28 @@ export interface IBatchItem {
   templateLabel: string;
 }
 
-/** Confirmation before creating several notes: count, dates, templates. */
+/**
+ * Confirmation before creating several notes: count, dates, templates.
+ * Existing notes are never part of `items`; `existingCount` only informs.
+ */
 export class BatchCreateModal extends Modal {
-  constructor(app: App, items: IBatchItem[], onConfirm: () => Promise<void>) {
+  constructor(
+    app: App,
+    items: IBatchItem[],
+    existingCount: number,
+    onConfirm: () => Promise<void>,
+  ) {
     super(app);
     this.titleEl.setText(t("batch.title"));
     const { contentEl } = this;
     contentEl.addClass("cwt-batch-modal");
     contentEl.createEl("p", { text: t("batch.summary", { count: items.length }) });
+    if (existingCount > 0) {
+      contentEl.createEl("p", {
+        cls: "setting-item-description",
+        text: t("batch.existingSkipped", { count: existingCount }),
+      });
+    }
     const list = contentEl.createDiv("cwt-batch-list");
     for (const item of items) {
       const row = list.createDiv("cwt-batch-row");
@@ -29,10 +43,15 @@ export class BatchCreateModal extends Modal {
         .createEl("button", { text: t("batch.cancel") })
         .addEventListener("click", () => this.close());
       const ok = buttons.createEl("button", { cls: "mod-cta", text: t("batch.create") });
-      ok.addEventListener("click", async () => {
-        this.close();
-        await onConfirm();
-      });
+      ok.addEventListener(
+        "click",
+        async () => {
+          ok.disabled = true; // one run per dialog, even on double click
+          this.close();
+          await onConfirm();
+        },
+        { once: true },
+      );
       window.setTimeout(() => ok.focus(), 0);
     });
   }

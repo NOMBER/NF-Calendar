@@ -13,7 +13,7 @@ export const IMPORTANT_COLORS = [
   "purple",
   "pink",
 ] as const;
-export type ImportantColor = typeof IMPORTANT_COLORS[number];
+export type ImportantColor = (typeof IMPORTANT_COLORS)[number];
 
 export interface IImportantDay {
   title: string;
@@ -66,7 +66,7 @@ export function daysBetween(moment: MomentFactory, from: Moment, to: string): nu
 export function getDayMarks(
   moment: MomentFactory,
   date: Moment,
-  days: ImportantDays | null | undefined
+  days: ImportantDays | null | undefined,
 ): IDayMarks {
   const key = dayKey(date);
   const important = days?.[key] ?? null;
@@ -93,7 +93,7 @@ export function upcomingImportantDays(
   today: Moment,
   days: ImportantDays | null | undefined,
   horizonDays: number,
-  limit = 20
+  limit = 20,
 ): IUpcoming[] {
   const list: IUpcoming[] = [];
   for (const [k, day] of Object.entries(days || {})) {

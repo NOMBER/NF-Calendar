@@ -1,15 +1,15 @@
+import { t } from "src/core/i18n";
 import { upcomingImportantDays } from "src/core/important";
-import { t } from "src/i18n";
-import type { ISettings } from "src/settingsData";
+import type { ISettings } from "src/core/settings";
 
-import { relativeLabel } from "./importantListModal";
+import { relativeLabel } from "src/ui/modals/importantList";
 
 /** Collapsible "Upcoming important days" block under the calendar. */
 export function renderUpcoming(
   containerEl: HTMLElement,
   settings: ISettings,
   onOpenDay: (date: string) => void,
-  onToggle: (collapsed: boolean) => void
+  onToggle: (collapsed: boolean) => void,
 ): void {
   containerEl.empty();
   if (!settings.showUpcoming) {
@@ -24,7 +24,7 @@ export function renderUpcoming(
     window.moment,
     window.moment(),
     settings.importantDays,
-    settings.upcomingHorizonDays
+    settings.upcomingHorizonDays,
   );
   if (!items.length) {
     details.createDiv({

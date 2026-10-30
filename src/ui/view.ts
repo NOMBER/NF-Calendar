@@ -5,23 +5,23 @@ import { get } from "svelte/store";
 
 import { TRIGGER_ON_OPEN, VIEW_TYPE_CALENDAR } from "src/constants";
 import { getWeeklyNote } from "src/core/dates";
-import { t } from "src/i18n";
+import { t } from "src/core/i18n";
+import type { ISettings } from "src/core/settings";
 import { getDateFromFile, noteFormat } from "src/io/notes";
 import type CalendarPlugin from "src/main";
-import type { ISettings } from "src/settingsData";
 
-import Calendar from "./ui/Calendar.svelte";
-import { showFileMenu } from "./ui/fileMenu";
+import Calendar from "./Calendar.svelte";
+import { buildMainMenu, showDayMenu, showWeekMenu } from "./menus";
 import {
   customTagsSource,
   importantDaysSource,
   streakSource,
   tasksSource,
   wordCountSource,
-} from "./ui/sources";
-import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./ui/stores";
-import { TemplatePreview } from "./ui/templatePreview";
-import { renderUpcoming } from "./ui/upcoming";
+} from "./sources";
+import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./stores";
+import { TemplatePreview } from "./templatePreview";
+import { renderUpcoming } from "./upcoming";
 
 export default class CalendarView extends ItemView {
   private calendar: Calendar;
@@ -30,7 +30,10 @@ export default class CalendarView extends ItemView {
   private upcomingEl: HTMLElement;
   private preview: TemplatePreview;
 
-  constructor(leaf: WorkspaceLeaf, private plugin: CalendarPlugin) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    private plugin: CalendarPlugin,
+  ) {
     super(leaf);
 
     this.onClickDay = this.onClickDay.bind(this);
@@ -45,7 +48,7 @@ export default class CalendarView extends ItemView {
     this.onContextMenuDay = this.onContextMenuDay.bind(this);
     this.onContextMenuWeek = this.onContextMenuWeek.bind(this);
 
-    this.preview = new TemplatePreview(() => this.settings);
+    this.preview = new TemplatePreview(this.app, () => this.settings);
 
     this.registerEvent(this.app.vault.on("create", this.onFileCreated));
     this.registerEvent(this.app.vault.on("delete", this.onFileDeleted));
@@ -57,10 +60,9 @@ export default class CalendarView extends ItemView {
     this.register(
       settings.subscribe((val) => {
         this.settings = val;
-        // Refresh the calendar if settings change
         this.calendar?.tick();
         this.renderUpcoming();
-      })
+      }),
     );
     // Midnight: keep "upcoming" counters right.
     this.registerInterval(window.setInterval(() => this.renderUpcoming(), 1000 * 60 * 10));
@@ -108,7 +110,7 @@ export default class CalendarView extends ItemView {
     setIcon(menuButton, "more-horizontal");
     menuButton.addEventListener("click", (e) => {
       this.preview.hide();
-      this.plugin.buildMainMenu(this.displayedMonth()).showAtMouseEvent(e);
+      buildMainMenu(this.plugin, this.displayedMonth()).showAtMouseEvent(e);
     });
 
     const calendarEl = root.createDiv("cwt-calendar");
@@ -134,7 +136,7 @@ export default class CalendarView extends ItemView {
       }
       e.preventDefault();
       this.preview.hide();
-      this.plugin.buildMainMenu(this.displayedMonth()).showAtMouseEvent(e);
+      buildMainMenu(this.plugin, this.displayedMonth()).showAtMouseEvent(e);
     });
 
     this.upcomingEl = root.createDiv("cwt-upcoming-container");
@@ -163,7 +165,7 @@ export default class CalendarView extends ItemView {
         if (collapsed !== this.settings.upcomingCollapsed) {
           void this.plugin.writeOptions(() => ({ upcomingCollapsed: collapsed }));
         }
-      }
+      },
     );
   }
 
@@ -185,7 +187,7 @@ export default class CalendarView extends ItemView {
         this,
         targetEl,
         date.format(noteFormat(this.settings, "day")),
-        note?.path
+        note?.path,
       );
       return;
     }
@@ -206,13 +208,13 @@ export default class CalendarView extends ItemView {
       this,
       targetEl,
       date.format(noteFormat(this.settings, "week")),
-      note?.path
+      note?.path,
     );
   }
 
   private onContextMenuDay(date: Moment, event: MouseEvent): void {
     this.preview.hide();
-    this.plugin.showDayMenu(date, event);
+    showDayMenu(this.plugin, date, event);
   }
 
   private onContextMenuWeek(date: Moment, event: MouseEvent): void {
@@ -220,7 +222,7 @@ export default class CalendarView extends ItemView {
     if (!note) {
       return;
     }
-    showFileMenu(this.app, note, { x: event.pageX, y: event.pageY });
+    showWeekMenu(this.app, note, event);
   }
 
   private isPeriodicFile(file: TFile): boolean {
@@ -248,7 +250,8 @@ export default class CalendarView extends ItemView {
   }
 
   private onFileRenamed(file: TFile, oldPath: string): void {
-    const wasNote = Object.values(get(dailyNotes)).some((f) => f === file || f.path === oldPath) ||
+    const wasNote =
+      Object.values(get(dailyNotes)).some((f) => f === file || f.path === oldPath) ||
       Object.values(get(weeklyNotes)).some((f) => f === file || f.path === oldPath);
     if (wasNote || this.isPeriodicFile(file)) {
       this.reindex();

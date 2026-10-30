@@ -1,38 +1,40 @@
 import type { Moment, WeekSpec } from "moment";
-import { Menu, Notice, Plugin, TFile } from "obsidian";
-import type { App, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, TFile } from "obsidian";
+import type { App, Modal, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
 import { VIEW_TYPE_CALENDAR } from "./constants";
-import { datesForMonthFrom, datesUntilEndOf, missingDates } from "./core/dates";
-import type { Granularity } from "./core/dates";
-import { dayKey } from "./core/important";
-import type { IImportantDay } from "./core/important";
-import { isEffectivelyEmpty, mergeTemplate } from "./core/merge";
-import { getLanguage, setLanguage, t } from "./i18n";
-import { readExternalPeriodicSettings } from "./io/external";
+import { adjacentDate, datesForMonthFrom, datesUntilEndOf, missingDates } from "src/core/dates";
+import type { Granularity } from "src/core/dates";
+import { setLanguage, t } from "src/core/i18n";
+import { dayKey } from "src/core/important";
+import type { IImportantDay } from "src/core/important";
+import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
+import type { MergeMode } from "src/core/merge";
+import { migrateSettings, periodicConfig } from "src/core/settings";
+import type { ISettings } from "src/core/settings";
+import { readExternalPeriodicSettings } from "src/io/external";
 import {
   chooseTemplateFor,
   createNote,
-  describeCandidate,
   findNote,
   getAllNotes,
   getDateFromFile,
-  openOrCreateNote,
+  getNotePath,
+  openFile,
   renderTemplateFor,
-  typeLabel,
-} from "./io/notes";
-import { CalendarSettingsTab } from "./settings";
-import { migrateSettings, periodicConfig } from "./settingsData";
-import type { ISettings } from "./settingsData";
-import { ApplyTemplateModal } from "./ui/applyTemplateModal";
-import { BatchCreateModal } from "./ui/batchModal";
-import type { IBatchItem } from "./ui/batchModal";
-import { ImportantListModal } from "./ui/importantListModal";
-import { ImportantDayModal } from "./ui/importantModal";
-import { StatsModal } from "./ui/statsModal";
-import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./ui/stores";
-import CalendarView from "./view";
+} from "src/io/notes";
+import { describeCandidate, typeLabel } from "src/ui/labels";
+import { ApplyTemplateModal } from "src/ui/modals/applyTemplate";
+import { BatchCreateModal } from "src/ui/modals/batchCreate";
+import type { IBatchItem } from "src/ui/modals/batchCreate";
+import { ConfirmationModal } from "src/ui/modals/confirm";
+import { ImportantDayModal } from "src/ui/modals/importantDay";
+import { ImportantListModal } from "src/ui/modals/importantList";
+import { StatsModal } from "src/ui/modals/stats";
+import { CalendarSettingsTab } from "src/ui/settingsTab";
+import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "src/ui/stores";
+import CalendarView from "src/ui/view";
 
 declare global {
   interface Window {
@@ -42,11 +44,28 @@ declare global {
   }
 }
 
+/** Plugin entry: lifecycle, commands and the actions behind menus. */
 export default class CalendarPlugin extends Plugin {
   public options: ISettings;
+  /** Modals opened by the plugin, closed on unload so no callback outlives it. */
+  private openModals = new Set<Modal>();
+  private batchRunning = false;
 
   onunload(): void {
+    this.openModals.forEach((m) => m.close());
+    this.openModals.clear();
     this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).forEach((leaf) => leaf.detach());
+  }
+
+  /** Open a modal and remember it until it closes. */
+  private show(modal: Modal): void {
+    const onClose = modal.onClose?.bind(modal);
+    modal.onClose = () => {
+      this.openModals.delete(modal);
+      onClose?.();
+    };
+    this.openModals.add(modal);
+    modal.open();
   }
 
   async onload(): Promise<void> {
@@ -54,7 +73,7 @@ export default class CalendarPlugin extends Plugin {
       settings.subscribe((value) => {
         this.options = value;
         setLanguage(value.language);
-      })
+      }),
     );
 
     const raw = await this.loadData();
@@ -99,25 +118,43 @@ export default class CalendarPlugin extends Plugin {
                 return true;
               },
             }
-          : { id, name, callback: () => void callback() }
+          : { id, name, callback: () => void callback() },
       );
 
-    cmd("show-calendar-view", t("cmd.openView"), () => this.initLeaf(), () =>
-      this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).length === 0
+    cmd(
+      "show-calendar-view",
+      t("cmd.openView"),
+      () => this.initLeaf(),
+      () => this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).length === 0,
     );
     cmd("open-yesterday-daily-note", t("cmd.openYesterday"), () => this.openDailyNoteForOffset(-1));
     cmd("open-today-daily-note", t("cmd.openToday"), () => this.openDailyNoteForOffset(0));
     cmd("open-tomorrow-daily-note", t("cmd.openTomorrow"), () => this.openDailyNoteForOffset(1));
-    cmd("open-weekly-note", t("cmd.openWeekly"), () => this.openPeriodic(window.moment(), "week", false), () =>
-      this.options.weekly.enabled
+    cmd("open-previous-daily-note", t("cmd.prevDaily"), () => this.openAdjacentDailyNote(-1));
+    cmd("open-next-daily-note", t("cmd.nextDaily"), () => this.openAdjacentDailyNote(1));
+    cmd(
+      "open-weekly-note",
+      t("cmd.openWeekly"),
+      () => this.openPeriodic(window.moment(), "week", false),
+      () => this.options.weekly.enabled,
     );
-    cmd("open-monthly-note", t("cmd.openMonthly"), () => this.openPeriodic(window.moment(), "month", false), () =>
-      this.options.monthly.enabled
+    cmd(
+      "open-monthly-note",
+      t("cmd.openMonthly"),
+      () => this.openPeriodic(window.moment(), "month", false),
+      () => this.options.monthly.enabled,
     );
-    cmd("create-missing-daily-notes-week", t("cmd.missingWeek"), () => this.createMissingDailyNotes("week"));
-    cmd("create-missing-daily-notes-month", t("cmd.missingMonth"), () => this.createMissingDailyNotes("month"));
-    cmd("apply-template-to-active-note", t("cmd.applyTemplate"), () => this.applyTemplateToActiveNote(), () =>
-      !!this.app.workspace.getActiveFile()
+    cmd("create-missing-daily-notes-week", t("cmd.missingWeek"), () =>
+      this.createMissingDailyNotes("week"),
+    );
+    cmd("create-missing-daily-notes-month", t("cmd.missingMonth"), () =>
+      this.createMissingDailyNotes("month"),
+    );
+    cmd(
+      "apply-template-to-active-note",
+      t("cmd.applyTemplate"),
+      () => this.applyTemplateToActiveNote(),
+      () => !!this.app.workspace.getActiveFile(),
     );
     cmd("show-important-days", t("cmd.importantList"), () => this.showImportantDays());
     cmd("show-statistics", t("cmd.statistics"), () => this.showStatistics());
@@ -161,13 +198,65 @@ export default class CalendarPlugin extends Plugin {
     return findNote(this.app, this.options, date, "day", get(dailyNotes));
   }
 
+  /** Open the note of a date; create it (after confirmation, if enabled) when missing. */
   async openPeriodic(date: Moment, g: Granularity, inNewSplit: boolean): Promise<void> {
     const store = g === "day" ? dailyNotes : g === "week" ? weeklyNotes : monthlyNotes;
-    const existing = findNote(this.app, this.options, date, g, get(store));
-    await openOrCreateNote(this.app, date, g, this.options, inNewSplit, existing, (file) => {
+    const done = (file: TFile) => {
       activeFile.setFile(file);
       store.reindex();
-    });
+    };
+    const existing = findNote(this.app, this.options, date, g, get(store));
+    if (existing) {
+      await openFile(this.app, existing, inNewSplit);
+      done(existing);
+      return;
+    }
+    if (!periodicConfig(this.options, g).enabled) {
+      new Notice(t("notice.typeDisabled", { type: typeLabel(g) }));
+      return;
+    }
+    const create = async () => {
+      const created = await createNote(this.app, date, this.options, g);
+      if (created) {
+        await openFile(this.app, created, inNewSplit);
+        done(created);
+      }
+    };
+    const path = getNotePath(date, this.options, g, this.app.vault.configDir);
+    if (this.options.shouldConfirmBeforeCreate && path) {
+      this.show(
+        new ConfirmationModal(this.app, {
+          cta: t("confirm.create"),
+          onAccept: create,
+          text: t("confirm.text", { file: path }),
+          title: t("confirm.title"),
+        }),
+      );
+    } else {
+      await create(); // an unsafe path is reported by createNote
+    }
+  }
+
+  /** Previous / next EXISTING daily note relative to the active one (never creates). */
+  async openAdjacentDailyNote(direction: -1 | 1): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    const current = file ? getDateFromFile(file, this.options, "day") : null;
+    if (!current) {
+      new Notice(t("notice.notADailyNote"));
+      return;
+    }
+    const index = getAllNotes(this.app, this.options, "day");
+    const dates = Object.values(index)
+      .map((f) => getDateFromFile(f, this.options, "day"))
+      .filter((d): d is Moment => !!d);
+    const target = adjacentDate(dates, current, direction);
+    const note = target ? findNote(this.app, this.options, target, "day", index) : null;
+    if (!note) {
+      new Notice(t("notice.noAdjacentNote"));
+      return;
+    }
+    await openFile(this.app, note, false);
+    activeFile.setFile(note);
   }
 
   async openDailyNoteForOffset(daysFromToday: number): Promise<void> {
@@ -177,6 +266,9 @@ export default class CalendarPlugin extends Plugin {
 
   /** "Create missing daily notes until end of week / month" (or for a displayed month). */
   async createMissingDailyNotes(scope: "week" | "month" | Moment): Promise<void> {
+    if (this.batchRunning) {
+      return;
+    }
     if (!this.options.daily.enabled) {
       new Notice(t("notice.typeDisabled", { type: typeLabel("day") }));
       return;
@@ -196,7 +288,7 @@ export default class CalendarPlugin extends Plugin {
         t("notice.nothingMissing", {
           from: dates[0].format("LL"),
           to: dates[dates.length - 1].format("LL"),
-        })
+        }),
       );
       return;
     }
@@ -208,26 +300,51 @@ export default class CalendarPlugin extends Plugin {
       if (res.missing.length) {
         label += ` (${t("source.missing", { paths: res.missing.map((m) => m.path).join(", ") })})`;
       }
-      return { dateLabel: d.format("dd, D MMM YYYY"), path: d.format(this.options.daily.format), templateLabel: label };
+      return {
+        dateLabel: d.format("dd, D MMM YYYY"),
+        path: d.format(this.options.daily.format),
+        templateLabel: label,
+      };
     });
-    new BatchCreateModal(this.app, items, async () => {
-      let created = 0;
-      let failed = 0;
-      for (const d of missing) {
-        const file = await createNote(this.app, d, this.options, "day", false);
+    const existingCount = dates.length - missing.length;
+    this.show(new BatchCreateModal(this.app, items, existingCount, () => this.runBatch(missing)));
+  }
+
+  /** Sequential on purpose: predictable order and no parallel writes. */
+  private async runBatch(dates: Moment[]): Promise<void> {
+    if (this.batchRunning) {
+      return;
+    }
+    this.batchRunning = true;
+    const progress = dates.length > 5 ? new Notice(t("batch.running"), 0) : null;
+    let created = 0;
+    let failed = 0;
+    try {
+      for (const d of dates) {
+        // A note created meanwhile (sync, a click) is skipped, never overwritten.
+        if (this.findDailyNote(d)) {
+          continue;
+        }
+        const file = await createNote(this.app, d, this.options, "day", {
+          notifyMissing: false,
+          carryover: false,
+        });
         if (file) {
           created++;
         } else {
           failed++;
         }
       }
-      dailyNotes.reindex();
-      this.getView()?.refresh();
-      new Notice(
-        t("notice.batchDone", { created, total: missing.length }) +
-          (failed ? `\n${t("notice.batchFailed", { failed })}` : "")
-      );
-    }).open();
+    } finally {
+      this.batchRunning = false;
+      progress?.hide();
+    }
+    dailyNotes.reindex();
+    this.getView()?.refresh();
+    new Notice(
+      t("notice.batchDone", { created, total: dates.length }) +
+        (failed ? `\n${t("notice.batchFailed", { failed })}` : ""),
+    );
   }
 
   // ---------- templates on existing notes ----------
@@ -254,12 +371,12 @@ export default class CalendarPlugin extends Plugin {
   }
 
   async applyTemplateToNote(file: TFile, date: Moment, g: Granularity = "day"): Promise<void> {
-    const { contents, resolution } = await renderTemplateFor(this.app, date, this.options, g, true);
+    const { contents, resolution } = await renderTemplateFor(this.app, date, this.options, g);
     if (!resolution.chosen) {
       new Notice(t("notice.noTemplate", { date: date.format("LL") }));
       return;
     }
-    const write = async (mode: "append" | "prepend" | "replace") => {
+    const write = async (mode: MergeMode) => {
       // Re-read right before writing so nothing typed meanwhile is lost.
       await this.app.vault.process(file, (current) => mergeTemplate(current, contents, mode));
       new Notice(t("notice.templateApplied", { file: file.basename }));
@@ -270,12 +387,18 @@ export default class CalendarPlugin extends Plugin {
       await write("replace");
       return;
     }
-    new ApplyTemplateModal(
-      this.app,
-      file.basename,
-      t("apply.desc", { path: resolution.chosen.path, reason: describeCandidate(resolution.chosen) }),
-      write
-    ).open();
+    this.show(
+      new ApplyTemplateModal(
+        this.app,
+        file.basename,
+        t("apply.desc", {
+          path: resolution.chosen.path,
+          reason: describeCandidate(resolution.chosen),
+        }),
+        write,
+        () => new Notice(t("notice.templateSkipped", { file: file.basename })),
+      ),
+    );
   }
 
   // ---------- important days ----------
@@ -283,21 +406,25 @@ export default class CalendarPlugin extends Plugin {
   openImportantDayModal(date: Moment, after?: () => void): void {
     const key = dayKey(date);
     const existing = this.options.importantDays[key] ?? null;
-    new ImportantDayModal(
-      this.app,
-      date.format("dddd, LL"),
-      existing,
-      async (day: IImportantDay) => {
-        await this.writeOptions((old) => ({ importantDays: { ...old.importantDays, [key]: day } }));
-        after?.();
-      },
-      existing
-        ? async () => {
-            await this.removeImportantDay(date);
-            after?.();
-          }
-        : null
-    ).open();
+    this.show(
+      new ImportantDayModal(
+        this.app,
+        date.format("dddd, LL"),
+        existing,
+        async (day: IImportantDay) => {
+          await this.writeOptions((old) => ({
+            importantDays: { ...old.importantDays, [key]: day },
+          }));
+          after?.();
+        },
+        existing
+          ? async () => {
+              await this.removeImportantDay(date);
+              after?.();
+            }
+          : null,
+      ),
+    );
   }
 
   async removeImportantDay(date: Moment): Promise<void> {
@@ -310,120 +437,28 @@ export default class CalendarPlugin extends Plugin {
   }
 
   showImportantDays(): void {
-    new ImportantListModal(
-      this.app,
-      () => this.options.importantDays,
-      (date) => void this.openPeriodic(window.moment(date, "YYYY-MM-DD"), "day", false),
-      (date, refresh) => this.openImportantDayModal(window.moment(date, "YYYY-MM-DD"), refresh)
-    ).open();
+    this.show(
+      new ImportantListModal(
+        this.app,
+        () => this.options.importantDays,
+        (date) => void this.openPeriodic(window.moment(date, "YYYY-MM-DD"), "day", false),
+        (date, refresh) => this.openImportantDayModal(window.moment(date, "YYYY-MM-DD"), refresh),
+      ),
+    );
   }
 
   showStatistics(month?: Moment): void {
     dailyNotes.reindex();
-    new StatsModal(
-      this.app,
-      {
-        findDailyNote: (d) => this.findDailyNote(d),
-        importantDays: () => this.options.importantDays,
-        openDay: (d) => void this.openPeriodic(d, "day", false),
-      },
-      month
-    ).open();
-  }
-
-  // ---------- menus ----------
-
-  /** Menu with every action of the plugin (header button / right click on month title). */
-  buildMainMenu(displayedMonth?: Moment): Menu {
-    const menu = new Menu();
-    const now = window.moment();
-    const month = (displayedMonth || now).clone();
-    const item = (title: string, icon: string, fn: () => unknown) =>
-      menu.addItem((i) => i.setTitle(title).setIcon(icon).onClick(() => void fn()));
-
-    item(t("cmd.openYesterday"), "arrow-left", () => this.openDailyNoteForOffset(-1));
-    item(t("cmd.openToday"), "calendar-check", () => this.openDailyNoteForOffset(0));
-    item(t("cmd.openTomorrow"), "arrow-right", () => this.openDailyNoteForOffset(1));
-    if (this.options.weekly.enabled) {
-      item(t("cmd.openWeekly"), "calendar-range", () => this.openPeriodic(now, "week", false));
-    }
-    if (this.options.monthly.enabled) {
-      item(t("menu.openMonthly", { month: month.format("MMMM YYYY") }), "calendar", () =>
-        this.openPeriodic(month, "month", false)
-      );
-    }
-    menu.addSeparator();
-    item(t("cmd.missingWeek"), "calendar-plus", () => this.createMissingDailyNotes("week"));
-    item(t("cmd.missingMonth"), "calendar-plus", () => this.createMissingDailyNotes("month"));
-    if (!month.isSame(now, "month") && month.isAfter(now, "month")) {
-      item(t("menu.missingDisplayedMonth", { month: month.format("MMMM YYYY") }), "calendar-plus", () =>
-        this.createMissingDailyNotes(month)
-      );
-    }
-    const active = this.app.workspace.getActiveFile();
-    if (active && this.noteDateOf(active)) {
-      item(t("cmd.applyTemplate"), "file-input", () => this.applyTemplateToActiveNote());
-    }
-    menu.addSeparator();
-    item(t("cmd.importantList"), "star", () => this.showImportantDays());
-    item(t("cmd.statistics"), "bar-chart-2", () => this.showStatistics(month));
-    item(t("cmd.settings"), "settings", () => this.openSettings());
-    return menu;
-  }
-
-  showDayMenu(date: Moment, event: MouseEvent): void {
-    const menu = new Menu();
-    const note = this.findDailyNote(date);
-    const important = this.options.importantDays[dayKey(date)];
-    if (note) {
-      menu.addItem((i) =>
-        i.setTitle(t("menu.openNote")).setIcon("file-text").onClick(() => void this.openPeriodic(date, "day", false))
-      );
-      menu.addItem((i) =>
-        i.setTitle(t("menu.openInSplit")).setIcon("separator-vertical").onClick(() => void this.openPeriodic(date, "day", true))
-      );
-      menu.addItem((i) =>
-        i.setTitle(t("menu.applyTemplate")).setIcon("file-input").onClick(() => void this.applyTemplateToNote(note, date, "day"))
-      );
-    } else if (this.options.daily.enabled) {
-      menu.addItem((i) =>
-        i.setTitle(t("menu.createNote")).setIcon("file-plus").onClick(() => void this.openPeriodic(date, "day", false))
-      );
-    }
-    menu.addSeparator();
-    menu.addItem((i) =>
-      i
-        .setTitle(important ? t("menu.editImportant") : t("menu.markImportant"))
-        .setIcon("star")
-        .onClick(() => this.openImportantDayModal(date))
+    this.show(
+      new StatsModal(
+        this.app,
+        {
+          findDailyNote: (d) => this.findDailyNote(d),
+          importantDays: () => this.options.importantDays,
+          openDay: (d) => void this.openPeriodic(d, "day", false),
+        },
+        month,
+      ),
     );
-    if (important) {
-      menu.addItem((i) =>
-        i.setTitle(t("menu.removeImportant")).setIcon("star-off").onClick(() => void this.removeImportantDay(date))
-      );
-    }
-    if (note) {
-      menu.addSeparator();
-      menu.addItem((i) =>
-        i
-          .setTitle(t("menu.delete"))
-          .setIcon("trash")
-          .onClick(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (this.app as any).fileManager.promptForFileDeletion(note);
-          })
-      );
-      this.app.workspace.trigger("file-menu", menu, note, "calendar-context-menu", null);
-    }
-    menu.showAtMouseEvent(event);
-  }
-
-  /** Current UI language (for tests / debugging). */
-  get language(): string {
-    return getLanguage();
-  }
-
-  periodicEnabled(g: Granularity): boolean {
-    return periodicConfig(this.options, g).enabled;
   }
 }

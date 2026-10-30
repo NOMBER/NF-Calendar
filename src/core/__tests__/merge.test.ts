@@ -20,7 +20,9 @@ describe("mergeTemplate", () => {
 
   it("prepend keeps YAML frontmatter at the top", () => {
     const existing = "---\ntags: [daily]\n---\nNotes";
-    expect(mergeTemplate(existing, tpl, "prepend")).toBe(`---\ntags: [daily]\n---\n${tpl}\n\nNotes`);
+    expect(mergeTemplate(existing, tpl, "prepend")).toBe(
+      `---\ntags: [daily]\n---\n${tpl}\n\nNotes`,
+    );
     expect(mergeTemplate("---\na: 1\n---\n", tpl, "prepend")).toBe(`---\na: 1\n---\n${tpl}\n`);
   });
 

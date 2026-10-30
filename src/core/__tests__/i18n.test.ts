@@ -1,4 +1,4 @@
-import { DICTIONARIES, resolveLanguage, setLanguage, t } from "../../i18n";
+import { DICTIONARIES, resolveLanguage, setLanguage, t } from "src/core/i18n";
 
 describe("i18n", () => {
   it("Russian translation is complete", () => {

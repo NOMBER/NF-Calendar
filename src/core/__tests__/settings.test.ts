@@ -1,4 +1,9 @@
-import { makeDefaultSettings, mergeExternal, migrateSettings, SETTINGS_VERSION } from "../../settingsData";
+import {
+  makeDefaultSettings,
+  mergeExternal,
+  migrateSettings,
+  SETTINGS_VERSION,
+} from "src/core/settings";
 
 describe("migrateSettings", () => {
   it("fresh install: defaults, nothing imported", () => {
@@ -27,12 +32,27 @@ describe("migrateSettings", () => {
     });
     expect(migratedFrom).toBe(1);
     expect(settings.settingsVersion).toBe(SETTINGS_VERSION);
-    expect(settings.daily).toEqual({ enabled: true, folder: "Journal", format: "DD.MM.YYYY", template: "T/Daily.md" });
-    expect(settings.weekly).toEqual({ enabled: true, folder: "Weekly", format: "gggg-[W]ww", template: "T/Week.md" });
+    expect(settings.daily).toEqual({
+      enabled: true,
+      folder: "Journal",
+      format: "DD.MM.YYYY",
+      template: "T/Daily.md",
+    });
+    expect(settings.weekly).toEqual({
+      enabled: true,
+      folder: "Weekly",
+      format: "gggg-[W]ww",
+      template: "T/Week.md",
+    });
     expect(settings.monthly.enabled).toBe(false);
     expect(settings.weekdayTemplates.monday).toBe("T/Mon.md");
     expect(settings.weekdayTemplates.friday).toBe("");
-    expect(settings).toMatchObject({ wordsPerDot: 100, weekStart: "monday", localeOverride: "ru", useWeekdayTemplates: true });
+    expect(settings).toMatchObject({
+      wordsPerDot: 100,
+      weekStart: "monday",
+      localeOverride: "ru",
+      useWeekdayTemplates: true,
+    });
     expect(settings.templateRules).toEqual([]);
     expect(settings.importantDays).toEqual({});
   });
@@ -40,9 +60,14 @@ describe("migrateSettings", () => {
   it("v1 with Periodic Notes weekly overrides the old weekly fields", () => {
     const { settings } = migrateSettings(
       { showWeeklyNote: false, weeklyNoteFolder: "Old" },
-      { weekly: { folder: "PN/Weekly", format: "gggg-ww", template: "" } }
+      { weekly: { folder: "PN/Weekly", format: "gggg-ww", template: "" } },
     );
-    expect(settings.weekly).toEqual({ enabled: false, folder: "PN/Weekly", format: "gggg-ww", template: "" });
+    expect(settings.weekly).toEqual({
+      enabled: false,
+      folder: "PN/Weekly",
+      format: "gggg-ww",
+      template: "",
+    });
   });
 
   it("v2: sanitizes rules and important days", () => {
@@ -50,7 +75,12 @@ describe("migrateSettings", () => {
       settingsVersion: 2,
       daily: { enabled: false, folder: " D ", format: "", template: "" },
       templateRules: [
-        { id: "a", name: "A", condition: { type: "annual", monthDay: "01-01" }, template: " T/NY.md " },
+        {
+          id: "a",
+          name: "A",
+          condition: { type: "annual", monthDay: "01-01" },
+          template: " T/NY.md ",
+        },
         { broken: true },
       ],
       importantDays: {
@@ -59,11 +89,25 @@ describe("migrateSettings", () => {
       },
     });
     expect(migratedFrom).toBeNull();
-    expect(settings.daily).toEqual({ enabled: false, folder: "D", format: "YYYY-MM-DD", template: "" });
+    expect(settings.daily).toEqual({
+      enabled: false,
+      folder: "D",
+      format: "YYYY-MM-DD",
+      template: "",
+    });
     expect(settings.templateRules).toEqual([
-      { id: "a", name: "A", enabled: true, condition: { type: "annual", monthDay: "01-01" }, template: "T/NY.md", appliesTo: ["day"] },
+      {
+        id: "a",
+        name: "A",
+        enabled: true,
+        condition: { type: "annual", monthDay: "01-01" },
+        template: "T/NY.md",
+        appliesTo: ["day"],
+      },
     ]);
-    expect(settings.importantDays).toEqual({ "2026-11-10": { title: "Exam", color: "red", prepDays: 30 } });
+    expect(settings.importantDays).toEqual({
+      "2026-11-10": { title: "Exam", color: "red", prepDays: 30 },
+    });
   });
 
   it("import keeps the enabled flag", () => {

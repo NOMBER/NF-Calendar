@@ -3,15 +3,17 @@
  */
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
-import { DEFAULT_WORDS_PER_DOT } from "./constants";
-import { DEFAULT_FORMATS } from "./core/dates";
-import type { Granularity } from "./core/dates";
-import { clampPrepDays, IMPORTANT_COLORS } from "./core/important";
-import type { ImportantDays } from "./core/important";
-import { EMPTY_WEEKDAY_TEMPLATES, newRuleId } from "./core/rules";
-import type { ITemplateRule, IWeekdayTemplates } from "./core/rules";
+import { DEFAULT_WORDS_PER_DOT } from "src/constants";
+import { DEFAULT_FORMATS } from "./dates";
+import type { Granularity } from "./dates";
+import { clampPrepDays, IMPORTANT_COLORS } from "./important";
+import type { ImportantDays } from "./important";
+import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
+import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
 export const SETTINGS_VERSION = 2;
+
+const GRANULARITY_LIST: Granularity[] = ["day", "week", "month"];
 
 export type Language = "auto" | "en" | "ru";
 
@@ -82,21 +84,68 @@ export interface IExternalPeriodicSettings {
   monthly?: Partial<IPeriodicConfig> | null;
 }
 
-function str(v: unknown, fallback = ""): string {
-  return typeof v === "string" ? v : fallback;
+/**
+ * Limits for values read from data.json. Far above real use; they only stop
+ * a corrupted or hostile file from making the plugin slow or huge.
+ */
+export const LIMITS = {
+  path: 512,
+  format: 128,
+  text: 200,
+  rules: 200,
+  importantDays: 5000,
+  wordsPerDot: { min: 1, max: 100000 },
+} as const;
+
+const WEEK_START_OPTIONS = ["locale", ...WEEKDAY_KEYS] as const;
+// moment locale ids look like "en", "en-gb", "zh-cn", "tzm-latn".
+const LOCALE_ID = /^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,2}$/;
+
+/** String or fallback; control characters removed and length capped. */
+function str(v: unknown, fallback = "", max: number = LIMITS.path): string {
+  if (typeof v !== "string") {
+    return fallback;
+  }
+  // eslint-disable-next-line no-control-regex
+  return v.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, max);
 }
 
-function sanitizePeriodic(
-  raw: unknown,
-  g: Granularity,
-  defaultEnabled: boolean
-): IPeriodicConfig {
+export function sanitizeWeekStart(v: unknown): IWeekStartOption {
+  return (WEEK_START_OPTIONS as readonly unknown[]).includes(v)
+    ? (v as IWeekStartOption)
+    : ("locale" as IWeekStartOption);
+}
+
+/** Only well-formed moment locale ids reach `moment.locale()`. */
+export function sanitizeLocale(v: unknown): ILocaleOverride {
+  return typeof v === "string" && LOCALE_ID.test(v) ? (v as ILocaleOverride) : "system-default";
+}
+
+export function sanitizeWordsPerDot(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v)) {
+    return DEFAULT_WORDS_PER_DOT;
+  }
+  const { min, max } = LIMITS.wordsPerDot;
+  return Math.min(max, Math.max(min, Math.round(v)));
+}
+
+function sanitizeWeekdayTemplates(raw: unknown): IWeekdayTemplates {
+  const out: IWeekdayTemplates = { ...EMPTY_WEEKDAY_TEMPLATES };
+  if (raw && typeof raw === "object") {
+    for (const key of WEEKDAY_KEYS) {
+      out[key] = str((raw as Record<string, unknown>)[key]).trim();
+    }
+  }
+  return out;
+}
+
+function sanitizePeriodic(raw: unknown, g: Granularity, defaultEnabled: boolean): IPeriodicConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = (raw || {}) as any;
   return {
     enabled: typeof r.enabled === "boolean" ? r.enabled : defaultEnabled,
     folder: str(r.folder).trim(),
-    format: str(r.format).trim() || DEFAULT_FORMATS[g],
+    format: str(r.format, "", LIMITS.format).trim() || DEFAULT_FORMATS[g],
     template: str(r.template).trim(),
   };
 }
@@ -105,7 +154,7 @@ function sanitizePeriodic(
 export function mergeExternal(
   base: IPeriodicConfig,
   ext: Partial<IPeriodicConfig> | null | undefined,
-  g: Granularity
+  g: Granularity,
 ): IPeriodicConfig {
   if (!ext) {
     return base;
@@ -113,43 +162,53 @@ export function mergeExternal(
   return {
     enabled: base.enabled,
     folder: str(ext.folder, base.folder).trim(),
-    format: str(ext.format).trim() || base.format || DEFAULT_FORMATS[g],
+    format: str(ext.format, "", LIMITS.format).trim() || base.format || DEFAULT_FORMATS[g],
     template: str(ext.template, base.template).trim(),
   };
 }
 
-function sanitizeRules(raw: unknown): ITemplateRule[] {
+export function sanitizeRules(raw: unknown): ITemplateRule[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  return raw
-    .filter((r) => r && typeof r === "object" && r.condition)
-    .map((r) => ({
-      id: str(r.id) || newRuleId(),
-      name: str(r.name),
+  const rules: ITemplateRule[] = [];
+  for (const r of raw.slice(0, LIMITS.rules)) {
+    const condition = r && typeof r === "object" ? sanitizeCondition(r.condition) : null;
+    if (!condition) {
+      continue;
+    }
+    const appliesTo = Array.isArray(r.appliesTo)
+      ? GRANULARITY_LIST.filter((g) => r.appliesTo.includes(g))
+      : [];
+    rules.push({
+      id: str(r.id, "", 64) || newRuleId(),
+      name: str(r.name, "", LIMITS.text),
       enabled: r.enabled !== false,
-      condition: r.condition,
+      condition,
       template: str(r.template).trim(),
-      appliesTo:
-        Array.isArray(r.appliesTo) && r.appliesTo.length
-          ? r.appliesTo.filter((g: string) => g === "day" || g === "week" || g === "month")
-          : ["day"],
-    }));
+      appliesTo: appliesTo.length ? appliesTo : ["day"],
+    });
+  }
+  return rules;
 }
 
-function sanitizeImportant(raw: unknown): ImportantDays {
+export function sanitizeImportant(raw: unknown): ImportantDays {
   const out: ImportantDays = {};
-  if (!raw || typeof raw !== "object") {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     return out;
   }
+  let count = 0;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") {
       continue;
     }
+    if (++count > LIMITS.importantDays) {
+      break;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = v as any;
     out[k] = {
-      title: str(d.title),
+      title: str(d.title, "", LIMITS.text),
       color: (IMPORTANT_COLORS as readonly string[]).includes(d.color) ? d.color : "red",
       prepDays: clampPrepDays(Number(d.prepDays ?? 0)),
     };
@@ -169,7 +228,7 @@ function sanitizeImportant(raw: unknown): ImportantDays {
  */
 export function migrateSettings(
   raw: unknown,
-  externalForV1: IExternalPeriodicSettings = {}
+  externalForV1: IExternalPeriodicSettings = {},
 ): { settings: ISettings; migratedFrom: number | null } {
   const defaults = makeDefaultSettings();
   if (!raw || typeof raw !== "object") {
@@ -188,7 +247,7 @@ export function migrateSettings(
     weekly = {
       enabled: !!r.showWeeklyNote,
       folder: str(r.weeklyNoteFolder).trim(),
-      format: str(r.weeklyNoteFormat).trim() || DEFAULT_FORMATS.week,
+      format: str(r.weeklyNoteFormat, "", LIMITS.format).trim() || DEFAULT_FORMATS.week,
       template: str(r.weeklyNoteTemplate).trim(),
     };
     if (externalForV1.weekly) {
@@ -204,28 +263,25 @@ export function migrateSettings(
   const settings: ISettings = {
     settingsVersion: SETTINGS_VERSION,
     language: ["auto", "en", "ru"].includes(r.language) ? r.language : defaults.language,
-    wordsPerDot:
-      typeof r.wordsPerDot === "number" && Number.isFinite(r.wordsPerDot)
-        ? r.wordsPerDot
-        : defaults.wordsPerDot,
-    weekStart: r.weekStart ?? defaults.weekStart,
+    wordsPerDot: sanitizeWordsPerDot(r.wordsPerDot),
+    weekStart: sanitizeWeekStart(r.weekStart),
     shouldConfirmBeforeCreate:
       typeof r.shouldConfirmBeforeCreate === "boolean"
         ? r.shouldConfirmBeforeCreate
         : defaults.shouldConfirmBeforeCreate,
-    localeOverride: r.localeOverride ?? defaults.localeOverride,
+    localeOverride: sanitizeLocale(r.localeOverride),
     daily,
     weekly,
     monthly,
     useWeekdayTemplates: !!r.useWeekdayTemplates,
-    weekdayTemplates: { ...EMPTY_WEEKDAY_TEMPLATES, ...(r.weekdayTemplates || {}) },
+    weekdayTemplates: sanitizeWeekdayTemplates(r.weekdayTemplates),
     templateRules: sanitizeRules(r.templateRules),
     importantDays: sanitizeImportant(r.importantDays),
     showUpcoming: typeof r.showUpcoming === "boolean" ? r.showUpcoming : defaults.showUpcoming,
     upcomingCollapsed: !!r.upcomingCollapsed,
     upcomingHorizonDays:
       typeof r.upcomingHorizonDays === "number" && r.upcomingHorizonDays > 0
-        ? Math.min(366, Math.round(r.upcomingHorizonDays))
+        ? Math.min(366, Math.max(1, Math.round(r.upcomingHorizonDays)))
         : defaults.upcomingHorizonDays,
     showTemplatePreview:
       typeof r.showTemplatePreview === "boolean"

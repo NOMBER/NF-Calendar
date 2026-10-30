@@ -1,10 +1,12 @@
 import type { Moment } from "moment";
+import type { App } from "obsidian";
 
+import { t } from "src/core/i18n";
 import { getDayMarks } from "src/core/important";
 import { firstLines } from "src/core/placeholders";
-import { t } from "src/i18n";
-import { chooseTemplateFor, describeCandidate, resolveTemplateFile } from "src/io/notes";
-import type { ISettings } from "src/settingsData";
+import type { ISettings } from "src/core/settings";
+import { chooseTemplateFor, resolveTemplateFile } from "src/io/notes";
+import { describeCandidate } from "./labels";
 
 export const PREVIEW_DELAY_MS = 400;
 const PREVIEW_LINES = 10;
@@ -19,12 +21,16 @@ export class TemplatePreview {
   private pendingKey: string | null = null;
   private target: HTMLElement | null = null;
 
-  constructor(private getSettings: () => ISettings) {
+  constructor(
+    private app: App,
+    private getSettings: () => ISettings,
+  ) {
     this.hide = this.hide.bind(this);
   }
 
   schedule(date: Moment, targetEl: EventTarget): void {
-    const dayEl = ((targetEl as HTMLElement)?.closest?.(".day") as HTMLElement) || (targetEl as HTMLElement);
+    const dayEl =
+      ((targetEl as HTMLElement)?.closest?.(".day") as HTMLElement) || (targetEl as HTMLElement);
     if (!dayEl) {
       return;
     }
@@ -48,6 +54,9 @@ export class TemplatePreview {
       window.clearTimeout(this.timer);
       this.timer = null;
     }
+    // Remove the `once` listeners too, they stay attached if never fired.
+    this.target?.removeEventListener("pointerleave", this.hide);
+    this.target?.removeEventListener("pointerdown", this.hide);
     this.el?.remove();
     this.el = null;
     this.pendingKey = null;
@@ -56,7 +65,7 @@ export class TemplatePreview {
 
   private async show(date: Moment, anchor: HTMLElement, key: string): Promise<void> {
     const settings = this.getSettings();
-    const app = window.app;
+    const app = this.app;
     const resolution = chooseTemplateFor(app, date, settings, "day");
     let lines: string[] = [];
     let truncated = false;
@@ -71,7 +80,10 @@ export class TemplatePreview {
     }
 
     const el = document.body.createDiv("cwt-template-preview");
-    el.createDiv({ cls: "cwt-preview-title", text: t("preview.title", { date: date.format("dddd, LL") }) });
+    el.createDiv({
+      cls: "cwt-preview-title",
+      text: t("preview.title", { date: date.format("dddd, LL") }),
+    });
     const marks = getDayMarks(window.moment, date, settings.importantDays);
     if (marks.important) {
       el.createDiv({
@@ -82,13 +94,22 @@ export class TemplatePreview {
       const p = marks.preparingFor[0];
       el.createDiv({
         cls: "cwt-preview-important",
-        text: t("preview.prepare", { title: p.day.title || t("important.untitled"), days: p.daysLeft }),
+        text: t("preview.prepare", {
+          title: p.day.title || t("important.untitled"),
+          days: p.daysLeft,
+        }),
       }).setAttr("data-cwt-color", p.day.color);
     }
     if (resolution.chosen) {
-      el.createDiv({ cls: "cwt-preview-meta", text: t("preview.template", { path: resolution.chosen.path }) });
+      el.createDiv({
+        cls: "cwt-preview-meta",
+        text: t("preview.template", { path: resolution.chosen.path }),
+      });
     }
-    el.createDiv({ cls: "cwt-preview-meta", text: t("preview.reason", { reason: describeCandidate(resolution.chosen) }) });
+    el.createDiv({
+      cls: "cwt-preview-meta",
+      text: t("preview.reason", { reason: describeCandidate(resolution.chosen) }),
+    });
     if (resolution.missing.length) {
       el.createDiv({
         cls: "cwt-preview-meta cwt-preview-warning",

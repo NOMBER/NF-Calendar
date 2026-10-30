@@ -23,7 +23,9 @@ describe("preparation window", () => {
       ["2026-11-10", 3],
       ["2026-11-12", 5],
     ]);
-    expect(getDayMarks(moment, d("2026-11-11"), days).preparingFor.map((p) => p.date)).toEqual(["2026-11-12"]);
+    expect(getDayMarks(moment, d("2026-11-11"), days).preparingFor.map((p) => p.date)).toEqual([
+      "2026-11-12",
+    ]);
   });
 
   it("prepDays 0 means no window; clamped to 0..30", () => {
@@ -48,6 +50,10 @@ describe("upcoming list", () => {
   });
 
   it("all days sorted by date", () => {
-    expect(allImportantDays(days).map((x) => x.date)).toEqual(["2026-11-10", "2026-11-12", "2026-12-31"]);
+    expect(allImportantDays(days).map((x) => x.date)).toEqual([
+      "2026-11-10",
+      "2026-11-12",
+      "2026-12-31",
+    ]);
   });
 });

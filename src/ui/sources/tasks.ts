@@ -4,7 +4,7 @@ import type { ICalendarSource, IDayMetadata, IDot } from "obsidian-calendar-ui";
 import { getDailyNote, getWeeklyNote } from "src/core/dates";
 import { get } from "svelte/store";
 
-import { dailyNotes, weeklyNotes } from "../stores";
+import { dailyNotes, weeklyNotes } from "src/ui/stores";
 
 export async function getNumberOfRemainingTasks(note: TFile): Promise<number> {
   if (!note) {
@@ -16,9 +16,7 @@ export async function getNumberOfRemainingTasks(note: TFile): Promise<number> {
   return (fileContents.match(/(-|\*) \[ \]/g) || []).length;
 }
 
-export async function getDotsForDailyNote(
-  dailyNote: TFile | null
-): Promise<IDot[]> {
+export async function getDotsForDailyNote(dailyNote: TFile | null): Promise<IDot[]> {
   if (!dailyNote) {
     return [];
   }

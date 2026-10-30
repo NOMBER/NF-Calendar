@@ -3,11 +3,12 @@ import { Modal, setIcon } from "obsidian";
 import type { App, TFile } from "obsidian";
 
 import { datesBetween } from "src/core/dates";
+import { t } from "src/core/i18n";
 import { getDayMarks } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
-import { countTasks, countTasksFromListItems, getWordCount, summarizeMonth } from "src/core/stats";
+import { currentStreak, isAllTasksDone, summarizeMonth } from "src/core/stats";
 import type { IDayStats } from "src/core/stats";
-import { t } from "src/i18n";
+import { cachedTaskCount, computeNoteStats } from "src/io/noteStats";
 
 export interface IStatsDeps {
   findDailyNote: (date: Moment) => TFile | null;
@@ -15,28 +16,20 @@ export interface IStatsDeps {
   openDay: (date: Moment) => void;
 }
 
-/** Words and tasks of a note: metadataCache for tasks when available, cachedRead for words. */
-export async function computeNoteStats(
-  app: App,
-  file: TFile
-): Promise<{ words: number; tasksDone: number; tasksOpen: number }> {
-  const text = await app.vault.cachedRead(file);
-  const cache = app.metadataCache.getFileCache(file);
-  const tasks = cache?.listItems
-    ? countTasksFromListItems(cache.listItems)
-    : countTasks(text);
-  return { words: getWordCount(text), tasksDone: tasks.done, tasksOpen: tasks.open };
-}
-
 /**
  * Month statistics in a modal (works the same on desktop and mobile):
- * per-day words / done / open tasks, important marks, monthly totals.
+ * per-day words / done / open tasks, important marks, ✓ for days where all
+ * tasks are done, monthly totals and the current ✓ streak.
  */
 export class StatsModal extends Modal {
   private month: Moment;
   private renderToken = 0;
 
-  constructor(app: App, private deps: IStatsDeps, month?: Moment) {
+  constructor(
+    app: App,
+    private deps: IStatsDeps,
+    month?: Moment,
+  ) {
     super(app);
     this.month = (month || window.moment()).clone().startOf("month");
   }
@@ -58,10 +51,16 @@ export class StatsModal extends Modal {
     contentEl.empty();
 
     const nav = contentEl.createDiv("cwt-stats-nav");
-    const prev = nav.createEl("button", { cls: "clickable-icon", attr: { "aria-label": t("stats.prev") } });
+    const prev = nav.createEl("button", {
+      cls: "clickable-icon",
+      attr: { "aria-label": t("stats.prev") },
+    });
     setIcon(prev, "chevron-left");
     nav.createEl("h3", { cls: "cwt-stats-month", text: this.month.format("MMMM YYYY") });
-    const next = nav.createEl("button", { cls: "clickable-icon", attr: { "aria-label": t("stats.next") } });
+    const next = nav.createEl("button", {
+      cls: "clickable-icon",
+      attr: { "aria-label": t("stats.next") },
+    });
     setIcon(next, "chevron-right");
     prev.addEventListener("click", () => {
       this.month = this.month.clone().subtract(1, "month");
@@ -101,7 +100,10 @@ export class StatsModal extends Modal {
       if (marks.important) {
         dayCell.createSpan({
           cls: "cwt-marker",
-          attr: { "data-cwt-color": marks.important.color, "aria-label": marks.important.title || t("important.untitled") },
+          attr: {
+            "data-cwt-color": marks.important.color,
+            "aria-label": marks.important.title || t("important.untitled"),
+          },
         });
         if (marks.important.title) {
           dayCell.createSpan({ cls: "cwt-stats-important-title", text: marks.important.title });
@@ -117,19 +119,39 @@ export class StatsModal extends Modal {
 
       const file = this.deps.findDailyNote(date);
       if (!file) {
-        stats.push({ date: date.format("YYYY-MM-DD"), hasNote: false, words: 0, tasksDone: 0, tasksOpen: 0 });
+        stats.push({
+          date: date.format("YYYY-MM-DD"),
+          hasNote: false,
+          words: 0,
+          tasksDone: 0,
+          tasksOpen: 0,
+        });
         row.addClass("is-empty");
         continue;
       }
       try {
         const s = await computeNoteStats(this.app, file);
         stats.push({ date: date.format("YYYY-MM-DD"), hasNote: true, ...s });
+        if (isAllTasksDone(s)) {
+          row.addClass("is-all-done");
+          dayCell.createSpan({
+            cls: "cwt-stats-done",
+            text: "✓",
+            attr: { "aria-label": t("stats.allDone") },
+          });
+        }
         wordsCell.setText(String(s.words));
         doneCell.setText(String(s.tasksDone));
         openCell.setText(String(s.tasksOpen));
       } catch (err) {
         console.warn("[Calendar] stats failed for", file.path, err);
-        stats.push({ date: date.format("YYYY-MM-DD"), hasNote: true, words: 0, tasksDone: 0, tasksOpen: 0 });
+        stats.push({
+          date: date.format("YYYY-MM-DD"),
+          hasNote: true,
+          words: 0,
+          tasksDone: 0,
+          tasksOpen: 0,
+        });
       }
     }
     if (token !== this.renderToken) {
@@ -147,5 +169,41 @@ export class StatsModal extends Modal {
     add(t("stats.avgPerNote"), String(sum.avgWordsPerNote));
     add(t("stats.daysWithNotes"), `${sum.daysWithNotes} / ${sum.daysInMonth}`);
     add(t("stats.tasks"), `${sum.tasksDone} / ${sum.tasksTotal}`);
+    add(t("stats.allDoneDays"), String(sum.allDoneDays));
+    const streak = this.streak(stats, today);
+    if (streak !== null) {
+      add(t("stats.streak"), t("stats.streakValue", { count: streak }));
+    }
+  }
+
+  /**
+   * ✓ streak ending today (current month) or on the last day (past months).
+   * Days of the shown month use the stats just computed; earlier days use
+   * metadataCache only, so going back stays cheap. Null for future months.
+   */
+  private streak(stats: IDayStats[], today: Moment): number | null {
+    const monthEnd = this.month.clone().endOf("month").startOf("day");
+    if (this.month.isAfter(today, "day")) {
+      return null;
+    }
+    const isCurrentMonth = this.month.isSame(today, "month");
+    const anchor = isCurrentMonth ? today.clone().startOf("day") : monthEnd;
+    const byDate = new Map(stats.map((s) => [s.date, s]));
+    return currentStreak(
+      (daysAgo) => {
+        const date = anchor.clone().subtract(daysAgo, "day");
+        const known = byDate.get(date.format("YYYY-MM-DD"));
+        if (known) {
+          return known.hasNote && isAllTasksDone(known);
+        }
+        const file = this.deps.findDailyNote(date);
+        if (!file) {
+          return false;
+        }
+        const tasks = cachedTaskCount(this.app, file);
+        return isAllTasksDone({ tasksDone: tasks.done, tasksOpen: tasks.open });
+      },
+      { pendingAnchor: isCurrentMonth },
+    );
   }
 }

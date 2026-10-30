@@ -4,8 +4,8 @@ import type { ICalendarSource, IDayMetadata } from "obsidian-calendar-ui";
 import { getDailyNote, getWeeklyNote } from "src/core/dates";
 import { get } from "svelte/store";
 
-import { dailyNotes, weeklyNotes } from "../stores";
-import { classList } from "../utils";
+import { dailyNotes, weeklyNotes } from "src/ui/stores";
+import { classList } from "src/ui/utils";
 
 const getStreakClasses = (file: TFile): string[] => {
   return classList({

@@ -1,10 +1,10 @@
 import { Modal, Setting } from "obsidian";
 import type { App } from "obsidian";
 
+import { t } from "src/core/i18n";
+import type { I18nKey } from "src/core/i18n";
 import { clampPrepDays, IMPORTANT_COLORS, MAX_PREP_DAYS } from "src/core/important";
 import type { IImportantDay, ImportantColor } from "src/core/important";
-import { t } from "src/i18n";
-import type { I18nKey } from "src/i18n";
 
 /** "Mark as important…" dialog: title, color, preparation days, remove. */
 export class ImportantDayModal extends Modal {
@@ -15,12 +15,10 @@ export class ImportantDayModal extends Modal {
     private dateLabel: string,
     existing: IImportantDay | null,
     private onSave: (day: IImportantDay) => Promise<void>,
-    private onRemove: (() => Promise<void>) | null
+    private onRemove: (() => Promise<void>) | null,
   ) {
     super(app);
-    this.value = existing
-      ? { ...existing }
-      : { title: "", color: "red", prepDays: 0 };
+    this.value = existing ? { ...existing } : { title: "", color: "red", prepDays: 0 };
   }
 
   onOpen(): void {

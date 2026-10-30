@@ -25,7 +25,7 @@ export const WEEKDAY_KEYS = [
   "saturday",
 ] as const;
 
-export type WeekdayKey = typeof WEEKDAY_KEYS[number];
+export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 export type IWeekdayTemplates = Record<WeekdayKey, string>;
 
 export const EMPTY_WEEKDAY_TEMPLATES: IWeekdayTemplates = Object.freeze({
@@ -82,6 +82,36 @@ export function defaultCondition(type: RuleConditionType): RuleCondition {
 
 const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const MONTH_DAY = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/**
+ * Rebuild a condition from untrusted data (data.json): only known types and
+ * fields of the right primitive type survive. Returns null for garbage.
+ * Half filled-in values are kept so the user can finish editing them.
+ */
+export function sanitizeCondition(raw: unknown): RuleCondition | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  const text = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "");
+  const int = (v: unknown, fallback: number) =>
+    typeof v === "number" && Number.isInteger(v) ? v : fallback;
+  switch (r.type) {
+    case "date":
+      return { type: "date", date: text(r.date) };
+    case "annual":
+      return { type: "annual", monthDay: text(r.monthDay) };
+    case "range":
+      return { type: "range", from: text(r.from), to: text(r.to) };
+    case "nthWeekday":
+      return { type: "nthWeekday", nth: int(r.nth, 1), weekday: int(r.weekday, 1) };
+    case "weekParity":
+      return { type: "weekParity", parity: r.parity === "odd" ? "odd" : "even" };
+    default:
+      return null;
+  }
+}
 
 /** Is the condition fully filled in? (Invalid conditions never match.) */
 export function isConditionValid(cond: RuleCondition): boolean {
@@ -168,7 +198,7 @@ export interface ITemplateChoiceSettings {
 export function getTemplateCandidates(
   date: Moment,
   settings: ITemplateChoiceSettings,
-  granularity: Granularity = "day"
+  granularity: Granularity = "day",
 ): ITemplateCandidate[] {
   const result: ITemplateCandidate[] = [];
   for (const rule of settings.templateRules || []) {
@@ -207,7 +237,7 @@ export interface ITemplateResolution {
 /** Walk the candidates and pick the first one whose file exists. */
 export function resolveTemplate(
   candidates: ITemplateCandidate[],
-  exists: (path: string) => boolean
+  exists: (path: string) => boolean,
 ): ITemplateResolution {
   const missing: ITemplateCandidate[] = [];
   for (const c of candidates) {
@@ -224,7 +254,7 @@ export function chooseTemplate(
   date: Moment,
   settings: ITemplateChoiceSettings,
   granularity: Granularity,
-  exists: (path: string) => boolean
+  exists: (path: string) => boolean,
 ): ITemplateResolution {
   return resolveTemplate(getTemplateCandidates(date, settings, granularity), exists);
 }

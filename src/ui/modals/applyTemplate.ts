@@ -1,18 +1,22 @@
 import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
+import { t } from "src/core/i18n";
 import type { MergeMode } from "src/core/merge";
-import { t } from "src/i18n";
 
-import { ConfirmationModal } from "./modal";
+import { ConfirmationModal } from "./confirm";
 
-/** Ask how to apply a template to a non-empty note. */
+/**
+ * Ask how to apply a template to a non-empty note. "Skip" (also Esc)
+ * leaves the note untouched; "Replace" needs a second confirmation.
+ */
 export class ApplyTemplateModal extends Modal {
   constructor(
     app: App,
     private fileName: string,
     private description: string,
-    private onChoose: (mode: MergeMode) => Promise<void>
+    private onChoose: (mode: MergeMode) => Promise<void>,
+    private onSkip: () => void,
   ) {
     super(app);
   }
@@ -38,7 +42,12 @@ export class ApplyTemplateModal extends Modal {
           onAccept: () => this.onChoose("replace"),
         }).open();
       });
-      add(t("apply.cancel"), "", () => this.close());
+      const skip = add(t("apply.skip"), "", () => {
+        this.close();
+        this.onSkip();
+      });
+      // Default focus on the harmless choice: Enter never changes the note.
+      window.setTimeout(() => skip.focus(), 0);
     });
   }
 

@@ -2,10 +2,9 @@
  * UI strings. English is the source of truth; Russian is a full translation.
  * Use `t("key", { var: value })`; `{var}` placeholders are replaced.
  */
-import type { Language } from "./settingsData";
+import type { Language } from "./settings";
 
 const en = {
-  "plugin.name": "Calendar (Weekday Templates)",
   "view.title": "Calendar (Weekday Templates)",
 
   // commands
@@ -21,6 +20,8 @@ const en = {
   "cmd.importantList": "Show important days",
   "cmd.statistics": "Show statistics",
   "cmd.reveal": "Reveal active note in calendar",
+  "cmd.prevDaily": "Open previous daily note",
+  "cmd.nextDaily": "Open next daily note",
   "cmd.settings": "Open plugin settings",
 
   // menus
@@ -43,12 +44,18 @@ const en = {
   "notice.nothingMissing": "All daily notes from {from} to {to} already exist.",
   "notice.batchDone": "Created {created} of {total} daily notes.",
   "notice.batchFailed": "{failed} note(s) could not be created, see the developer console.",
+  "notice.unsafePath":
+    'Not created: folder "{folder}" with format "{format}" leads outside the vault or into the config folder. Check the plugin settings.',
+  "notice.noAdjacentNote": "No earlier/later daily note found.",
+  "notice.notADailyNote": "The active file is not a daily note of this plugin.",
+  "notice.templateSkipped": "{file} left unchanged.",
   "notice.importDone": "Imported: {what}.",
   "notice.importNothing": "Neither Daily Notes nor Periodic Notes settings were found.",
   "notice.noActiveDailyNote": "The active file is not a daily note of this plugin.",
   "notice.templateApplied": "Template applied to {file}.",
   "notice.noTemplate": "No template is configured for {date}.",
-  "notice.migrated": "Calendar (Weekday Templates): settings migrated to version 2. Note folders and formats are now configured in this plugin.",
+  "notice.migrated":
+    "Calendar (Weekday Templates): settings migrated to version 2. Note folders and formats are now configured in this plugin.",
 
   // confirm create
   "confirm.title": "New note",
@@ -62,9 +69,12 @@ const en = {
   "batch.create": "Create",
   "batch.cancel": "Cancel",
   "batch.empty": "empty note",
+  "batch.existingSkipped":
+    "Existing notes are never changed ({count} already exist and will be skipped).",
+  "batch.running": "Creating…",
 
   // template sources
-  "source.rule": "special rule \"{name}\"",
+  "source.rule": 'special rule "{name}"',
   "source.weekday": "weekday template ({weekday})",
   "source.default": "default template",
   "source.none": "no template (empty note)",
@@ -108,9 +118,10 @@ const en = {
   "apply.append": "Append to end",
   "apply.prepend": "Insert at beginning",
   "apply.replace": "Replace content",
-  "apply.cancel": "Cancel",
+  "apply.skip": "Skip (leave unchanged)",
   "apply.confirmReplaceTitle": "Replace note content?",
-  "apply.confirmReplaceText": "The current content of {file} will be replaced by the template. This cannot be undone except with Ctrl+Z in the editor or file recovery.",
+  "apply.confirmReplaceText":
+    "The current content of {file} will be replaced by the template. This cannot be undone except with Ctrl+Z in the editor or file recovery.",
 
   // statistics
   "stats.title": "Statistics",
@@ -126,6 +137,10 @@ const en = {
   "stats.daysWithNotes": "Days with notes",
   "stats.tasks": "Tasks done / total",
   "stats.loading": "Counting…",
+  "stats.allDone": "All tasks done",
+  "stats.allDoneDays": "Days with all tasks done ✓",
+  "stats.streak": "Current ✓ streak",
+  "stats.streakValue": "{count} day(s)",
 
   // settings
   "settings.general": "General",
@@ -149,26 +164,33 @@ const en = {
   "settings.weekly": "Weekly notes",
   "settings.monthly": "Monthly notes",
   "settings.enabled": "Enabled",
-  "settings.weeklyEnabledDesc": "Shows the week number column; click a week number to open its note.",
+  "settings.weeklyEnabledDesc":
+    "Shows the week number column; click a week number to open its note.",
   "settings.monthlyEnabledDesc": "Open via the calendar menu or the command palette.",
   "settings.dailyEnabledDesc": "Clicking a day opens or creates its note.",
   "settings.folder": "Folder",
+  "settings.unsafePath":
+    'Path must stay inside the vault: no "..", drive letters or the config folder. Notes will not be created until this is fixed.',
   "settings.folderDesc": "New notes are created here. Empty = vault root.",
   "settings.format": "File name format",
   "settings.formatDesc": "moment.js format. May contain '/' for subfolders. Preview: {sample}",
   "settings.template": "Default template",
-  "settings.templateDesc": "Used when no special rule (and, for daily notes, no weekday template) applies.",
+  "settings.templateDesc":
+    "Used when no special rule (and, for daily notes, no weekday template) applies.",
   "settings.fileMissing": "⚠️ File not found, the next template in the chain will be used.",
   "settings.import": "Import from Daily Notes / Periodic Notes",
-  "settings.importDesc": "Copy folder, format and template once from the core Daily Notes plugin and/or the Periodic Notes plugin, if they exist. Nothing is enabled or changed in those plugins.",
+  "settings.importDesc":
+    "Copy folder, format and template once from the core Daily Notes plugin and/or the Periodic Notes plugin, if they exist. Nothing is enabled or changed in those plugins.",
   "settings.importButton": "Import",
   "settings.weekdayTemplates": "Weekday templates (daily notes)",
   "settings.useWeekday": "Use a separate template for each weekday",
-  "settings.useWeekdayDesc": "Uses the weekday of the note's date. Empty fields fall back to the default daily template.",
+  "settings.useWeekdayDesc":
+    "Uses the weekday of the note's date. Empty fields fall back to the default daily template.",
   "settings.weekdayTemplate": "{weekday} template",
   "settings.weekdayTemplateDesc": "Path to a markdown file. Empty = default template.",
   "settings.rules": "Special template rules",
-  "settings.rulesDesc": "Checked top to bottom; the first enabled matching rule wins (if its file is missing, the next candidate is used). Weekly/monthly notes are matched on the first day of the period.",
+  "settings.rulesDesc":
+    "Checked top to bottom; the first enabled matching rule wins (if its file is missing, the next candidate is used). Weekly/monthly notes are matched on the first day of the period.",
   "settings.addRule": "Add rule",
   "settings.ruleName": "Name",
   "settings.ruleEnabled": "Enabled",
@@ -219,7 +241,6 @@ const en = {
 export type I18nKey = keyof typeof en;
 
 const ru: Record<I18nKey, string> = {
-  "plugin.name": "Calendar (Weekday Templates)",
   "view.title": "Календарь (шаблоны по дням недели)",
 
   "cmd.openView": "Открыть календарь",
@@ -234,6 +255,8 @@ const ru: Record<I18nKey, string> = {
   "cmd.importantList": "Показать важные дни",
   "cmd.statistics": "Показать статистику",
   "cmd.reveal": "Показать активную заметку в календаре",
+  "cmd.prevDaily": "Открыть предыдущую ежедневную заметку",
+  "cmd.nextDaily": "Открыть следующую ежедневную заметку",
   "cmd.settings": "Открыть настройки плагина",
 
   "menu.header": "Меню календаря",
@@ -254,12 +277,18 @@ const ru: Record<I18nKey, string> = {
   "notice.nothingMissing": "Все ежедневные заметки с {from} по {to} уже есть.",
   "notice.batchDone": "Создано заметок: {created} из {total}.",
   "notice.batchFailed": "Не удалось создать заметок: {failed}, подробности в консоли разработчика.",
+  "notice.unsafePath":
+    "Заметка не создана: папка «{folder}» с форматом «{format}» ведёт за пределы хранилища или в папку настроек. Проверьте настройки плагина.",
+  "notice.noAdjacentNote": "Более ранней/поздней ежедневной заметки нет.",
+  "notice.notADailyNote": "Активный файл не является ежедневной заметкой этого плагина.",
+  "notice.templateSkipped": "{file}: без изменений.",
   "notice.importDone": "Импортировано: {what}.",
   "notice.importNothing": "Настройки Daily Notes и Periodic Notes не найдены.",
   "notice.noActiveDailyNote": "Активный файл не является ежедневной заметкой этого плагина.",
   "notice.templateApplied": "Шаблон применён к {file}.",
   "notice.noTemplate": "Для {date} не настроен ни один шаблон.",
-  "notice.migrated": "Calendar (Weekday Templates): настройки перенесены в версию 2. Папки и форматы заметок теперь задаются в этом плагине.",
+  "notice.migrated":
+    "Calendar (Weekday Templates): настройки перенесены в версию 2. Папки и форматы заметок теперь задаются в этом плагине.",
 
   "confirm.title": "Новая заметка",
   "confirm.text": "Файла {file} нет. Создать его?",
@@ -271,6 +300,9 @@ const ru: Record<I18nKey, string> = {
   "batch.create": "Создать",
   "batch.cancel": "Отмена",
   "batch.empty": "пустая заметка",
+  "batch.existingSkipped":
+    "Существующие заметки не меняются (уже есть: {count}, они будут пропущены).",
+  "batch.running": "Создание…",
 
   "source.rule": "особое правило «{name}»",
   "source.weekday": "шаблон дня недели ({weekday})",
@@ -312,9 +344,10 @@ const ru: Record<I18nKey, string> = {
   "apply.append": "Дописать в конец",
   "apply.prepend": "Вставить в начало",
   "apply.replace": "Заменить содержимое",
-  "apply.cancel": "Отмена",
+  "apply.skip": "Пропустить (не менять)",
   "apply.confirmReplaceTitle": "Заменить содержимое заметки?",
-  "apply.confirmReplaceText": "Текущее содержимое {file} будет заменено шаблоном. Отменить можно только через Ctrl+Z в редакторе или восстановление файлов.",
+  "apply.confirmReplaceText":
+    "Текущее содержимое {file} будет заменено шаблоном. Отменить можно только через Ctrl+Z в редакторе или восстановление файлов.",
 
   "stats.title": "Статистика",
   "stats.prev": "Предыдущий месяц",
@@ -329,6 +362,10 @@ const ru: Record<I18nKey, string> = {
   "stats.daysWithNotes": "Дней с заметками",
   "stats.tasks": "Задач выполнено / всего",
   "stats.loading": "Подсчёт…",
+  "stats.allDone": "Все задачи выполнены",
+  "stats.allDoneDays": "Дней, где выполнены все задачи ✓",
+  "stats.streak": "Текущая серия ✓",
+  "stats.streakValue": "дней: {count}",
 
   "settings.general": "Общие",
   "settings.language": "Язык",
@@ -342,7 +379,8 @@ const ru: Record<I18nKey, string> = {
   "settings.confirm": "Подтверждать создание новой заметки",
   "settings.confirmDesc": "Показывать диалог перед созданием одной заметки по клику.",
   "settings.preview": "Предпросмотр шаблона при наведении",
-  "settings.previewDesc": "При наведении на пустой день (~0,4 с) показывает, какой шаблон будет применён.",
+  "settings.previewDesc":
+    "При наведении на пустой день (~0,4 с) показывает, какой шаблон будет применён.",
   "settings.upcoming": "Показывать ближайшие важные дни",
   "settings.upcomingDesc": "Сворачиваемый список под календарём.",
   "settings.horizon": "Горизонт списка",
@@ -351,18 +389,23 @@ const ru: Record<I18nKey, string> = {
   "settings.weekly": "Недельные заметки",
   "settings.monthly": "Месячные заметки",
   "settings.enabled": "Включено",
-  "settings.weeklyEnabledDesc": "Показывает колонку номеров недель; клик по номеру открывает заметку недели.",
+  "settings.weeklyEnabledDesc":
+    "Показывает колонку номеров недель; клик по номеру открывает заметку недели.",
   "settings.monthlyEnabledDesc": "Открывается из меню календаря или палитры команд.",
   "settings.dailyEnabledDesc": "Клик по дню открывает или создаёт его заметку.",
   "settings.folder": "Папка",
+  "settings.unsafePath":
+    "Путь должен оставаться внутри хранилища: без «..», букв дисков и папки настроек. Пока это не исправлено, заметки создаваться не будут.",
   "settings.folderDesc": "Новые заметки создаются здесь. Пусто — корень хранилища.",
   "settings.format": "Формат имени файла",
   "settings.formatDesc": "Формат moment.js. Можно использовать «/» для подпапок. Пример: {sample}",
   "settings.template": "Шаблон по умолчанию",
-  "settings.templateDesc": "Используется, если не подошло особое правило (и, для ежедневных, шаблон дня недели).",
+  "settings.templateDesc":
+    "Используется, если не подошло особое правило (и, для ежедневных, шаблон дня недели).",
   "settings.fileMissing": "⚠️ Файл не найден, будет взят следующий шаблон в цепочке.",
   "settings.import": "Импорт из Daily Notes / Periodic Notes",
-  "settings.importDesc": "Разово скопировать папку, формат и шаблон из встроенного плагина Daily Notes и/или Periodic Notes, если они есть. В тех плагинах ничего не включается и не меняется.",
+  "settings.importDesc":
+    "Разово скопировать папку, формат и шаблон из встроенного плагина Daily Notes и/или Periodic Notes, если они есть. В тех плагинах ничего не включается и не меняется.",
   "settings.importButton": "Импортировать",
   "settings.weekdayTemplates": "Шаблоны по дням недели (ежедневные)",
   "settings.useWeekday": "Отдельный шаблон для каждого дня недели",
@@ -370,7 +413,8 @@ const ru: Record<I18nKey, string> = {
   "settings.weekdayTemplate": "Шаблон: {weekday}",
   "settings.weekdayTemplateDesc": "Путь к markdown-файлу. Пусто — шаблон по умолчанию.",
   "settings.rules": "Особые правила шаблонов",
-  "settings.rulesDesc": "Проверяются сверху вниз; побеждает первое включённое подходящее правило (если его файла нет — следующий кандидат). Для недельных/месячных заметок условие проверяется по первому дню периода.",
+  "settings.rulesDesc":
+    "Проверяются сверху вниз; побеждает первое включённое подходящее правило (если его файла нет — следующий кандидат). Для недельных/месячных заметок условие проверяется по первому дню периода.",
   "settings.addRule": "Добавить правило",
   "settings.ruleName": "Название",
   "settings.ruleEnabled": "Включено",
@@ -424,10 +468,7 @@ let current: "en" | "ru" = "en";
 /** Obsidian stores its UI language in localStorage under "language". */
 function detectObsidianLanguage(): string {
   try {
-    return (
-      (typeof window !== "undefined" && window.localStorage?.getItem("language")) ||
-      ""
-    );
+    return (typeof window !== "undefined" && window.localStorage?.getItem("language")) || "";
   } catch (_e) {
     return "";
   }
@@ -455,6 +496,6 @@ export function t(key: I18nKey, vars?: Record<string, string | number>): string 
     return template;
   }
   return template.replace(/\{(\w+)\}/g, (m, name) =>
-    vars[name] !== undefined ? String(vars[name]) : m
+    vars[name] !== undefined ? String(vars[name]) : m,
   );
 }

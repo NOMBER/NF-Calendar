@@ -49,6 +49,25 @@ export function mergeTemplate(existing: string, rendered: string, mode: MergeMod
 }
 
 /** Remove trailing newlines/blank lines but keep spaces on the last line ("- [ ] "). */
-function trimTrailingBlankLines(text: string): string {
-  return text.replace(/(\r?\n[ \t]*)+$/, "");
+export function trimTrailingBlankLines(text: string): string {
+  // Manual scan instead of a regex: /(\n[ \t]*)+$/ backtracks quadratically.
+  let end = text.length;
+  let cut = end;
+  while (end > 0) {
+    let i = end;
+    while (i > 0 && (text[i - 1] === " " || text[i - 1] === "\t")) {
+      i--;
+    }
+    if (i > 0 && text[i - 1] === "\n") {
+      i--;
+      if (i > 0 && text[i - 1] === "\r") {
+        i--;
+      }
+      cut = i;
+      end = i;
+    } else {
+      break;
+    }
+  }
+  return text.slice(0, cut);
 }

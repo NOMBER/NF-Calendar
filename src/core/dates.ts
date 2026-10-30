@@ -24,7 +24,7 @@ export function getDateUID(date: Moment, granularity: Granularity = "day"): stri
 export function getNoteForDate<T>(
   date: Moment,
   index: Record<string, T> | null | undefined,
-  granularity: Granularity
+  granularity: Granularity,
 ): T | null {
   if (!index) {
     return null;
@@ -48,7 +48,7 @@ function parseStrict(
   moment: MomentFactory,
   text: string,
   format: string,
-  granularity: Granularity
+  granularity: Granularity,
 ): Moment | null {
   const parsed = moment(text, format, true);
   if (!parsed.isValid()) {
@@ -58,11 +58,7 @@ function parseStrict(
     // Moment ignores week numbers when the format also has month/day.
     const clean = removeEscapedCharacters(format);
     if (/w{1,2}/i.test(clean) && (/M{1,4}/.test(clean) || /D{1,4}/.test(clean))) {
-      return moment(
-        text,
-        format.replace(/M{1,4}/g, "").replace(/D{1,4}/g, ""),
-        false
-      );
+      return moment(text, format.replace(/M{1,4}/g, "").replace(/D{1,4}/g, ""), false);
     }
   }
   return parsed;
@@ -78,7 +74,7 @@ export function parseNoteDate(
   moment: MomentFactory,
   relativePath: string,
   format: string,
-  granularity: Granularity
+  granularity: Granularity,
 ): Moment | null {
   const fmt = format || DEFAULT_FORMATS[granularity];
   if (fmt.includes("/")) {
@@ -124,9 +120,24 @@ export function datesForMonthFrom(today: Moment, displayedMonth: Moment): Moment
 }
 
 /** Keep only the dates for which `hasNote` returns false. */
-export function missingDates(
-  dates: Moment[],
-  hasNote: (date: Moment) => boolean
-): Moment[] {
+export function missingDates(dates: Moment[], hasNote: (date: Moment) => boolean): Moment[] {
   return dates.filter((d) => !hasNote(d));
+}
+
+/**
+ * Nearest date in `dates` strictly before (direction -1) or after (+1)
+ * `current`, compared by day. Null when there is none.
+ */
+export function adjacentDate(dates: Moment[], current: Moment, direction: -1 | 1): Moment | null {
+  let best: Moment | null = null;
+  for (const d of dates) {
+    const isCandidate = direction < 0 ? d.isBefore(current, "day") : d.isAfter(current, "day");
+    if (!isCandidate) {
+      continue;
+    }
+    if (!best || (direction < 0 ? d.isAfter(best, "day") : d.isBefore(best, "day"))) {
+      best = d;
+    }
+  }
+  return best;
 }

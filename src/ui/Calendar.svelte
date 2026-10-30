@@ -9,7 +9,7 @@
   import type { ICalendarSource } from "obsidian-calendar-ui";
   import { onDestroy } from "svelte";
 
-  import type { ISettings } from "src/settingsData";
+  import type { ISettings } from "src/core/settings";
   import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./stores";
 
   let today: Moment;

@@ -1,6 +1,7 @@
 import moment from "moment";
 
 import {
+  adjacentDate,
   datesBetween,
   datesForMonthFrom,
   datesUntilEndOf,
@@ -31,13 +32,20 @@ describe("missing dates", () => {
   });
 
   it("until end of month", () => {
-    expect(fmt(datesUntilEndOf(d("2026-10-29"), "month"))).toEqual(["2026-10-29", "2026-10-30", "2026-10-31"]);
+    expect(fmt(datesUntilEndOf(d("2026-10-29"), "month"))).toEqual([
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+    ]);
     expect(datesUntilEndOf(d("2026-02-01"), "month")).toHaveLength(28);
   });
 
   it("displayed month: from today or from the first day, never the past", () => {
     expect(datesForMonthFrom(d("2026-10-30"), d("2026-11-15"))).toHaveLength(30);
-    expect(fmt(datesForMonthFrom(d("2026-10-30"), d("2026-10-01")))).toEqual(["2026-10-30", "2026-10-31"]);
+    expect(fmt(datesForMonthFrom(d("2026-10-30"), d("2026-10-01")))).toEqual([
+      "2026-10-30",
+      "2026-10-31",
+    ]);
     expect(datesForMonthFrom(d("2026-10-30"), d("2026-09-01"))).toHaveLength(0);
   });
 
@@ -59,16 +67,24 @@ describe("note lookup and parsing", () => {
   });
 
   it("parses daily names, nested formats and rejects others", () => {
-    expect(parseNoteDate(moment, "2026-10-30", "YYYY-MM-DD", "day")?.format("YYYY-MM-DD")).toBe("2026-10-30");
-    expect(parseNoteDate(moment, "2026/10/2026-10-30", "YYYY/MM/YYYY-MM-DD", "day")?.format("YYYY-MM-DD")).toBe(
-      "2026-10-30"
+    expect(parseNoteDate(moment, "2026-10-30", "YYYY-MM-DD", "day")?.format("YYYY-MM-DD")).toBe(
+      "2026-10-30",
     );
+    expect(
+      parseNoteDate(moment, "2026/10/2026-10-30", "YYYY/MM/YYYY-MM-DD", "day")?.format(
+        "YYYY-MM-DD",
+      ),
+    ).toBe("2026-10-30");
     expect(parseNoteDate(moment, "Shopping list", "YYYY-MM-DD", "day")).toBeNull();
   });
 
   it("parses weekly and monthly names", () => {
-    expect(parseNoteDate(moment, "2026-W44", "gggg-[W]ww", "week")?.format("YYYY-MM-DD")).toBe("2026-10-26");
-    expect(parseNoteDate(moment, "2026-10", "YYYY-MM", "month")?.format("YYYY-MM-DD")).toBe("2026-10-01");
+    expect(parseNoteDate(moment, "2026-W44", "gggg-[W]ww", "week")?.format("YYYY-MM-DD")).toBe(
+      "2026-10-26",
+    );
+    expect(parseNoteDate(moment, "2026-10", "YYYY-MM", "month")?.format("YYYY-MM-DD")).toBe(
+      "2026-10-01",
+    );
   });
 
   it("paths", () => {
@@ -78,5 +94,22 @@ describe("note lookup and parsing", () => {
     expect(relativeNotePath("Daily/2026-10-30.md", "Daily")).toBe("2026-10-30");
     expect(relativeNotePath("Other/2026-10-30.md", "Daily")).toBeNull();
     expect(relativeNotePath("2026-10-30.md", "")).toBe("2026-10-30");
+  });
+});
+
+describe("adjacentDate", () => {
+  const d = (s: string) => moment(s, "YYYY-MM-DD");
+  const dates = ["2026-10-20", "2026-10-28", "2026-10-31", "2026-11-05"].map(d);
+
+  it("finds the nearest existing date before / after", () => {
+    expect(adjacentDate(dates, d("2026-10-30"), -1)?.format("YYYY-MM-DD")).toBe("2026-10-28");
+    expect(adjacentDate(dates, d("2026-10-30"), 1)?.format("YYYY-MM-DD")).toBe("2026-10-31");
+    expect(adjacentDate(dates, d("2026-10-28"), -1)?.format("YYYY-MM-DD")).toBe("2026-10-20");
+  });
+
+  it("returns null at the ends", () => {
+    expect(adjacentDate(dates, d("2026-10-20"), -1)).toBeNull();
+    expect(adjacentDate(dates, d("2026-11-05"), 1)).toBeNull();
+    expect(adjacentDate([], d("2026-11-05"), 1)).toBeNull();
   });
 });

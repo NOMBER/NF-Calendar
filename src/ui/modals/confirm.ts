@@ -1,12 +1,11 @@
 import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
-import { t } from "src/i18n";
+import { t } from "src/core/i18n";
 
-interface IConfirmationDialogParams {
+export interface IConfirmationDialogParams {
   cta: string;
-  // eslint-disable-next-line
-  onAccept: (...args: any[]) => Promise<void>;
+  onAccept: () => Promise<void> | void;
   text: string;
   title: string;
   warning?: boolean;
@@ -24,14 +23,14 @@ export class ConfirmationModal extends Modal {
         .addEventListener("click", () => this.close());
       buttonsEl
         .createEl("button", { cls: warning ? "mod-warning" : "mod-cta", text: cta })
-        .addEventListener("click", async (e) => {
-          this.close();
-          await onAccept(e);
-        });
+        .addEventListener(
+          "click",
+          async () => {
+            this.close();
+            await onAccept();
+          },
+          { once: true },
+        );
     });
   }
-}
-
-export function createConfirmationDialog(params: IConfirmationDialogParams): void {
-  new ConfirmationModal(window.app, params).open();
 }

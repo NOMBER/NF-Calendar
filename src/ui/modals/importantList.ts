@@ -1,9 +1,9 @@
 import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
+import { t } from "src/core/i18n";
 import { allImportantDays, daysBetween } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
-import { t } from "src/i18n";
 
 /** List of all important days with "open note" and "edit" actions. */
 export class ImportantListModal extends Modal {
@@ -11,7 +11,7 @@ export class ImportantListModal extends Modal {
     app: App,
     private getDays: () => ImportantDays,
     private onOpenDay: (date: string) => void,
-    private onEditDay: (date: string, refresh: () => void) => void
+    private onEditDay: (date: string, refresh: () => void) => void,
   ) {
     super(app);
   }

@@ -1,6 +1,11 @@
 /**
- * Own implementation of daily / weekly / monthly notes (replaces
+ * Vault access for daily / weekly / monthly notes (replaces
  * obsidian-daily-notes-interface). Uses ONLY this plugin's settings.
+ *
+ * Safety rules enforced here:
+ *  - every note / template path goes through core/paths (stays in the vault);
+ *  - an existing note is never overwritten by createNote;
+ *  - concurrent createNote calls for the same path share one promise.
  */
 import type { Moment } from "moment";
 import { Notice, TFile, TFolder, normalizePath } from "obsidian";
@@ -8,21 +13,19 @@ import type { App, WorkspaceLeaf } from "obsidian";
 
 import { DEFAULT_FORMATS, getDateUID, parseNoteDate } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
-import { buildNotePath, parentFolders, relativeNotePath } from "src/core/paths";
-import { applyTemplate } from "src/core/placeholders";
+import { t } from "src/core/i18n";
+import { buildNotePath, parentFolders, relativeNotePath, sanitizeVaultPath } from "src/core/paths";
+import { applyTemplate, usesCarryover } from "src/core/placeholders";
 import { chooseTemplate } from "src/core/rules";
-import type { ITemplateCandidate, ITemplateResolution } from "src/core/rules";
-import { t } from "src/i18n";
-import type { I18nKey } from "src/i18n";
-import { periodicConfig } from "src/settingsData";
-import type { ISettings } from "src/settingsData";
-import { createConfirmationDialog } from "src/ui/modal";
+import type { ITemplateResolution } from "src/core/rules";
+import { periodicConfig } from "src/core/settings";
+import type { ISettings } from "src/core/settings";
+import { extractOpenTasks } from "src/core/stats";
 
 export const GRANULARITIES: Granularity[] = ["day", "week", "month"];
 
-export function typeLabel(g: Granularity): string {
-  return t(`type.${g}` as I18nKey);
-}
+/** How far back {{carryover}} looks for the previous daily note. */
+const CARRYOVER_LOOKBACK_DAYS = 31;
 
 export function noteFormat(settings: ISettings, g: Granularity): string {
   return periodicConfig(settings, g).format || DEFAULT_FORMATS[g];
@@ -32,16 +35,26 @@ export function periodStart(date: Moment, g: Granularity): Moment {
   return date.clone().startOf(g);
 }
 
-export function getNotePath(date: Moment, settings: ISettings, g: Granularity): string {
+/**
+ * Vault path of the note for a date, or null if folder + format would
+ * produce a path outside the vault (e.g. "../" in the folder or format).
+ */
+export function getNotePath(
+  date: Moment,
+  settings: ISettings,
+  g: Granularity,
+  configDir?: string,
+): string | null {
   const cfg = periodicConfig(settings, g);
   const filename = periodStart(date, g).format(noteFormat(settings, g));
-  return normalizePath(buildNotePath(cfg.folder, filename));
+  const path = buildNotePath(cfg.folder, filename, configDir);
+  return path ? normalizePath(path) : null;
 }
 
 export function getDateFromFile(
   file: TFile | null,
   settings: ISettings,
-  g: Granularity
+  g: Granularity,
 ): Moment | null {
   if (!file || !settings) {
     return null;
@@ -58,11 +71,7 @@ export function getDateFromFile(
 }
 
 /** Index of all notes of a type: dateUID -> file. */
-export function getAllNotes(
-  app: App,
-  settings: ISettings,
-  g: Granularity
-): Record<string, TFile> {
+export function getAllNotes(app: App, settings: ISettings, g: Granularity): Record<string, TFile> {
   const index: Record<string, TFile> = {};
   const cfg = periodicConfig(settings, g);
   if (g !== "day" && !cfg.enabled) {
@@ -83,9 +92,10 @@ export function findNote(
   settings: ISettings,
   date: Moment,
   g: Granularity,
-  index?: Record<string, TFile> | null
+  index?: Record<string, TFile> | null,
 ): TFile | null {
-  const byPath = app.vault.getAbstractFileByPath(getNotePath(date, settings, g));
+  const path = getNotePath(date, settings, g, app.vault.configDir);
+  const byPath = path ? app.vault.getAbstractFileByPath(path) : null;
   if (byPath instanceof TFile) {
     return byPath;
   }
@@ -93,10 +103,11 @@ export function findNote(
 }
 
 export function resolveTemplateFile(app: App, templatePath: string): TFile | null {
-  if (!templatePath) {
+  const safe = templatePath ? sanitizeVaultPath(templatePath, app.vault.configDir) : null;
+  if (!safe) {
     return null;
   }
-  const p = normalizePath(templatePath);
+  const p = normalizePath(safe);
   const direct = app.vault.getAbstractFileByPath(p);
   if (direct instanceof TFile) {
     return direct;
@@ -113,7 +124,7 @@ export function chooseTemplateFor(
   app: App,
   date: Moment,
   settings: ISettings,
-  g: Granularity
+  g: Granularity,
 ): ITemplateResolution {
   return chooseTemplate(
     periodStart(date, g),
@@ -124,25 +135,8 @@ export function chooseTemplateFor(
       defaultTemplate: periodicConfig(settings, g).template,
     },
     g,
-    (path) => !!resolveTemplateFile(app, path)
+    (path) => !!resolveTemplateFile(app, path),
   );
-}
-
-/** Human readable reason, e.g. `special rule "Holiday"`. */
-export function describeCandidate(c: ITemplateCandidate | null): string {
-  if (!c) {
-    return t("source.none");
-  }
-  if (c.source === "rule") {
-    return t("source.rule", { name: c.ruleName || "?" });
-  }
-  if (c.source === "weekday") {
-    const idx = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].indexOf(
-      c.weekday || ""
-    );
-    return t("source.weekday", { weekday: idx >= 0 ? window.moment.weekdays(idx) : c.weekday });
-  }
-  return t("source.default");
 }
 
 export interface IRenderedTemplate {
@@ -151,13 +145,24 @@ export interface IRenderedTemplate {
   resolution: ITemplateResolution;
 }
 
-/** Choose + read + substitute. Shows a Notice for every missing template file. */
+export interface IRenderOptions {
+  /** Show a Notice for every missing template file (default true). */
+  notifyMissing?: boolean;
+  /**
+   * Fill {{carryover}} from the previous daily note (default true). Batch
+   * creation turns it off, otherwise the same open tasks would be copied
+   * into every future note; {{carryover}} then becomes empty.
+   */
+  carryover?: boolean;
+}
+
+/** Choose + read + substitute. */
 export async function renderTemplateFor(
   app: App,
   date: Moment,
   settings: ISettings,
   g: Granularity,
-  notifyMissing = true
+  { notifyMissing = true, carryover: withCarryover = true }: IRenderOptions = {},
 ): Promise<IRenderedTemplate> {
   const resolution = chooseTemplateFor(app, date, settings, g);
   if (notifyMissing) {
@@ -171,13 +176,33 @@ export async function renderTemplateFor(
     templateFile = resolveTemplateFile(app, resolution.chosen.path);
     raw = templateFile ? await app.vault.read(templateFile) : "";
   }
+  const carryover =
+    withCarryover && g === "day" && usesCarryover(raw)
+      ? await readCarryover(app, date, settings)
+      : undefined;
   const contents = applyTemplate(
     raw,
     periodStart(date, g),
     noteFormat(settings, g),
-    window.moment()
+    window.moment(),
+    {
+      carryover,
+    },
   );
   return { contents, templateFile, resolution };
+}
+
+/** Open tasks of the closest earlier daily note (read only, never modified). */
+async function readCarryover(app: App, date: Moment, settings: ISettings): Promise<string> {
+  const index = getAllNotes(app, settings, "day");
+  const day = date.clone().startOf("day");
+  for (let i = 1; i <= CARRYOVER_LOOKBACK_DAYS; i++) {
+    const previous = findNote(app, settings, day.clone().subtract(i, "day"), "day", index);
+    if (previous) {
+      return extractOpenTasks(await app.vault.cachedRead(previous)).join("\n");
+    }
+  }
+  return "";
 }
 
 async function ensureFolders(app: App, path: string): Promise<void> {
@@ -208,30 +233,57 @@ function copyFolds(app: App, from: TFile | null, to: TFile): void {
   }
 }
 
+// Path -> pending creation. Two quick clicks (or a click during a batch run)
+// must not both call vault.create for the same file.
+const inFlight = new Map<string, Promise<TFile | null>>();
+
 /**
- * Create the note for a date (returns the existing file if it is already
- * there). Returns null on error (a Notice is shown).
+ * Create the note for a date. Never overwrites: if the file already exists
+ * it is returned unchanged. Returns null on error (a Notice is shown).
  */
-export async function createNote(
+export function createNote(
   app: App,
   date: Moment,
   settings: ISettings,
   g: Granularity,
-  notifyMissing = true
+  options: IRenderOptions = {},
 ): Promise<TFile | null> {
-  const path = getNotePath(date, settings, g);
+  const path = getNotePath(date, settings, g, app.vault.configDir);
+  if (!path) {
+    const cfg = periodicConfig(settings, g);
+    new Notice(
+      t("notice.unsafePath", { folder: cfg.folder || "/", format: noteFormat(settings, g) }),
+    );
+    return Promise.resolve(null);
+  }
+  const pending = inFlight.get(path);
+  if (pending) {
+    return pending;
+  }
+  const job = createAt(app, path, date, settings, g, options).finally(() => inFlight.delete(path));
+  inFlight.set(path, job);
+  return job;
+}
+
+async function createAt(
+  app: App,
+  path: string,
+  date: Moment,
+  settings: ISettings,
+  g: Granularity,
+  options: IRenderOptions,
+): Promise<TFile | null> {
   const existing = app.vault.getAbstractFileByPath(path);
   if (existing instanceof TFile) {
     return existing;
   }
   try {
-    const { contents, templateFile } = await renderTemplateFor(
-      app,
-      date,
-      settings,
-      g,
-      notifyMissing
-    );
+    const { contents, templateFile } = await renderTemplateFor(app, date, settings, g, options);
+    // The template read is async: re-check so a file created meanwhile wins.
+    const raced = app.vault.getAbstractFileByPath(path);
+    if (raced instanceof TFile) {
+      return raced;
+    }
     await ensureFolders(app, path);
     const created = await app.vault.create(path, contents);
     copyFolds(app, templateFile, created);
@@ -252,47 +304,4 @@ export async function openFile(app: App, file: TFile, inNewSplit: boolean): Prom
   const mode = (app.vault as any).getConfig?.("defaultViewMode");
   const leaf = getLeaf(app, inNewSplit);
   await leaf.openFile(file, { active: true, ...(mode ? { state: { mode } } : {}) });
-}
-
-/**
- * Open the note of a date; create it (optionally after confirmation) if it
- * does not exist.
- */
-export async function openOrCreateNote(
-  app: App,
-  date: Moment,
-  g: Granularity,
-  settings: ISettings,
-  inNewSplit: boolean,
-  existing: TFile | null,
-  cb?: (file: TFile) => void
-): Promise<void> {
-  const cfg = periodicConfig(settings, g);
-  const file = existing ?? findNote(app, settings, date, g);
-  if (file) {
-    await openFile(app, file, inNewSplit);
-    cb?.(file);
-    return;
-  }
-  if (!cfg.enabled) {
-    new Notice(t("notice.typeDisabled", { type: typeLabel(g) }));
-    return;
-  }
-  const create = async () => {
-    const created = await createNote(app, date, settings, g);
-    if (created) {
-      await openFile(app, created, inNewSplit);
-      cb?.(created);
-    }
-  };
-  if (settings.shouldConfirmBeforeCreate) {
-    createConfirmationDialog({
-      cta: t("confirm.create"),
-      onAccept: create,
-      text: t("confirm.text", { file: getNotePath(date, settings, g) }),
-      title: t("confirm.title"),
-    });
-  } else {
-    await create();
-  }
 }

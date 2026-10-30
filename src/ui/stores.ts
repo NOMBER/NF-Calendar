@@ -3,9 +3,9 @@ import { get, writable } from "svelte/store";
 
 import { getDateUID } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
+import { defaultSettings } from "src/core/settings";
+import type { ISettings } from "src/core/settings";
 import { getAllNotes, getDateFromFile } from "src/io/notes";
-import { defaultSettings } from "src/settingsData";
-import type { ISettings } from "src/settingsData";
 
 export const settings = writable<ISettings>(defaultSettings);
 

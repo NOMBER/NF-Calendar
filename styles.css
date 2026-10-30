@@ -336,3 +336,10 @@
 .is-mobile .cwt-stats-table td {
   padding: 6px;
 }
+
+/* ✓ = the note has tasks and all of them are done */
+.cwt-stats-done {
+  margin-left: 4px;
+  color: var(--color-green, var(--interactive-accent));
+  font-weight: 600;
+}

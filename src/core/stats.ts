@@ -49,7 +49,7 @@ export function countTasks(text: string): ITaskCount {
  * (`task` is " " for open, "x"/"X" for done, other chars = custom status).
  */
 export function countTasksFromListItems(
-  items: Array<{ task?: string }> | null | undefined
+  items: Array<{ task?: string }> | null | undefined,
 ): ITaskCount {
   let done = 0;
   let open = 0;
@@ -84,6 +84,37 @@ export interface IMonthSummary {
   daysInMonth: number;
   tasksDone: number;
   tasksTotal: number;
+  /** Days whose note has at least one task and no open ones (✓ days). */
+  allDoneDays: number;
+}
+
+/** ✓ rule: at least one task and every task done. */
+export function isAllTasksDone(day: { tasksDone: number; tasksOpen: number }): boolean {
+  return day.tasksDone > 0 && day.tasksOpen === 0;
+}
+
+/**
+ * Number of consecutive ✓ days ending at the anchor day (daysAgo = 0) and
+ * going back in time. With `pendingAnchor` (anchor = today) an unfinished
+ * anchor day does not break the streak: counting starts from the day before.
+ */
+export function currentStreak(
+  isDone: (daysAgo: number) => boolean,
+  options: { pendingAnchor?: boolean; limit?: number } = {},
+): number {
+  const limit = options.limit ?? 366;
+  let start = 0;
+  if (!isDone(0)) {
+    if (!options.pendingAnchor) {
+      return 0;
+    }
+    start = 1;
+  }
+  let streak = 0;
+  for (let i = start; i < limit && isDone(i); i++) {
+    streak++;
+  }
+  return streak;
 }
 
 export function summarizeMonth(days: IDayStats[]): IMonthSummary {
@@ -100,5 +131,33 @@ export function summarizeMonth(days: IDayStats[]): IMonthSummary {
     daysInMonth: days.length,
     tasksDone,
     tasksTotal: tasksDone + tasksOpen,
+    allDoneDays: withNotes.filter(isAllTasksDone).length,
   };
+}
+
+/** Max number of tasks carried over into a new note. */
+export const MAX_CARRYOVER_TASKS = 200;
+
+/**
+ * Open tasks (`- [ ] ...`) of a note, as markdown lines ready for
+ * {{carryover}}. Indentation is kept, fenced code is skipped, and "<%" is
+ * escaped so plugins such as Templater never execute carried-over text.
+ */
+export function extractOpenTasks(text: string, max = MAX_CARRYOVER_TASKS): string[] {
+  const result: string[] = [];
+  let inFence = false;
+  for (const line of (text || "").split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence || !/^\s*(?:[-*+]|\d+[.)])\s+\[ \]\s*\S/.test(line)) {
+      continue;
+    }
+    result.push(line.trimEnd().replace(/<%/g, "<\\%"));
+    if (result.length >= max) {
+      break;
+    }
+  }
+  return result;
 }

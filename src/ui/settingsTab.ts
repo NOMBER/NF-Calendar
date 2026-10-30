@@ -13,24 +13,24 @@ import {
   RULE_CONDITION_TYPES,
   WEEKDAY_KEYS,
 } from "src/core/rules";
+import { t } from "src/core/i18n";
+import type { I18nKey } from "src/core/i18n";
 import type { ITemplateRule, RuleCondition, RuleConditionType } from "src/core/rules";
-import { t } from "src/i18n";
-import type { I18nKey } from "src/i18n";
+import { mergeExternal, sanitizeWordsPerDot } from "src/core/settings";
+import type { IPeriodicConfig, ISettings, Language } from "src/core/settings";
 import { readExternalPeriodicSettings } from "src/io/external";
-import { resolveTemplateFile, typeLabel } from "src/io/notes";
-import { mergeExternal } from "src/settingsData";
-import type { IPeriodicConfig, ISettings, Language } from "src/settingsData";
-import { FileSuggest } from "src/ui/fileSuggest";
-
-import type CalendarPlugin from "./main";
-
-export type { ISettings } from "./settingsData";
-export { defaultSettings } from "./settingsData";
+import { getNotePath, resolveTemplateFile } from "src/io/notes";
+import type CalendarPlugin from "src/main";
+import { FileSuggest } from "./fileSuggest";
+import { typeLabel } from "./labels";
 
 const WEEK_START_KEYS = WEEKDAY_KEYS; // sunday..saturday, same as calendar-ui
 
 export class CalendarSettingsTab extends PluginSettingTab {
-  constructor(app: App, private plugin: CalendarPlugin) {
+  constructor(
+    app: App,
+    private plugin: CalendarPlugin,
+  ) {
     super(app, plugin);
   }
 
@@ -104,7 +104,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         text.onChange(async (v) => {
           const n = Number(v);
           await this.write(() => ({
-            wordsPerDot: v !== "" && n > 0 ? n : DEFAULT_WORDS_PER_DOT,
+            wordsPerDot: v !== "" && n > 0 ? sanitizeWordsPerDot(n) : DEFAULT_WORDS_PER_DOT,
           }));
         });
       });
@@ -148,15 +148,16 @@ export class CalendarSettingsTab extends PluginSettingTab {
           .setDynamicTooltip()
           .onChange(async (v) => {
             await this.write(() => ({ upcomingHorizonDays: v }));
-          })
+          }),
       );
   }
 
   private toggle(
     name: string,
     desc: string,
-    key: "shouldConfirmBeforeCreate" | "showTemplatePreview" | "showUpcoming" | "useWeekdayTemplates",
-    rerender = false
+    key:
+      "shouldConfirmBeforeCreate" | "showTemplatePreview" | "showUpcoming" | "useWeekdayTemplates",
+    rerender = false,
   ): void {
     new Setting(this.containerEl)
       .setName(name)
@@ -164,7 +165,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .addToggle((tg) => {
         tg.setValue(!!this.options[key]);
         tg.onChange(async (v) => {
-          await this.write(() => ({ [key]: v } as Partial<ISettings>));
+          await this.write(() => ({ [key]: v }) as Partial<ISettings>);
           if (rerender) {
             this.display();
           }
@@ -180,7 +181,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   private async writePeriodic(g: Granularity, patch: Partial<IPeriodicConfig>): Promise<void> {
     const key = this.configKey(g);
-    await this.write((old) => ({ [key]: { ...old[key], ...patch } } as Partial<ISettings>));
+    await this.write((old) => ({ [key]: { ...old[key], ...patch } }) as Partial<ISettings>);
     this.plugin.reindexAll();
   }
 
@@ -203,19 +204,28 @@ export class CalendarSettingsTab extends PluginSettingTab {
       return;
     }
 
-    new Setting(this.containerEl)
-      .setName(t("settings.folder"))
-      .setDesc(t("settings.folderDesc"))
-      .addText((text) => {
-        text.setPlaceholder("/");
-        text.setValue(cfg.folder);
-        text.onChange((v) => this.writePeriodic(g, { folder: v.trim() }));
+    const folderSetting = new Setting(this.containerEl).setName(t("settings.folder"));
+    // Folder and format together decide the path; warn if it leaves the vault.
+    const checkPath = () => {
+      const unsafe =
+        getNotePath(window.moment(), this.options, g, this.app.vault.configDir) === null;
+      folderSetting.setDesc(unsafe ? t("settings.unsafePath") : t("settings.folderDesc"));
+      folderSetting.descEl.toggleClass("cwt-template-missing", unsafe);
+    };
+    folderSetting.addText((text) => {
+      text.setPlaceholder("/");
+      text.setValue(cfg.folder);
+      text.onChange(async (v) => {
+        await this.writePeriodic(g, { folder: v.trim() });
+        checkPath();
       });
+    });
+    checkPath();
 
     const formatSetting = new Setting(this.containerEl).setName(t("settings.format"));
     const updateSample = (format: string) =>
       formatSetting.setDesc(
-        t("settings.formatDesc", { sample: window.moment().format(format || "YYYY-MM-DD") })
+        t("settings.formatDesc", { sample: window.moment().format(format || "YYYY-MM-DD") }),
       );
     updateSample(cfg.format);
     formatSetting.addText((text) => {
@@ -224,6 +234,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         updateSample(v.trim());
         if (v.trim()) {
           await this.writePeriodic(g, { format: v.trim() });
+          checkPath();
         }
       });
     });
@@ -268,18 +279,25 @@ export class CalendarSettingsTab extends PluginSettingTab {
             return patch;
           });
           new Notice(
-            found.length ? t("notice.importDone", { what: found.join(", ") }) : t("notice.importNothing")
+            found.length
+              ? t("notice.importDone", { what: found.join(", ") })
+              : t("notice.importNothing"),
           );
           this.plugin.reindexAll();
           this.display();
-        })
+        }),
       );
   }
 
   // ---------- weekday templates ----------
 
   private addWeekdayTemplates(): void {
-    this.toggle(t("settings.useWeekday"), t("settings.useWeekdayDesc"), "useWeekdayTemplates", true);
+    this.toggle(
+      t("settings.useWeekday"),
+      t("settings.useWeekdayDesc"),
+      "useWeekdayTemplates",
+      true,
+    );
     if (!this.options.useWeekdayTemplates) {
       return;
     }
@@ -287,8 +305,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
     const weekStart = this.options.weekStart;
     const firstDay =
       weekStart && weekStart !== "locale"
-        ? WEEK_START_KEYS.indexOf(weekStart as typeof WEEK_START_KEYS[number])
-        : window._bundledLocaleWeekSpec?.dow ?? moment.localeData().firstDayOfWeek();
+        ? WEEK_START_KEYS.indexOf(weekStart as (typeof WEEK_START_KEYS)[number])
+        : (window._bundledLocaleWeekSpec?.dow ?? moment.localeData().firstDayOfWeek());
     const names = moment.weekdays();
     const desc = t("settings.weekdayTemplateDesc");
     for (const day of orderedWeekdays(firstDay < 0 ? 1 : firstDay)) {
@@ -302,7 +320,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
         search.setValue(this.options.weekdayTemplates?.[day] || "");
         search.onChange(async (v) => {
           await this.write((old) => ({
-            weekdayTemplates: { ...EMPTY_WEEKDAY_TEMPLATES, ...(old.weekdayTemplates || {}), [day]: v.trim() },
+            weekdayTemplates: {
+              ...EMPTY_WEEKDAY_TEMPLATES,
+              ...(old.weekdayTemplates || {}),
+              [day]: v.trim(),
+            },
           }));
           this.validateTemplate(setting, v, desc);
         });
@@ -320,7 +342,10 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   // ---------- special rules ----------
 
-  private async writeRules(fn: (rules: ITemplateRule[]) => ITemplateRule[], rerender = false): Promise<void> {
+  private async writeRules(
+    fn: (rules: ITemplateRule[]) => ITemplateRule[],
+    rerender = false,
+  ): Promise<void> {
     await this.write((old) => ({ templateRules: fn(old.templateRules.map((r) => ({ ...r }))) }));
     if (rerender) {
       this.display();
@@ -328,11 +353,17 @@ export class CalendarSettingsTab extends PluginSettingTab {
   }
 
   private updateRule(id: string, patch: Partial<ITemplateRule>, rerender = false): Promise<void> {
-    return this.writeRules((rules) => rules.map((r) => (r.id === id ? { ...r, ...patch } : r)), rerender);
+    return this.writeRules(
+      (rules) => rules.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      rerender,
+    );
   }
 
   private addRules(): void {
-    this.containerEl.createEl("p", { cls: "setting-item-description", text: t("settings.rulesDesc") });
+    this.containerEl.createEl("p", {
+      cls: "setting-item-description",
+      text: t("settings.rulesDesc"),
+    });
     const rules = this.options.templateRules;
     rules.forEach((rule, index) => this.renderRule(rule, index, rules.length));
     new Setting(this.containerEl).addButton((b) =>
@@ -352,9 +383,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
                 appliesTo: ["day"],
               },
             ],
-            true
-          )
-        )
+            true,
+          ),
+        ),
     );
   }
 
@@ -377,11 +408,15 @@ export class CalendarSettingsTab extends PluginSettingTab {
         tg.onChange((v) => this.updateRule(rule.id, { enabled: v }, true));
       })
       .addExtraButton((b) => {
-        b.setIcon("arrow-up").setTooltip(t("settings.ruleUp")).setDisabled(index === 0);
+        b.setIcon("arrow-up")
+          .setTooltip(t("settings.ruleUp"))
+          .setDisabled(index === 0);
         b.onClick(() => this.writeRules((rs) => move(rs, index, index - 1), true));
       })
       .addExtraButton((b) => {
-        b.setIcon("arrow-down").setTooltip(t("settings.ruleDown")).setDisabled(index === count - 1);
+        b.setIcon("arrow-down")
+          .setTooltip(t("settings.ruleDown"))
+          .setDisabled(index === count - 1);
         b.onClick(() => this.writeRules((rs) => move(rs, index, index + 1), true));
       })
       .addExtraButton((b) => {
@@ -398,7 +433,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       RULE_CONDITION_TYPES.forEach((type) => d.addOption(type, t(`cond.${type}` as I18nKey)));
       d.setValue(rule.condition.type);
       d.onChange((v) =>
-        this.updateRule(rule.id, { condition: defaultCondition(v as RuleConditionType) }, true)
+        this.updateRule(rule.id, { condition: defaultCondition(v as RuleConditionType) }, true),
       );
     });
     this.renderConditionParams(cond, rule);
@@ -412,7 +447,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       label.appendText(typeLabel(g));
       cb.addEventListener("change", () => {
         const next = (["day", "week", "month"] as Granularity[]).filter((x) =>
-          x === g ? cb.checked : current.includes(x)
+          x === g ? cb.checked : current.includes(x),
         );
         void this.updateRule(rule.id, { appliesTo: next.length ? next : ["day"] }, true);
       });

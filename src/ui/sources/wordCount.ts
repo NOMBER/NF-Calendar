@@ -6,10 +6,10 @@ import { get } from "svelte/store";
 
 import { DEFAULT_WORDS_PER_DOT } from "src/constants";
 
-import { dailyNotes, settings, weeklyNotes } from "../stores";
 import { getWordCount } from "src/core/stats";
+import { dailyNotes, settings, weeklyNotes } from "src/ui/stores";
 
-import { clamp } from "../utils";
+import { clamp } from "src/ui/utils";
 
 const NUM_MAX_DOTS = 5;
 
@@ -25,9 +25,7 @@ export async function getWordLengthAsDots(note: TFile): Promise<number> {
   return clamp(Math.floor(numDots), 1, NUM_MAX_DOTS);
 }
 
-export async function getDotsForDailyNote(
-  dailyNote: TFile | null
-): Promise<IDot[]> {
+export async function getDotsForDailyNote(dailyNote: TFile | null): Promise<IDot[]> {
   if (!dailyNote) {
     return [];
   }

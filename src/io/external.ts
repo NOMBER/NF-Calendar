@@ -6,7 +6,7 @@
  */
 import type { App } from "obsidian";
 
-import type { IExternalPeriodicSettings, IPeriodicConfig } from "src/settingsData";
+import type { IExternalPeriodicSettings, IPeriodicConfig } from "src/core/settings";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pick(raw: any): Partial<IPeriodicConfig> | null {

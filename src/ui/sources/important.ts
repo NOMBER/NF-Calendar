@@ -4,7 +4,7 @@ import { get } from "svelte/store";
 
 import { getDayMarks } from "src/core/important";
 
-import { settings } from "../stores";
+import { settings } from "src/ui/stores";
 
 /**
  * Marks important days (class `cwt-important`, attribute
