@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.1 — 2026-11-03
+
+Код плагина не менялся.
+
+- README на английском для GitHub (`README.md`); русский README перенесён в `README.ru.md`, ссылки между ними вверху.
+- В README добавлены разделы Security и Known issues / dependency advisories (по свежему `npm audit`), Contributing, License.
+- Кнопка доната в конце обоих README (markdown-бейдж); HTML-вариант со стилями — `docs/donate-button.html`.
+- `manifest.json`: поле `fundingUrl` (https://donatr.ee/nomber).
+
 ## 2.1.0 — 2026-10-30
 
 **Новое**
