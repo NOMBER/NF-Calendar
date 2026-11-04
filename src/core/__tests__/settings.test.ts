@@ -88,7 +88,7 @@ describe("migrateSettings", () => {
         garbage: { title: "x" },
       },
     });
-    expect(migratedFrom).toBeNull();
+    expect(migratedFrom).toBe(2);
     expect(settings.daily).toEqual({
       enabled: false,
       folder: "D",
@@ -118,5 +118,56 @@ describe("migrateSettings", () => {
       format: "YYYY-MM",
       template: "T/M.md",
     });
+  });
+});
+
+describe("v3 (2.2.0) migration", () => {
+  it("v2 data keeps its rules and gets v3 defaults", () => {
+    const rules = [
+      {
+        id: "a",
+        name: "A",
+        enabled: true,
+        condition: { type: "date", date: "2026-01-01" },
+        template: "A.md",
+        appliesTo: ["day"],
+      },
+      {
+        id: "b",
+        name: "B",
+        enabled: true,
+        condition: { type: "annual", monthDay: "03-08" },
+        template: "B.md",
+        appliesTo: ["day"],
+      },
+    ];
+    const { settings, migratedFrom } = migrateSettings({
+      settingsVersion: 2,
+      templateRules: rules,
+    });
+    expect(migratedFrom).toBe(2);
+    expect(settings.settingsVersion).toBe(3);
+    expect(settings.templateRules).toEqual(rules);
+    expect(settings.holidaysFolder).toBe("");
+    expect(settings.holidayDateOrder).toBe("dayFirst");
+    expect(settings.menuPosition).toBe("navRight");
+    expect(settings.statsView).toEqual({ mode: "table", metric: "words", kind: "bar" });
+  });
+
+  it("sanitizes v3 fields", () => {
+    const { settings, migratedFrom } = migrateSettings({
+      settingsVersion: 3,
+      holidaysFolder: " Meta/Dates ",
+      holidayDateOrder: "monthFirst",
+      holidayPattern: "(a+)+$",
+      menuPosition: "somewhere",
+      statsView: { mode: "charts", metric: "tasks", kind: "pie" },
+    });
+    expect(migratedFrom).toBeNull();
+    expect(settings.holidaysFolder).toBe("Meta/Dates");
+    expect(settings.holidayDateOrder).toBe("monthFirst");
+    expect(settings.holidayPattern).toBe("");
+    expect(settings.menuPosition).toBe("navRight");
+    expect(settings.statsView).toEqual({ mode: "charts", metric: "tasks", kind: "bar" });
   });
 });

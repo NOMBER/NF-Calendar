@@ -1,14 +1,14 @@
 /* ===== Calendar (Weekday Templates) — all colors come from theme variables ===== */
 
 /* color mapping: any element with data-cwt-color / data-cwt-important / data-cwt-prepare */
-[data-cwt-color="red"], [data-cwt-important="red"], [data-cwt-prepare="red"] { --cwt-c: var(--color-red); --cwt-c-rgb: var(--color-red-rgb); }
-[data-cwt-color="orange"], [data-cwt-important="orange"], [data-cwt-prepare="orange"] { --cwt-c: var(--color-orange); --cwt-c-rgb: var(--color-orange-rgb); }
-[data-cwt-color="yellow"], [data-cwt-important="yellow"], [data-cwt-prepare="yellow"] { --cwt-c: var(--color-yellow); --cwt-c-rgb: var(--color-yellow-rgb); }
-[data-cwt-color="green"], [data-cwt-important="green"], [data-cwt-prepare="green"] { --cwt-c: var(--color-green); --cwt-c-rgb: var(--color-green-rgb); }
-[data-cwt-color="cyan"], [data-cwt-important="cyan"], [data-cwt-prepare="cyan"] { --cwt-c: var(--color-cyan); --cwt-c-rgb: var(--color-cyan-rgb); }
-[data-cwt-color="blue"], [data-cwt-important="blue"], [data-cwt-prepare="blue"] { --cwt-c: var(--color-blue); --cwt-c-rgb: var(--color-blue-rgb); }
-[data-cwt-color="purple"], [data-cwt-important="purple"], [data-cwt-prepare="purple"] { --cwt-c: var(--color-purple); --cwt-c-rgb: var(--color-purple-rgb); }
-[data-cwt-color="pink"], [data-cwt-important="pink"], [data-cwt-prepare="pink"] { --cwt-c: var(--color-pink); --cwt-c-rgb: var(--color-pink-rgb); }
+[data-cwt-color="red"], [data-cwt-important="red"], [data-cwt-prepare="red"] { --cwt-c: var(--color-red, #e93147); --cwt-c-rgb: var(--color-red-rgb, 233, 49, 71); }
+[data-cwt-color="orange"], [data-cwt-important="orange"], [data-cwt-prepare="orange"] { --cwt-c: var(--color-orange, #ec7500); --cwt-c-rgb: var(--color-orange-rgb, 236, 117, 0); }
+[data-cwt-color="yellow"], [data-cwt-important="yellow"], [data-cwt-prepare="yellow"] { --cwt-c: var(--color-yellow, #e0ac00); --cwt-c-rgb: var(--color-yellow-rgb, 224, 172, 0); }
+[data-cwt-color="green"], [data-cwt-important="green"], [data-cwt-prepare="green"] { --cwt-c: var(--color-green, #08b94e); --cwt-c-rgb: var(--color-green-rgb, 8, 185, 78); }
+[data-cwt-color="cyan"], [data-cwt-important="cyan"], [data-cwt-prepare="cyan"] { --cwt-c: var(--color-cyan, #00bfbc); --cwt-c-rgb: var(--color-cyan-rgb, 0, 191, 188); }
+[data-cwt-color="blue"], [data-cwt-important="blue"], [data-cwt-prepare="blue"] { --cwt-c: var(--color-blue, #086ddd); --cwt-c-rgb: var(--color-blue-rgb, 8, 109, 221); }
+[data-cwt-color="purple"], [data-cwt-important="purple"], [data-cwt-prepare="purple"] { --cwt-c: var(--color-purple, #7852ee); --cwt-c-rgb: var(--color-purple-rgb, 120, 82, 238); }
+[data-cwt-color="pink"], [data-cwt-important="pink"], [data-cwt-prepare="pink"] { --cwt-c: var(--color-pink, #d53984); --cwt-c-rgb: var(--color-pink-rgb, 213, 57, 132); }
 
 /* ----- view layout ----- */
 .cwt-view {
@@ -173,21 +173,32 @@
   gap: 6px;
 }
 
-.cwt-swatch {
+/* Obsidian styles every `button:not(.clickable-icon)` with its own background,
+   which used to win over .cwt-swatch and made all swatches grey. The extra
+   classes + element selector below out-rank it without !important. */
+.cwt-palette button.cwt-swatch,
+.modal .cwt-palette button.cwt-swatch {
   width: 26px;
   height: 26px;
   min-width: 26px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid transparent;
-  background-color: var(--cwt-c);
+  background-color: var(--cwt-c, var(--interactive-accent));
   box-shadow: none;
   cursor: pointer;
+  transition: transform 80ms ease-out;
 }
 
-.cwt-swatch.is-selected {
-  border-color: var(--text-normal);
-  box-shadow: 0 0 0 2px var(--background-primary) inset;
+.modal .cwt-palette button.cwt-swatch:hover {
+  background-color: var(--cwt-c, var(--interactive-accent));
+  transform: scale(1.1);
+}
+
+.modal .cwt-palette button.cwt-swatch.is-selected {
+  border-color: var(--background-primary);
+  box-shadow: 0 0 0 2px var(--text-normal);
+  transform: scale(1.1);
 }
 
 /* ----- batch create modal ----- */
@@ -342,4 +353,226 @@
   margin-left: 4px;
   color: var(--color-green, var(--interactive-accent));
   font-weight: 600;
+}
+
+/* ----- 2.2: menu button inside the calendar nav ----- */
+.cwt-toolbar.is-empty {
+  display: none;
+}
+
+.cwt-view .cwt-menu-button.cwt-in-nav {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+/* ----- 2.2: holidays ----- */
+.cwt-view .day.cwt-holiday {
+  position: relative;
+}
+
+.cwt-view .day.cwt-holiday::before {
+  content: "🎉";
+  position: absolute;
+  top: 0;
+  right: 1px;
+  font-size: 8px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.cwt-holiday-icon,
+.cwt-stats-holiday {
+  margin: 0 4px;
+}
+
+/* ----- 2.2: date navigator ----- */
+.cwt-nav-modes {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.cwt-nav-modes .cwt-nav-mode.is-active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.cwt-nav-year {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.cwt-nav-year-input {
+  width: 6em;
+  text-align: center;
+}
+
+.cwt-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.cwt-nav-grid .cwt-nav-cell {
+  padding: 10px 4px;
+  min-height: 40px; /* finger-sized on mobile */
+}
+
+.cwt-nav-grid .cwt-nav-cell.is-current {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+
+.cwt-nav-grid .cwt-nav-cell.is-active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.cwt-nav-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cwt-nav-status {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+/* ----- 2.2: rule picker ----- */
+.cwt-weekday-checks,
+.cwt-weekday-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.cwt-number-input {
+  width: 5em;
+}
+
+/* ----- 2.2: stats charts ----- */
+.cwt-stats-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cwt-stats-chart-options {
+  display: flex;
+  gap: 6px;
+}
+
+.cwt-chart {
+  position: relative;
+  width: 100%;
+}
+
+.cwt-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cwt-chart-donut .cwt-chart-svg {
+  max-width: 220px;
+  margin: 0 auto;
+}
+
+.cwt-chart-grid {
+  stroke: var(--background-modifier-border);
+  stroke-width: 0.5;
+}
+
+.cwt-chart-axis {
+  fill: var(--text-muted);
+  font-size: 7px;
+}
+
+.cwt-chart-center {
+  fill: var(--text-normal);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cwt-chart-hit {
+  fill: transparent;
+}
+
+.cwt-chart-hit:hover {
+  fill: var(--background-modifier-hover);
+}
+
+.cwt-chart-line {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.cwt-series-words,
+.cwt-series-cumulative,
+.cwt-series-allDone {
+  --cwt-s: var(--interactive-accent);
+}
+
+.cwt-series-done {
+  --cwt-s: var(--color-green, #08b94e);
+}
+
+.cwt-series-open,
+.cwt-series-notDone {
+  --cwt-s: var(--color-orange, #ec7500);
+}
+
+.cwt-series-noNote {
+  --cwt-s: var(--background-modifier-border);
+}
+
+.cwt-chart-bar,
+.cwt-chart-arc,
+.cwt-chart-point {
+  fill: var(--cwt-s);
+}
+
+.cwt-chart-line {
+  stroke: var(--cwt-s);
+}
+
+.cwt-chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+  background-color: var(--cwt-s);
+}
+
+.cwt-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  font-size: var(--font-ui-smaller, 12px);
+  color: var(--text-muted);
+}
+
+.cwt-chart-tip {
+  position: absolute;
+  z-index: 10;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller, 12px);
+  pointer-events: none;
+  white-space: nowrap;
 }

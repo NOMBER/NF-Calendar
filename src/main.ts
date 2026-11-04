@@ -1,6 +1,6 @@
 import type { Moment, WeekSpec } from "moment";
 import { Notice, Plugin, TFile } from "obsidian";
-import type { App, Modal, WorkspaceLeaf } from "obsidian";
+import type { App, Modal, TAbstractFile, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
 import { VIEW_TYPE_CALENDAR } from "./constants";
@@ -14,6 +14,7 @@ import type { MergeMode } from "src/core/merge";
 import { migrateSettings, periodicConfig } from "src/core/settings";
 import type { ISettings } from "src/core/settings";
 import { readExternalPeriodicSettings } from "src/io/external";
+import { holidaysFor, rebuildHolidays, touchesHolidays } from "src/io/holidays";
 import {
   chooseTemplateFor,
   createNote,
@@ -29,6 +30,7 @@ import { ApplyTemplateModal } from "src/ui/modals/applyTemplate";
 import { BatchCreateModal } from "src/ui/modals/batchCreate";
 import type { IBatchItem } from "src/ui/modals/batchCreate";
 import { ConfirmationModal } from "src/ui/modals/confirm";
+import { DateNavigatorModal } from "src/ui/modals/dateNavigator";
 import { ImportantDayModal } from "src/ui/modals/importantDay";
 import { ImportantListModal } from "src/ui/modals/importantList";
 import { StatsModal } from "src/ui/modals/stats";
@@ -96,6 +98,15 @@ export default class CalendarPlugin extends Plugin {
         await this.saveData(this.options);
         new Notice(t("notice.migrated"), 8000);
       }
+      this.rebuildHolidays();
+      const onHolidayEvent = (file: TAbstractFile, oldPath?: string) => {
+        if (touchesHolidays(file, oldPath)) {
+          this.rebuildHolidays();
+        }
+      };
+      this.registerEvent(this.app.vault.on("create", (f) => onHolidayEvent(f)));
+      this.registerEvent(this.app.vault.on("delete", (f) => onHolidayEvent(f)));
+      this.registerEvent(this.app.vault.on("rename", (f, old) => onHolidayEvent(f, old)));
       this.reindexAll();
       this.initLeaf();
     });
@@ -174,8 +185,26 @@ export default class CalendarPlugin extends Plugin {
   }
 
   async writeOptions(changeOpts: (settings: ISettings) => Partial<ISettings>): Promise<void> {
+    const before = this.options;
     settings.update((old) => ({ ...old, ...changeOpts(old) }));
+    const after = this.options;
+    if (
+      before.holidaysFolder !== after.holidaysFolder ||
+      before.holidayDateOrder !== after.holidayDateOrder ||
+      before.holidayPattern !== after.holidayPattern
+    ) {
+      this.rebuildHolidays();
+    }
     await this.saveData(this.options);
+  }
+
+  /** Re-read the holidays folder (only on settings change or folder events). */
+  rebuildHolidays(): void {
+    try {
+      rebuildHolidays(this.app, this.options);
+    } catch (err) {
+      console.warn("[Calendar] holidays index failed", err);
+    }
   }
 
   reindexAll(): void {
@@ -456,9 +485,33 @@ export default class CalendarPlugin extends Plugin {
           findDailyNote: (d) => this.findDailyNote(d),
           importantDays: () => this.options.importantDays,
           openDay: (d) => void this.openPeriodic(d, "day", false),
+          holidays: (d) => holidaysFor(d),
+          view: () => this.options.statsView,
+          saveView: (v) => void this.writeOptions(() => ({ statsView: v })),
         },
         month,
       ),
     );
+  }
+
+  /** Quick jump: year / month grid and a "go to date" field. */
+  showDateNavigator(month: Moment, goToMonth: (m: Moment) => void): void {
+    this.show(
+      new DateNavigatorModal(this.app, {
+        month,
+        goToMonth,
+        showStats: (m) => this.showStatistics(m),
+        openDay: (d) => void this.openPeriodic(d, "day", false),
+        hasNote: (d) => !!this.findDailyNote(d),
+      }),
+    );
+  }
+
+  /** Open a holiday note by its vault path. */
+  async openHoliday(path: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (file instanceof TFile) {
+      await this.app.workspace.getLeaf(false).openFile(file);
+    }
   }
 }

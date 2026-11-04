@@ -7,13 +7,15 @@ import { TRIGGER_ON_OPEN, VIEW_TYPE_CALENDAR } from "src/constants";
 import { getWeeklyNote } from "src/core/dates";
 import { t } from "src/core/i18n";
 import type { ISettings } from "src/core/settings";
+import { holidayStore, holidaysFor } from "src/io/holidays";
 import { getDateFromFile, noteFormat } from "src/io/notes";
 import type CalendarPlugin from "src/main";
 
 import Calendar from "./Calendar.svelte";
-import { buildMainMenu, showDayMenu, showWeekMenu } from "./menus";
+import { buildMainMenu, showDayMenu, showHolidayMenu, showWeekMenu } from "./menus";
 import {
   customTagsSource,
+  holidaysSource,
   importantDaysSource,
   streakSource,
   tasksSource,
@@ -27,6 +29,8 @@ export default class CalendarView extends ItemView {
   private calendar: Calendar;
   private settings: ISettings;
   private toolbarEl: HTMLElement;
+  private calendarEl: HTMLElement;
+  private menuButton: HTMLElement;
   private upcomingEl: HTMLElement;
   private preview: TemplatePreview;
 
@@ -60,6 +64,13 @@ export default class CalendarView extends ItemView {
     this.register(
       settings.subscribe((val) => {
         this.settings = val;
+        this.calendar?.tick();
+        this.placeMenuButton();
+        this.renderUpcoming();
+      }),
+    );
+    this.register(
+      holidayStore.subscribe(() => {
         this.calendar?.tick();
         this.renderUpcoming();
       }),
@@ -95,6 +106,7 @@ export default class CalendarView extends ItemView {
       wordCountSource,
       tasksSource,
       importantDaysSource,
+      holidaysSource,
     ];
     this.app.workspace.trigger(TRIGGER_ON_OPEN, sources);
 
@@ -103,17 +115,18 @@ export default class CalendarView extends ItemView {
     root.addClass("cwt-view");
 
     this.toolbarEl = root.createDiv("cwt-toolbar");
-    const menuButton = this.toolbarEl.createEl("button", {
+    this.menuButton = createEl("button", {
       cls: "clickable-icon cwt-menu-button",
       attr: { "aria-label": t("menu.header") },
     });
-    setIcon(menuButton, "more-horizontal");
-    menuButton.addEventListener("click", (e) => {
+    setIcon(this.menuButton, "more-horizontal");
+    this.menuButton.addEventListener("click", (e) => {
       this.preview.hide();
       buildMainMenu(this.plugin, this.displayedMonth()).showAtMouseEvent(e);
     });
 
     const calendarEl = root.createDiv("cwt-calendar");
+    this.calendarEl = calendarEl;
     this.calendar = new Calendar({
       target: calendarEl,
       props: {
@@ -126,8 +139,46 @@ export default class CalendarView extends ItemView {
         sources,
       },
     });
+    this.placeMenuButton();
+    // Put the button back if the calendar ever re-creates its header.
+    const observer = new MutationObserver(() => {
+      if (!this.menuButton.isConnected) {
+        this.placeMenuButton();
+      }
+    });
+    observer.observe(calendarEl, { childList: true, subtree: true });
+    this.register(() => observer.disconnect());
 
-    // Right click on the "Month Year" title opens the same menu, scoped to
+    // Capture phase: runs before calendar-ui's own handlers.
+    this.registerDomEvent(
+      calendarEl,
+      "click",
+      (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target?.closest?.(".nav .title")) {
+          // Title click opens the quick navigator (instead of "jump to today";
+          // the Today button still does that).
+          e.preventDefault();
+          e.stopPropagation();
+          this.preview.hide();
+          this.plugin.showDateNavigator(this.displayedMonth(), (m) => this.goToMonth(m));
+          return;
+        }
+        const dayEl = target?.closest?.(".day.cwt-holiday") as HTMLElement | null;
+        if (dayEl && isOnHolidayMark(dayEl, e)) {
+          const date = this.dateOfDayEl(dayEl);
+          if (date) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.preview.hide();
+            showHolidayMenu(this.plugin, date, e);
+          }
+        }
+      },
+      { capture: true },
+    );
+
+    // Right click on the "Month Year" title opens the main menu, scoped to
     // the displayed month.
     this.registerDomEvent(calendarEl, "contextmenu", (e: MouseEvent) => {
       const title = (e.target as HTMLElement)?.closest?.(".nav .title");
@@ -141,6 +192,49 @@ export default class CalendarView extends ItemView {
 
     this.upcomingEl = root.createDiv("cwt-upcoming-container");
     this.renderUpcoming();
+  }
+
+  /** Put the ⋯ button where the setting says (falls back to the toolbar). */
+  private placeMenuButton(): void {
+    if (!this.menuButton || !this.calendarEl || !this.toolbarEl) {
+      return;
+    }
+    const pos = this.settings?.menuPosition ?? "navRight";
+    const nav = this.calendarEl.querySelector(".nav");
+    const right = nav?.querySelector(".right-nav");
+    const btn = this.menuButton;
+    let placed = false;
+    if (pos === "navLeft" && right) {
+      right.prepend(btn);
+      placed = true;
+    } else if (pos === "navRight" && right) {
+      right.append(btn);
+      placed = true;
+    } else if (pos === "titleLeft" && nav) {
+      nav.prepend(btn);
+      placed = true;
+    }
+    if (!placed) {
+      this.toolbarEl.append(btn);
+    }
+    btn.toggleClass("cwt-in-nav", placed);
+    this.toolbarEl.toggleClass("is-empty", placed);
+  }
+
+  goToMonth(month: Moment): void {
+    this.calendar?.$set({ displayedMonth: month.clone().startOf("month") });
+  }
+
+  /** The day cell's date: its position in the displayed grid. */
+  private dateOfDayEl(dayEl: HTMLElement): Moment | null {
+    const cells = Array.from(this.calendarEl.querySelectorAll(".calendar tbody .day"));
+    const index = cells.indexOf(dayEl);
+    if (index < 0) {
+      return null;
+    }
+    const month = this.displayedMonth().clone().startOf("month");
+    const gridStart = month.clone().startOf("week");
+    return gridStart.add(index, "day");
   }
 
   private displayedMonth(): Moment {
@@ -166,6 +260,7 @@ export default class CalendarView extends ItemView {
           void this.plugin.writeOptions(() => ({ upcomingCollapsed: collapsed }));
         }
       },
+      (path) => void this.plugin.openHoliday(path),
     );
   }
 
@@ -193,6 +288,8 @@ export default class CalendarView extends ItemView {
     }
     if (!note && this.settings.showTemplatePreview && this.settings.daily.enabled) {
       this.preview.schedule(date, targetEl);
+    } else if (holidaysFor(date).length) {
+      this.preview.schedule(date, targetEl, true);
     } else {
       this.preview.hide();
     }
@@ -293,4 +390,11 @@ export default class CalendarView extends ItemView {
       this.calendar.$set({ displayedMonth: info.date });
     }
   }
+}
+
+/** The 🎉 mark sits in the top-right corner of the day (see styles.css). */
+export function isOnHolidayMark(dayEl: HTMLElement, e: MouseEvent): boolean {
+  const rect = dayEl.getBoundingClientRect();
+  const size = Math.max(14, rect.height * 0.5);
+  return e.clientX >= rect.right - size && e.clientY <= rect.top + size;
 }

@@ -14,23 +14,27 @@ src/
 │   ├── merge.ts         Слияние шаблона с существующей заметкой (в конец / в начало / замена)
 │   ├── stats.ts         Подсчёт слов и задач, итоги месяца, ✓-дни, серия, открытые задачи для переноса
 │   ├── important.ts     Важные дни: метки, дни подготовки, ближайшие события
-│   ├── settings.ts      Формат data.json, миграция 1.x → 2, валидация и лимиты
+│   ├── holidays.ts      Праздники из папки: разбор даты в имени (DD.MM, MM-DD, YYYY-MM-DD, свой шаблон), индекс, возраст
+│   ├── charts.ts        Подготовка данных для графиков: ряды, шкала, нарастающий итог, доли ✓, дуги кольца
+│   ├── settings.ts      Формат data.json, миграция 1.x → 2 → 3, валидация и лимиты
 │   ├── i18n.ts          Строки интерфейса en / ru
 │   └── __tests__/       Jest-тесты (включая security.test.ts: пути, data.json, ReDoS)
 ├── io/                Доступ к хранилищу через Obsidian API
 │   ├── notes.ts         Поиск, создание (без перезаписи), рендер шаблона, перенос задач
 │   ├── noteStats.ts     Слова и задачи заметки для окна статистики
+│   ├── holidays.ts      Кэш-индекс папки праздников (svelte store), пересборка только по событиям папки
 │   └── external.ts      Единственное место, где читаются настройки Daily Notes / Periodic Notes (импорт, миграция)
 └── ui/                Интерфейс
     ├── view.ts          Панель календаря (ItemView) + Svelte-компонент Calendar.svelte
     ├── menus.ts         Меню ⋯, контекстные меню дня, недели и заголовка месяца
     ├── settingsTab.ts   Вкладка настроек
     ├── templatePreview.ts  Подсказка с шаблоном при наведении на пустой день
-    ├── upcoming.ts      Блок «Ближайшие важные дни»
+    ├── upcoming.ts      Блок «Ближайшие важные дни» (важные дни + праздники)
+    ├── charts.ts        SVG-графики (createElementNS, CSS-переменные темы, подсказки)
     ├── labels.ts        Общие подписи (тип заметки, причина выбора шаблона)
     ├── stores.ts        Svelte-хранилища: индексы заметок, активный файл, настройки
-    ├── sources/         Индикаторы календаря (слова, задачи, теги, важные дни, серия)
-    └── modals/          Модальные окна: confirm, applyTemplate, batchCreate, importantDay, importantList, stats
+    ├── sources/         Индикаторы календаря (слова, задачи, теги, важные дни, праздники, серия)
+    └── modals/          Модальные окна: confirm, applyTemplate, batchCreate, importantDay, importantList, stats, dateNavigator
 ```
 
 ## Поток данных
@@ -55,6 +59,15 @@ src/
 7. **Статистика.** `StatsModal` читает заметки месяца по одной (`io/noteStats`), считает итоги
    (`core/stats.summarizeMonth`), ✓-дни (`isAllTasksDone`) и серию (`currentStreak`; дни до начала месяца
    берутся только из `metadataCache`).
+
+8. **Праздники.** После `onLayoutReady` и при изменении папки/порядка/шаблона `io/holidays.rebuildHolidays` читает
+   имена `.md` в папке → `core/holidays.buildHolidayIndex` (ключ `MM-DD`). События `create/delete/rename` пересобирают
+   индекс, только если путь внутри папки. Индекс используют: `sources/holidays` (класс `cwt-holiday`, 🎉 через CSS),
+   превью, меню дня, `upcoming`, статистика и `io/notes.ruleContext` (условия `holiday` / `important`).
+9. **Навигатор.** Клик по `.nav .title` перехватывается в `view` (capture) → `DateNavigatorModal` → `goToMonth`
+   (`$set({displayedMonth})`) или `showStatistics`. Правый клик по заголовку по-прежнему открывает главное меню.
+10. **Кнопка ⋯.** `view.placeMenuButton` ставит кнопку в `.right-nav` / перед заголовком / в отдельную строку по
+    `menuPosition`; `MutationObserver` возвращает её, если Svelte перерисовал шапку.
 
 ## Правила безопасности
 

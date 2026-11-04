@@ -1,6 +1,6 @@
 # Calendar (Weekday Templates)
 
-**English** · [Русский](README.ru.md)
+**English** · [Русский](README.ru.md) · [More plugins by NomberProjects](https://nomberobsidian.github.io/)
 
 A calendar view for [Obsidian](https://obsidian.md) with built-in daily, weekly and monthly notes and
 rule-based templates: per weekday, per date, per date range, "last Friday of the month", even/odd weeks and more.
@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `calendar-weekday-templates`, version 2.1.1
+- Plugin id: `calendar-weekday-templates`, version 2.2.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -38,12 +38,31 @@ migration from 1.x.
   use the type's default template. If a template file is missing, the plugin shows a notice and moves on to the next candidate.
   Templates are picked by the **note's date**, not by today.
 - **Special rules.** Rules are ordered and can be renamed, enabled or disabled, moved up or down and deleted. Each has a
-  condition, the note types it applies to (daily / weekly / monthly) and a template file. Conditions:
-  - a specific date `YYYY-MM-DD`;
-  - every year on `MM-DD` (birthdays, holidays);
-  - a date range (vacation);
-  - the N-th weekday of the month (1st–5th or **last**, e.g. "last Friday");
-  - even or odd ISO week.
+  condition, the note types it applies to (daily / weekly / monthly) and a template file. Conditions are picked from a
+  compact grouped list:
+  - **Dates:** every year on a day + month (the main type: birthdays, holidays); a date range (vacation); a one-off date
+    `YYYY-MM-DD` (kept for old rules);
+  - **Month:** a range of days of the month (`1–7`, or `25–5` wrapping over the month end); the last N days of the month;
+    the first / last day of the month; the first / last day of a quarter;
+  - **Weekdays & cycles:** several weekdays in one rule (with Mon–Fri / Sat–Sun presets); the N-th weekday of the month
+    (1st–5th or **last**); week N of the month (or the last week); even or odd ISO week; every N days from a chosen date;
+  - **Marks:** a holiday from the holidays folder falls on the day; the day is marked important.
+- **Quick date navigator.** Click the month title (e.g. "Nov 2026"): a dialog with a year switcher (‹ › , typed year or a
+  12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
+  month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
+  (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
+- **Holidays folder.** Point the plugin to a folder (e.g. `Meta/Dates`) whose note names start with a date:
+  `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, `1000-09-01 Knowledge Day` (the separator
+  after the date is optional). Two-part dates are read by the **Day first / Month first** setting; `YYYY-MM-DD` is always
+  unambiguous; an optional custom pattern (`DD_MM`, `YYYY.MM.DD`, …) is also supported. Holidays match every year by day
+  and month.
+  - The calendar shows 🎉 on those days; hovering shows the holiday names (and age when the note has a real year ≥ 1900,
+    so placeholder years like `1000` show no age); clicking the 🎉 corner or the day's context menu lists the holiday
+    notes and opens them.
+  - Holidays also appear in **Upcoming**, can drive special rules (the "holiday" condition) and are shown in statistics.
+  - The index is cached and rebuilt only when files in that folder are created, deleted or renamed, or the setting changes.
+  - Names that do not start with a recognizable date are counted in settings.
+- **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar.
 - **Commands** (command palette, plus the **⋯ menu** in the calendar header and right-click on the month title):
   - Open calendar view
   - Open yesterday's / today's / tomorrow's daily note
@@ -87,6 +106,9 @@ migration from 1.x.
     the month's last day; in a future month it is not shown. It can reach back into earlier months, up to 366 days, using
     `metadataCache`.
   - Notes are read one by one, so the UI is not blocked.
+  - **Table / Charts** switch. Charts (pure SVG, theme colors, hover tooltips): words per day, done vs open tasks,
+    cumulative words (bars or line), and a donut of days with ✓ / without ✓ / without a note. The chosen view, metric and
+    chart type are remembered.
 - **Previous / next daily note.** Jumps to the nearest *existing* daily note before or after the open one; gaps are
   ignored and nothing is created. These items appear in the ⋯ menu when a daily note is open.
 - **`{{carryover}}`** (daily notes only) inserts the open tasks of the nearest previous daily note.
@@ -157,6 +179,11 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 | Monthly review | N-th weekday: last Friday | Daily | `Templates/Review.md` |
 | Sprint planning | Even ISO week | Weekly | `Templates/Sprint.md` |
 | Release day | Specific date `2026-12-01` | Daily | `Templates/Release.md` |
+| Payday prep | Last 3 days of the month | Daily | `Templates/Budget.md` |
+| Workout | Weekdays Mon, Wed, Fri | Daily | `Templates/Gym.md` |
+| Quarter review | Last day of quarter | Daily | `Templates/Quarter.md` |
+| Watering | Every 3 days from `2026-11-01` | Daily | `Templates/Plants.md` |
+| Holiday | Holiday from folder | Daily | `Templates/Holiday.md` |
 
 Rules are checked top to bottom, so place more specific rules (a single date) above broader ones (a range).
 
@@ -267,6 +294,8 @@ MIT. See [LICENSE](LICENSE). Original Calendar plugin © 2021 Liam Cain; this fo
 
 If this plugin is useful to you, you can support its development:
 
-[![Donate to NomberProjects](https://img.shields.io/badge/Donate%20to-NomberProjects-6C5CE7?style=for-the-badge)](https://donatr.ee/nomber)
+[![Donate to NomberProjects](https://img.shields.io/badge/Donate%20to-NomberProjects-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
+
+More plugins by NomberProjects: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
 
 <!-- A styled HTML version of this button (for sites that keep inline styles) is in docs/donate-button.html. -->

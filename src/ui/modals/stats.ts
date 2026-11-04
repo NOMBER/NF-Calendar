@@ -2,18 +2,26 @@ import type { Moment } from "moment";
 import { Modal, setIcon } from "obsidian";
 import type { App, TFile } from "obsidian";
 
+import { CHART_KINDS, CHART_METRICS, completionBreakdown, seriesFor } from "src/core/charts";
 import { datesBetween } from "src/core/dates";
+import type { IHoliday } from "src/core/holidays";
 import { t } from "src/core/i18n";
+import type { I18nKey } from "src/core/i18n";
 import { getDayMarks } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
+import type { IStatsView } from "src/core/settings";
 import { currentStreak, isAllTasksDone, summarizeMonth } from "src/core/stats";
 import type { IDayStats } from "src/core/stats";
 import { cachedTaskCount, computeNoteStats } from "src/io/noteStats";
+import { renderDonut, renderSeriesChart } from "src/ui/charts";
 
 export interface IStatsDeps {
   findDailyNote: (date: Moment) => TFile | null;
   importantDays: () => ImportantDays;
   openDay: (date: Moment) => void;
+  holidays: (date: Moment) => IHoliday[];
+  view: () => IStatsView;
+  saveView: (view: IStatsView) => void;
 }
 
 /**
@@ -24,6 +32,10 @@ export interface IStatsDeps {
 export class StatsModal extends Modal {
   private month: Moment;
   private renderToken = 0;
+  private view: IStatsView;
+  private stats: IDayStats[] | null = null;
+  private tableWrap: HTMLElement;
+  private chartsWrap: HTMLElement;
 
   constructor(
     app: App,
@@ -32,6 +44,7 @@ export class StatsModal extends Modal {
   ) {
     super(app);
     this.month = (month || window.moment()).clone().startOf("month");
+    this.view = { ...deps.view() };
   }
 
   onOpen(): void {
@@ -71,7 +84,12 @@ export class StatsModal extends Modal {
       void this.render();
     });
 
-    const table = contentEl.createEl("table", { cls: "cwt-stats-table" });
+    this.stats = null;
+    this.renderControls(contentEl);
+    this.tableWrap = contentEl.createDiv("cwt-stats-table-wrap");
+    this.chartsWrap = contentEl.createDiv("cwt-stats-charts");
+    this.applyMode();
+    const table = this.tableWrap.createEl("table", { cls: "cwt-stats-table" });
     const head = table.createEl("thead").createEl("tr");
     head.createEl("th", { text: t("stats.colDay") });
     head.createEl("th", { text: t("stats.colWords") });
@@ -85,6 +103,7 @@ export class StatsModal extends Modal {
     const important = this.deps.importantDays();
     const today = window.moment();
     const stats: IDayStats[] = [];
+    let holidayDays = 0;
 
     for (const date of days) {
       if (token !== this.renderToken) {
@@ -108,6 +127,15 @@ export class StatsModal extends Modal {
         if (marks.important.title) {
           dayCell.createSpan({ cls: "cwt-stats-important-title", text: marks.important.title });
         }
+      }
+      const holidays = this.deps.holidays(date);
+      if (holidays.length) {
+        holidayDays++;
+        dayCell.createSpan({
+          cls: "cwt-stats-holiday",
+          text: "🎉",
+          attr: { "aria-label": holidays.map((h) => h.name).join("\n") },
+        });
       }
       const wordsCell = row.createEl("td");
       const doneCell = row.createEl("td");
@@ -157,6 +185,8 @@ export class StatsModal extends Modal {
     if (token !== this.renderToken) {
       return;
     }
+    this.stats = stats;
+    this.renderCharts();
     const sum = summarizeMonth(stats);
     summaryEl.empty();
     const add = (label: string, value: string) => {
@@ -170,10 +200,94 @@ export class StatsModal extends Modal {
     add(t("stats.daysWithNotes"), `${sum.daysWithNotes} / ${sum.daysInMonth}`);
     add(t("stats.tasks"), `${sum.tasksDone} / ${sum.tasksTotal}`);
     add(t("stats.allDoneDays"), String(sum.allDoneDays));
+    if (holidayDays) {
+      add(t("stats.holidayDays"), String(holidayDays));
+    }
     const streak = this.streak(stats, today);
     if (streak !== null) {
       add(t("stats.streak"), t("stats.streakValue", { count: streak }));
     }
+  }
+
+  private renderControls(parent: HTMLElement): void {
+    const bar = parent.createDiv("cwt-stats-controls");
+    const modes = bar.createDiv("cwt-nav-modes");
+    const buttons: HTMLElement[] = [];
+    (["table", "charts"] as const).forEach((mode) => {
+      const b = modes.createEl("button", {
+        cls: "cwt-nav-mode",
+        text: t(mode === "table" ? "stats.viewTable" : "stats.viewCharts"),
+      });
+      buttons.push(b);
+      b.toggleClass("is-active", this.view.mode === mode);
+      b.addEventListener("click", () => {
+        this.view = { ...this.view, mode };
+        buttons.forEach((x) => x.toggleClass("is-active", x === b));
+        this.saveAndRedraw();
+      });
+    });
+    const chartOpts = bar.createDiv("cwt-stats-chart-options");
+    const metric = chartOpts.createEl("select", { cls: "dropdown" });
+    CHART_METRICS.forEach((m) =>
+      metric.createEl("option", { value: m, text: t(`chart.metric.${m}` as I18nKey) }),
+    );
+    metric.value = this.view.metric;
+    const kind = chartOpts.createEl("select", { cls: "dropdown" });
+    CHART_KINDS.forEach((k) =>
+      kind.createEl("option", { value: k, text: t(`chart.kind.${k}` as I18nKey) }),
+    );
+    kind.value = this.view.kind;
+    kind.disabled = this.view.metric === "completion";
+    metric.addEventListener("change", () => {
+      this.view = { ...this.view, metric: metric.value as IStatsView["metric"] };
+      kind.disabled = this.view.metric === "completion";
+      this.saveAndRedraw();
+    });
+    kind.addEventListener("change", () => {
+      this.view = { ...this.view, kind: kind.value as IStatsView["kind"] };
+      this.saveAndRedraw();
+    });
+    this.optionsEl = chartOpts;
+  }
+
+  private optionsEl: HTMLElement;
+
+  private saveAndRedraw(): void {
+    this.deps.saveView(this.view);
+    this.applyMode();
+    this.renderCharts();
+  }
+
+  private applyMode(): void {
+    const charts = this.view.mode === "charts";
+    this.tableWrap?.toggle(!charts);
+    this.chartsWrap?.toggle(charts);
+    this.optionsEl?.toggle(charts);
+  }
+
+  /** Draw the chosen chart from the already computed stats (no re-reading). */
+  private renderCharts(): void {
+    const el = this.chartsWrap;
+    if (!el) {
+      return;
+    }
+    el.empty();
+    if (this.view.mode !== "charts") {
+      return; // drawn lazily when the user switches to charts
+    }
+    if (!this.stats) {
+      el.createDiv({ cls: "cwt-muted", text: t("stats.loading") });
+      return;
+    }
+    const label = (key: string) => t(`chart.series.${key}` as I18nKey);
+    if (this.view.metric === "completion") {
+      renderDonut(el, completionBreakdown(this.stats), label);
+      return;
+    }
+    const stats = this.stats;
+    renderSeriesChart(el, seriesFor(stats, this.view.metric), this.view.kind, label, (i) =>
+      window.moment(stats[i].date, "YYYY-MM-DD").format("dd D"),
+    );
   }
 
   /**

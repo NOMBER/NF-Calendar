@@ -3,8 +3,10 @@ import type { Moment } from "moment";
 import { Menu } from "obsidian";
 import type { App, TFile } from "obsidian";
 
+import { holidayAge } from "src/core/holidays";
 import { t } from "src/core/i18n";
 import { dayKey } from "src/core/important";
+import { holidaysFor } from "src/io/holidays";
 import type CalendarPlugin from "src/main";
 
 /** Every action of the plugin (header button / right click on the month title). */
@@ -80,6 +82,7 @@ export function showDayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEv
   } else if (plugin.options.daily.enabled) {
     item(t("menu.createNote"), "file-plus", () => plugin.openPeriodic(date, "day", false));
   }
+  addHolidayItems(plugin, menu, date);
   menu.addSeparator();
   item(important ? t("menu.editImportant") : t("menu.markImportant"), "star", () =>
     plugin.openImportantDayModal(date),
@@ -92,6 +95,32 @@ export function showDayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEv
     addFileItems(plugin.app, menu, note);
   }
   menu.showAtMouseEvent(event);
+}
+
+/** "🎉 name" items that open the day's holiday notes. */
+function addHolidayItems(plugin: CalendarPlugin, menu: Menu, date: Moment): number {
+  const list = holidaysFor(date);
+  if (list.length) {
+    menu.addSeparator();
+  }
+  for (const h of list) {
+    const age = holidayAge(h, date);
+    menu.addItem((i) =>
+      i
+        .setTitle(`🎉 ${h.name}${age !== null ? ` (${t("holiday.age", { age })})` : ""}`)
+        .setIcon("party-popper")
+        .onClick(() => void plugin.openHoliday(h.path)),
+    );
+  }
+  return list.length;
+}
+
+/** Click on the 🎉 mark of a day: list of its holiday notes. */
+export function showHolidayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEvent): void {
+  const menu = new Menu();
+  if (addHolidayItems(plugin, menu, date)) {
+    menu.showAtMouseEvent(event);
+  }
 }
 
 /** Right click on a week number (only when the weekly note exists). */

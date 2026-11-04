@@ -4,14 +4,28 @@
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
 import { DEFAULT_WORDS_PER_DOT } from "src/constants";
+import { CHART_KINDS, CHART_METRICS } from "./charts";
+import type { ChartKind, ChartMetric } from "./charts";
 import { DEFAULT_FORMATS } from "./dates";
 import type { Granularity } from "./dates";
+import { isValidHolidayPattern } from "./holidays";
+import type { HolidayDateOrder } from "./holidays";
 import { clampPrepDays, IMPORTANT_COLORS } from "./important";
 import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
+
+/** Where the ⋯ menu button sits. */
+export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar";
+export const MENU_POSITIONS: MenuPosition[] = ["navRight", "navLeft", "titleLeft", "toolbar"];
+
+export interface IStatsView {
+  mode: "table" | "charts";
+  metric: ChartMetric;
+  kind: ChartKind;
+}
 
 const GRANULARITY_LIST: Granularity[] = ["day", "week", "month"];
 
@@ -47,6 +61,15 @@ export interface ISettings {
   upcomingHorizonDays: number;
 
   showTemplatePreview: boolean;
+
+  /** Folder with holiday notes ("" = off). */
+  holidaysFolder: string;
+  holidayDateOrder: HolidayDateOrder;
+  /** Optional custom date format at the start of holiday file names. */
+  holidayPattern: string;
+
+  menuPosition: MenuPosition;
+  statsView: IStatsView;
 }
 
 export function defaultPeriodic(g: Granularity, enabled: boolean): IPeriodicConfig {
@@ -72,6 +95,11 @@ export function makeDefaultSettings(): ISettings {
     upcomingCollapsed: false,
     upcomingHorizonDays: 60,
     showTemplatePreview: true,
+    holidaysFolder: "",
+    holidayDateOrder: "dayFirst",
+    holidayPattern: "",
+    menuPosition: "navRight",
+    statsView: { mode: "table", metric: "words", kind: "bar" },
   };
 }
 
@@ -216,6 +244,16 @@ export function sanitizeImportant(raw: unknown): ImportantDays {
   return out;
 }
 
+function sanitizeStatsView(raw: unknown): IStatsView {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = (raw && typeof raw === "object" ? raw : {}) as any;
+  return {
+    mode: r.mode === "charts" ? "charts" : "table",
+    metric: CHART_METRICS.includes(r.metric) ? r.metric : "words",
+    kind: CHART_KINDS.includes(r.kind) ? r.kind : "bar",
+  };
+}
+
 /**
  * Bring saved data (any version) to the current shape.
  *
@@ -287,6 +325,15 @@ export function migrateSettings(
       typeof r.showTemplatePreview === "boolean"
         ? r.showTemplatePreview
         : defaults.showTemplatePreview,
+    // v3 (2.2.0): new fields only, existing rules keep their meaning.
+    holidaysFolder: str(r.holidaysFolder).trim(),
+    holidayDateOrder: r.holidayDateOrder === "monthFirst" ? "monthFirst" : "dayFirst",
+    holidayPattern: (() => {
+      const p = str(r.holidayPattern, "", 24).trim();
+      return isValidHolidayPattern(p) ? p : "";
+    })(),
+    menuPosition: MENU_POSITIONS.includes(r.menuPosition) ? r.menuPosition : defaults.menuPosition,
+    statsView: sanitizeStatsView(r.statsView),
   };
   return { settings, migratedFrom: version < SETTINGS_VERSION ? version : null };
 }

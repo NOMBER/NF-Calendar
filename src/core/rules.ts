@@ -39,20 +39,47 @@ export const EMPTY_WEEKDAY_TEMPLATES: IWeekdayTemplates = Object.freeze({
 }) as IWeekdayTemplates;
 
 export type RuleCondition =
-  | { type: "date"; date: string } // YYYY-MM-DD
-  | { type: "annual"; monthDay: string } // MM-DD
-  | { type: "range"; from: string; to: string } // YYYY-MM-DD, inclusive
+  | { type: "annual"; monthDay: string } // MM-DD, every year
+  | { type: "monthDays"; from: number; to: number } // days of month, inclusive (wraps if from > to)
+  | { type: "lastDays"; count: number } // last N days of the month
+  | { type: "monthEdge"; edge: "first" | "last" } // first / last day of the month
+  | { type: "quarterEdge"; edge: "start" | "end" } // first / last day of the quarter
+  | { type: "weekdays"; days: number[] } // any of these weekdays (0 = Sunday)
   | { type: "nthWeekday"; nth: number; weekday: number } // nth 1..5 or -1 = last
-  | { type: "weekParity"; parity: "even" | "odd" }; // ISO week number
+  | { type: "weekOfMonth"; week: number } // 1..6 or -1 = last week (locale weeks)
+  | { type: "weekParity"; parity: "even" | "odd" } // ISO week number
+  | { type: "everyNDays"; start: string; every: number } // YYYY-MM-DD, every >= 1
+  | { type: "holiday" } // a holiday from the holidays folder falls on the day
+  | { type: "important" } // the day is marked as important
+  | { type: "range"; from: string; to: string } // YYYY-MM-DD, inclusive
+  | { type: "date"; date: string }; // YYYY-MM-DD, one-off
 
 export type RuleConditionType = RuleCondition["type"];
 
+/** Order shown in the settings picker (yearly date first, one-off date last). */
 export const RULE_CONDITION_TYPES: RuleConditionType[] = [
-  "date",
   "annual",
-  "range",
+  "monthDays",
+  "lastDays",
+  "monthEdge",
+  "quarterEdge",
+  "weekdays",
   "nthWeekday",
+  "weekOfMonth",
   "weekParity",
+  "everyNDays",
+  "holiday",
+  "important",
+  "range",
+  "date",
+];
+
+/** Groups for the compact type picker in settings. */
+export const RULE_CONDITION_GROUPS: Array<{ group: string; types: RuleConditionType[] }> = [
+  { group: "dates", types: ["annual", "range", "date"] },
+  { group: "month", types: ["monthDays", "lastDays", "monthEdge", "quarterEdge"] },
+  { group: "week", types: ["weekdays", "nthWeekday", "weekOfMonth", "weekParity", "everyNDays"] },
+  { group: "marks", types: ["holiday", "important"] },
 ];
 
 export interface ITemplateRule {
@@ -65,6 +92,12 @@ export interface ITemplateRule {
   appliesTo?: Granularity[];
 }
 
+/** Information about a day that lives outside the rule itself. */
+export interface IRuleContext {
+  isHoliday?: (date: Moment) => boolean;
+  isImportant?: (date: Moment) => boolean;
+}
+
 export function defaultCondition(type: RuleConditionType): RuleCondition {
   switch (type) {
     case "date":
@@ -73,15 +106,46 @@ export function defaultCondition(type: RuleConditionType): RuleCondition {
       return { type, monthDay: "" };
     case "range":
       return { type, from: "", to: "" };
+    case "monthDays":
+      return { type, from: 1, to: 7 };
+    case "lastDays":
+      return { type, count: 3 };
+    case "monthEdge":
+      return { type, edge: "first" };
+    case "quarterEdge":
+      return { type, edge: "start" };
+    case "weekdays":
+      return { type, days: [1, 2, 3, 4, 5] };
     case "nthWeekday":
       return { type, nth: 1, weekday: 1 };
+    case "weekOfMonth":
+      return { type, week: 1 };
     case "weekParity":
       return { type, parity: "even" };
+    case "everyNDays":
+      return { type, start: "", every: 2 };
+    case "holiday":
+      return { type };
+    case "important":
+      return { type };
   }
 }
 
 const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const MONTH_DAY = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+/** Longest month per month number (Feb 29 allowed for yearly dates). */
+const MAX_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+export function isValidMonthDay(monthDay: string): boolean {
+  if (!MONTH_DAY.test(monthDay || "")) {
+    return false;
+  }
+  const [m, d] = monthDay.split("-").map(Number);
+  return d <= MAX_DAYS[m - 1];
+}
+
+const inRange = (n: number, min: number, max: number) =>
+  Number.isInteger(n) && n >= min && n <= max;
 
 /**
  * Rebuild a condition from untrusted data (data.json): only known types and
@@ -104,10 +168,31 @@ export function sanitizeCondition(raw: unknown): RuleCondition | null {
       return { type: "annual", monthDay: text(r.monthDay) };
     case "range":
       return { type: "range", from: text(r.from), to: text(r.to) };
+    case "monthDays":
+      return { type: "monthDays", from: int(r.from, 1), to: int(r.to, 1) };
+    case "lastDays":
+      return { type: "lastDays", count: int(r.count, 1) };
+    case "monthEdge":
+      return { type: "monthEdge", edge: r.edge === "last" ? "last" : "first" };
+    case "quarterEdge":
+      return { type: "quarterEdge", edge: r.edge === "end" ? "end" : "start" };
+    case "weekdays": {
+      const days: unknown[] = Array.isArray(r.days) ? r.days.slice(0, 7) : [];
+      const valid = days.filter((d): d is number => typeof d === "number" && inRange(d, 0, 6));
+      return { type: "weekdays", days: Array.from(new Set(valid)).sort() };
+    }
     case "nthWeekday":
       return { type: "nthWeekday", nth: int(r.nth, 1), weekday: int(r.weekday, 1) };
+    case "weekOfMonth":
+      return { type: "weekOfMonth", week: int(r.week, 1) };
     case "weekParity":
       return { type: "weekParity", parity: r.parity === "odd" ? "odd" : "even" };
+    case "everyNDays":
+      return { type: "everyNDays", start: text(r.start), every: int(r.every, 2) };
+    case "holiday":
+      return { type: "holiday" };
+    case "important":
+      return { type: "important" };
     default:
       return null;
   }
@@ -122,23 +207,49 @@ export function isConditionValid(cond: RuleCondition): boolean {
     case "date":
       return ISO_DATE.test(cond.date || "");
     case "annual":
-      return MONTH_DAY.test(cond.monthDay || "");
+      return isValidMonthDay(cond.monthDay);
     case "range":
       return ISO_DATE.test(cond.from || "") && ISO_DATE.test(cond.to || "");
-    case "nthWeekday":
+    case "monthDays":
+      return inRange(cond.from, 1, 31) && inRange(cond.to, 1, 31);
+    case "lastDays":
+      return inRange(cond.count, 1, 31);
+    case "monthEdge":
+      return cond.edge === "first" || cond.edge === "last";
+    case "quarterEdge":
+      return cond.edge === "start" || cond.edge === "end";
+    case "weekdays":
       return (
-        ((cond.nth >= 1 && cond.nth <= 5) || cond.nth === -1) &&
-        cond.weekday >= 0 &&
-        cond.weekday <= 6
+        Array.isArray(cond.days) && cond.days.length > 0 && cond.days.every((d) => inRange(d, 0, 6))
       );
+    case "nthWeekday":
+      return (inRange(cond.nth, 1, 5) || cond.nth === -1) && inRange(cond.weekday, 0, 6);
+    case "weekOfMonth":
+      return inRange(cond.week, 1, 6) || cond.week === -1;
     case "weekParity":
       return cond.parity === "even" || cond.parity === "odd";
+    case "everyNDays":
+      return ISO_DATE.test(cond.start || "") && inRange(cond.every, 1, 3660);
+    case "holiday":
+    case "important":
+      return true;
     default:
       return false;
   }
 }
 
-export function matchesCondition(date: Moment, cond: RuleCondition): boolean {
+/** 1-based week of the month, weeks start on the locale's first weekday. */
+export function weekOfMonth(date: Moment): number {
+  const first = date.clone().startOf("month").startOf("week");
+  const days = date.clone().startOf("day").diff(first.clone().startOf("day"), "days");
+  return Math.floor(days / 7) + 1;
+}
+
+export function matchesCondition(
+  date: Moment,
+  cond: RuleCondition,
+  ctx: IRuleContext = {},
+): boolean {
   if (!isConditionValid(cond)) {
     return false;
   }
@@ -152,6 +263,23 @@ export function matchesCondition(date: Moment, cond: RuleCondition): boolean {
       const [from, to] = cond.from <= cond.to ? [cond.from, cond.to] : [cond.to, cond.from];
       return d >= from && d <= to;
     }
+    case "monthDays": {
+      const day = date.date();
+      return cond.from <= cond.to
+        ? day >= cond.from && day <= cond.to
+        : day >= cond.from || day <= cond.to; // e.g. 25..5 wraps over the month end
+    }
+    case "lastDays":
+      return date.daysInMonth() - date.date() < cond.count;
+    case "monthEdge":
+      return cond.edge === "first" ? date.date() === 1 : date.date() === date.daysInMonth();
+    case "quarterEdge": {
+      const edge =
+        cond.edge === "start" ? date.clone().startOf("quarter") : date.clone().endOf("quarter");
+      return date.isSame(edge, "day");
+    }
+    case "weekdays":
+      return cond.days.includes(date.day());
     case "nthWeekday": {
       if (date.day() !== cond.weekday) {
         return false;
@@ -161,10 +289,30 @@ export function matchesCondition(date: Moment, cond: RuleCondition): boolean {
       }
       return Math.ceil(date.date() / 7) === cond.nth;
     }
+    case "weekOfMonth": {
+      if (cond.week === -1) {
+        return weekOfMonth(date) === weekOfMonth(date.clone().endOf("month"));
+      }
+      return weekOfMonth(date) === cond.week;
+    }
     case "weekParity": {
       const even = date.isoWeek() % 2 === 0;
       return cond.parity === "even" ? even : !even;
     }
+    case "everyNDays": {
+      const start = date.clone().startOf("day");
+      start.set({
+        year: Number(cond.start.slice(0, 4)),
+        month: Number(cond.start.slice(5, 7)) - 1,
+        date: Number(cond.start.slice(8, 10)),
+      });
+      const diff = Math.round(date.clone().startOf("day").diff(start, "days", true));
+      return diff >= 0 && diff % cond.every === 0;
+    }
+    case "holiday":
+      return !!ctx.isHoliday?.(date);
+    case "important":
+      return !!ctx.isImportant?.(date);
   }
 }
 
@@ -199,6 +347,7 @@ export function getTemplateCandidates(
   date: Moment,
   settings: ITemplateChoiceSettings,
   granularity: Granularity = "day",
+  ctx: IRuleContext = {},
 ): ITemplateCandidate[] {
   const result: ITemplateCandidate[] = [];
   for (const rule of settings.templateRules || []) {
@@ -208,7 +357,7 @@ export function getTemplateCandidates(
       rule.enabled &&
       path &&
       ruleAppliesTo(rule, granularity) &&
-      matchesCondition(date, rule.condition)
+      matchesCondition(date, rule.condition, ctx)
     ) {
       result.push({ path, source: "rule", ruleId: rule.id, ruleName: rule.name });
     }
@@ -255,8 +404,9 @@ export function chooseTemplate(
   settings: ITemplateChoiceSettings,
   granularity: Granularity,
   exists: (path: string) => boolean,
+  ctx: IRuleContext = {},
 ): ITemplateResolution {
-  return resolveTemplate(getTemplateCandidates(date, settings, granularity), exists);
+  return resolveTemplate(getTemplateCandidates(date, settings, granularity, ctx), exists);
 }
 
 /** Order weekday keys starting with the given first day of week. */

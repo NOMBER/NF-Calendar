@@ -5,6 +5,8 @@ import { t } from "src/core/i18n";
 import { getDayMarks } from "src/core/important";
 import { firstLines } from "src/core/placeholders";
 import type { ISettings } from "src/core/settings";
+import { holidayAge } from "src/core/holidays";
+import { holidaysFor } from "src/io/holidays";
 import { chooseTemplateFor, resolveTemplateFile } from "src/io/notes";
 import { describeCandidate } from "./labels";
 
@@ -13,7 +15,8 @@ const PREVIEW_LINES = 10;
 
 /**
  * Tooltip shown when hovering an EMPTY day: which template will be used,
- * why, and its first lines (raw, without substitutions).
+ * why, and its first lines (raw, without substitutions). For days that
+ * already have a note it only lists the day's holidays (`holidaysOnly`).
  */
 export class TemplatePreview {
   private timer: number | null = null;
@@ -28,13 +31,13 @@ export class TemplatePreview {
     this.hide = this.hide.bind(this);
   }
 
-  schedule(date: Moment, targetEl: EventTarget): void {
+  schedule(date: Moment, targetEl: EventTarget, holidaysOnly = false): void {
     const dayEl =
       ((targetEl as HTMLElement)?.closest?.(".day") as HTMLElement) || (targetEl as HTMLElement);
     if (!dayEl) {
       return;
     }
-    const key = date.format("YYYY-MM-DD");
+    const key = `${date.format("YYYY-MM-DD")}${holidaysOnly ? "h" : ""}`;
     if (this.pendingKey === key && this.target === dayEl) {
       return;
     }
@@ -45,7 +48,7 @@ export class TemplatePreview {
     dayEl.addEventListener("pointerdown", this.hide, { once: true });
     this.timer = window.setTimeout(() => {
       this.timer = null;
-      void this.show(date.clone(), dayEl, key);
+      void this.show(date.clone(), dayEl, key, holidaysOnly);
     }, PREVIEW_DELAY_MS);
   }
 
@@ -63,10 +66,17 @@ export class TemplatePreview {
     this.target = null;
   }
 
-  private async show(date: Moment, anchor: HTMLElement, key: string): Promise<void> {
+  private async show(
+    date: Moment,
+    anchor: HTMLElement,
+    key: string,
+    holidaysOnly: boolean,
+  ): Promise<void> {
     const settings = this.getSettings();
     const app = this.app;
-    const resolution = chooseTemplateFor(app, date, settings, "day");
+    const resolution = holidaysOnly
+      ? { chosen: null, missing: [] }
+      : chooseTemplateFor(app, date, settings, "day");
     let lines: string[] = [];
     let truncated = false;
     if (resolution.chosen) {
@@ -100,6 +110,21 @@ export class TemplatePreview {
         }),
       }).setAttr("data-cwt-color", p.day.color);
     }
+    const holidays = holidaysFor(date);
+    if (holidays.length) {
+      const list = el.createDiv("cwt-preview-holidays");
+      for (const h of holidays) {
+        const age = holidayAge(h, date);
+        list.createDiv({
+          cls: "cwt-preview-holiday",
+          text: `🎉 ${h.name}${age !== null ? ` (${t("holiday.age", { age })})` : ""}`,
+        });
+      }
+    }
+    if (holidaysOnly) {
+      this.place(el, anchor);
+      return;
+    }
     if (resolution.chosen) {
       el.createDiv({
         cls: "cwt-preview-meta",
@@ -123,6 +148,10 @@ export class TemplatePreview {
       el.createDiv({ cls: "cwt-preview-meta", text: t("preview.empty") });
     }
 
+    this.place(el, anchor);
+  }
+
+  private place(el: HTMLElement, anchor: HTMLElement): void {
     const rect = anchor.getBoundingClientRect();
     const box = el.getBoundingClientRect();
     let left = rect.left + rect.width / 2 - box.width / 2;

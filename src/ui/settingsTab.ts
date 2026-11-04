@@ -1,5 +1,6 @@
 import { Notice, PluginSettingTab, Setting } from "obsidian";
 import type { App } from "obsidian";
+import { get } from "svelte/store";
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
 import { DEFAULT_WORDS_PER_DOT } from "src/constants";
@@ -10,19 +11,24 @@ import {
   isConditionValid,
   newRuleId,
   orderedWeekdays,
-  RULE_CONDITION_TYPES,
+  RULE_CONDITION_GROUPS,
   WEEKDAY_KEYS,
 } from "src/core/rules";
 import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
 import type { ITemplateRule, RuleCondition, RuleConditionType } from "src/core/rules";
-import { mergeExternal, sanitizeWordsPerDot } from "src/core/settings";
-import type { IPeriodicConfig, ISettings, Language } from "src/core/settings";
+import { isValidHolidayPattern } from "src/core/holidays";
+import type { HolidayDateOrder } from "src/core/holidays";
+import { MENU_POSITIONS, mergeExternal, sanitizeWordsPerDot } from "src/core/settings";
+import type { IPeriodicConfig, ISettings, Language, MenuPosition } from "src/core/settings";
 import { readExternalPeriodicSettings } from "src/io/external";
+import { holidayStore } from "src/io/holidays";
 import { getNotePath, resolveTemplateFile } from "src/io/notes";
 import type CalendarPlugin from "src/main";
 import { FileSuggest } from "./fileSuggest";
 import { typeLabel } from "./labels";
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 const WEEK_START_KEYS = WEEKDAY_KEYS; // sunday..saturday, same as calendar-ui
 
@@ -54,11 +60,15 @@ export class CalendarSettingsTab extends PluginSettingTab {
     this.addConfirm();
     this.addPreview();
     this.addUpcoming();
+    this.addMenuPosition();
 
     this.addPeriodicSection("day");
     this.addPeriodicSection("week");
     this.addPeriodicSection("month");
     this.addImport();
+
+    this.heading(t("settings.holidays"));
+    this.addHolidays();
 
     this.heading(t("settings.weekdayTemplates"));
     this.addWeekdayTemplates();
@@ -150,6 +160,86 @@ export class CalendarSettingsTab extends PluginSettingTab {
             await this.write(() => ({ upcomingHorizonDays: v }));
           }),
       );
+  }
+
+  private firstDayOfWeek(): number {
+    const weekStart = this.options.weekStart;
+    const firstDay =
+      weekStart && weekStart !== "locale"
+        ? WEEK_START_KEYS.indexOf(weekStart as (typeof WEEK_START_KEYS)[number])
+        : (window._bundledLocaleWeekSpec?.dow ?? window.moment.localeData().firstDayOfWeek());
+    return firstDay < 0 ? 1 : firstDay;
+  }
+
+  private addMenuPosition(): void {
+    new Setting(this.containerEl)
+      .setName(t("settings.menuPosition"))
+      .setDesc(t("settings.menuPositionDesc"))
+      .addDropdown((d) => {
+        MENU_POSITIONS.forEach((p) => d.addOption(p, t(`menuPos.${p}` as I18nKey)));
+        d.setValue(this.options.menuPosition);
+        d.onChange(async (v) => {
+          await this.write(() => ({ menuPosition: v as MenuPosition }));
+        });
+      });
+  }
+
+  private addHolidays(): void {
+    const { folder, index, unrecognized } = get(holidayStore);
+    const folderSetting = new Setting(this.containerEl)
+      .setName(t("settings.holidaysFolder"))
+      .setDesc(
+        folder
+          ? t("settings.holidaysFound", {
+              count: Object.values(index).reduce((n, l) => n + l.length, 0),
+              bad: unrecognized.length,
+            })
+          : t("settings.holidaysFolderDesc"),
+      );
+    if (unrecognized.length) {
+      folderSetting.descEl.createDiv({
+        cls: "cwt-muted",
+        text: t("settings.holidaysUnrecognized", {
+          names: unrecognized.slice(0, 5).join(", ") + (unrecognized.length > 5 ? "…" : ""),
+        }),
+      });
+    }
+    folderSetting.addText((text) => {
+      text.setPlaceholder("Meta/Dates");
+      text.setValue(this.options.holidaysFolder);
+      text.inputEl.addEventListener("blur", () => this.display());
+      text.onChange(async (v) => {
+        await this.write(() => ({ holidaysFolder: v.trim() }));
+      });
+    });
+    new Setting(this.containerEl)
+      .setName(t("settings.holidayOrder"))
+      .setDesc(t("settings.holidayOrderDesc"))
+      .addDropdown((d) => {
+        d.addOption("dayFirst", t("settings.dayFirst"));
+        d.addOption("monthFirst", t("settings.monthFirst"));
+        d.setValue(this.options.holidayDateOrder);
+        d.onChange(async (v) => {
+          await this.write(() => ({ holidayDateOrder: v as HolidayDateOrder }));
+          this.display();
+        });
+      });
+    const pattern = new Setting(this.containerEl)
+      .setName(t("settings.holidayPattern"))
+      .setDesc(t("settings.holidayPatternDesc"));
+    pattern.addText((text) => {
+      text.setPlaceholder("DD.MM");
+      text.setValue(this.options.holidayPattern);
+      text.onChange(async (v) => {
+        const value = v.trim();
+        const ok = !value || isValidHolidayPattern(value);
+        pattern.descEl.toggleClass("cwt-template-missing", !ok);
+        pattern.setDesc(ok ? t("settings.holidayPatternDesc") : t("settings.holidayPatternBad"));
+        if (ok) {
+          await this.write(() => ({ holidayPattern: value }));
+        }
+      });
+    });
   }
 
   private toggle(
@@ -302,14 +392,10 @@ export class CalendarSettingsTab extends PluginSettingTab {
       return;
     }
     const { moment } = window;
-    const weekStart = this.options.weekStart;
-    const firstDay =
-      weekStart && weekStart !== "locale"
-        ? WEEK_START_KEYS.indexOf(weekStart as (typeof WEEK_START_KEYS)[number])
-        : (window._bundledLocaleWeekSpec?.dow ?? moment.localeData().firstDayOfWeek());
+    const firstDay = this.firstDayOfWeek();
     const names = moment.weekdays();
     const desc = t("settings.weekdayTemplateDesc");
-    for (const day of orderedWeekdays(firstDay < 0 ? 1 : firstDay)) {
+    for (const day of orderedWeekdays(firstDay)) {
       const name = names[WEEKDAY_KEYS.indexOf(day)];
       const setting = new Setting(this.containerEl)
         .setName(t("settings.weekdayTemplate", { weekday: name }))
@@ -430,7 +516,15 @@ export class CalendarSettingsTab extends PluginSettingTab {
       cond.descEl.addClass("cwt-template-missing");
     }
     cond.addDropdown((d) => {
-      RULE_CONDITION_TYPES.forEach((type) => d.addOption(type, t(`cond.${type}` as I18nKey)));
+      // Compact grouped picker: <optgroup> per family of conditions.
+      for (const { group, types } of RULE_CONDITION_GROUPS) {
+        const og = d.selectEl.createEl("optgroup", {
+          attr: { label: t(`cond.group.${group}` as I18nKey) },
+        });
+        types.forEach((type) =>
+          og.createEl("option", { value: type, text: t(`cond.${type}` as I18nKey) }),
+        );
+      }
       d.setValue(rule.condition.type);
       d.onChange((v) =>
         this.updateRule(rule.id, { condition: defaultCondition(v as RuleConditionType) }, true),
@@ -479,6 +573,30 @@ export class CalendarSettingsTab extends PluginSettingTab {
       input.addEventListener("change", () => onChange(input.value));
     };
 
+    const numberInput = (
+      value: number,
+      min: number,
+      max: number,
+      onChange: (n: number) => void,
+      label?: string,
+    ) => {
+      if (label) {
+        setting.controlEl.createSpan({ cls: "cwt-cond-label", text: label });
+      }
+      const input = setting.controlEl.createEl("input", {
+        type: "number",
+        cls: "cwt-number-input",
+        attr: { min, max, step: 1 },
+      });
+      input.value = String(value);
+      input.addEventListener("change", () => {
+        const n = Math.round(Number(input.value));
+        if (Number.isFinite(n) && n >= min && n <= max) {
+          onChange(n);
+        }
+      });
+    };
+
     switch (c.type) {
       case "date":
         dateInput(c.date, (v) => set({ type: "date", date: v }, true));
@@ -487,13 +605,85 @@ export class CalendarSettingsTab extends PluginSettingTab {
         dateInput(c.from, (v) => set({ ...c, from: v }, true), t("cond.from"));
         dateInput(c.to, (v) => set({ ...c, to: v }, true), t("cond.to"));
         break;
-      case "annual":
-        setting.addText((text) => {
-          text.setPlaceholder(t("cond.monthDayPlaceholder"));
-          text.setValue(c.monthDay);
-          text.inputEl.size = 6;
-          text.onChange((v) => set({ type: "annual", monthDay: v.trim() }));
+      case "annual": {
+        const [mm, dd] = c.monthDay.split("-");
+        setting.addDropdown((d) => {
+          for (let i = 1; i <= 31; i++) {
+            d.addOption(pad(i), String(i));
+          }
+          d.setValue(dd || "01");
+          d.onChange((v) => set({ type: "annual", monthDay: `${mm || "01"}-${v}` }, true));
         });
+        setting.addDropdown((d) => {
+          window.moment.months().forEach((name, i) => d.addOption(pad(i + 1), name));
+          d.setValue(mm || "01");
+          d.onChange((v) => set({ type: "annual", monthDay: `${v}-${dd || "01"}` }, true));
+        });
+        break;
+      }
+      case "monthDays":
+        numberInput(c.from, 1, 31, (n) => set({ ...c, from: n }, true), t("cond.from"));
+        numberInput(c.to, 1, 31, (n) => set({ ...c, to: n }, true), t("cond.to"));
+        break;
+      case "lastDays":
+        numberInput(c.count, 1, 31, (n) => set({ ...c, count: n }, true), t("cond.lastCount"));
+        break;
+      case "monthEdge":
+        setting.addDropdown((d) => {
+          d.addOption("first", t("cond.edgeFirst"));
+          d.addOption("last", t("cond.edgeLast"));
+          d.setValue(c.edge);
+          d.onChange((v) => set({ type: "monthEdge", edge: v as "first" | "last" }));
+        });
+        break;
+      case "quarterEdge":
+        setting.addDropdown((d) => {
+          d.addOption("start", t("cond.quarterStart"));
+          d.addOption("end", t("cond.quarterEnd"));
+          d.setValue(c.edge);
+          d.onChange((v) => set({ type: "quarterEdge", edge: v as "start" | "end" }));
+        });
+        break;
+      case "weekdays": {
+        const box = setting.controlEl.createDiv("cwt-weekday-checks");
+        const names = window.moment.weekdaysShort();
+        const order = orderedWeekdays(this.firstDayOfWeek()).map((k) => WEEKDAY_KEYS.indexOf(k));
+        for (const i of order) {
+          const label = box.createEl("label", { cls: "cwt-check" });
+          const cb = label.createEl("input", { type: "checkbox" });
+          cb.checked = c.days.includes(i);
+          label.appendText(names[i]);
+          cb.addEventListener("change", () => {
+            const days = cb.checked ? [...c.days, i] : c.days.filter((x) => x !== i);
+            void set({ type: "weekdays", days: days.sort() }, true);
+          });
+        }
+        const presets = setting.controlEl.createDiv("cwt-weekday-presets");
+        const preset = (label: string, days: number[]) =>
+          presets
+            .createEl("button", { text: label, cls: "cwt-small-button" })
+            .addEventListener("click", () => void set({ type: "weekdays", days }, true));
+        preset(t("cond.workdays"), [1, 2, 3, 4, 5]);
+        preset(t("cond.weekend"), [0, 6]);
+        break;
+      }
+      case "weekOfMonth":
+        setting.addDropdown((d) => {
+          [1, 2, 3, 4, 5, 6].forEach((n) => d.addOption(String(n), t("cond.weekN", { n })));
+          d.addOption("-1", t("cond.weekLast"));
+          d.setValue(String(c.week));
+          d.onChange((v) => set({ type: "weekOfMonth", week: Number(v) }));
+        });
+        break;
+      case "everyNDays":
+        numberInput(c.every, 1, 3660, (n) => set({ ...c, every: n }, true), t("cond.every"));
+        dateInput(c.start, (v) => set({ ...c, start: v }, true), t("cond.startingFrom"));
+        break;
+      case "holiday":
+        setting.controlEl.createSpan({ cls: "cwt-muted", text: t("cond.holidayHint") });
+        break;
+      case "important":
+        setting.controlEl.createSpan({ cls: "cwt-muted", text: t("cond.importantHint") });
         break;
       case "nthWeekday":
         setting.addDropdown((d) => {

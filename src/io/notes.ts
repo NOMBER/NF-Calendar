@@ -16,11 +16,14 @@ import type { Granularity } from "src/core/dates";
 import { t } from "src/core/i18n";
 import { buildNotePath, parentFolders, relativeNotePath, sanitizeVaultPath } from "src/core/paths";
 import { applyTemplate, usesCarryover } from "src/core/placeholders";
+import { dayKey } from "src/core/important";
 import { chooseTemplate } from "src/core/rules";
+import type { IRuleContext } from "src/core/rules";
 import type { ITemplateResolution } from "src/core/rules";
 import { periodicConfig } from "src/core/settings";
 import type { ISettings } from "src/core/settings";
 import { extractOpenTasks } from "src/core/stats";
+import { holidaysFor } from "src/io/holidays";
 
 export const GRANULARITIES: Granularity[] = ["day", "week", "month"];
 
@@ -119,6 +122,14 @@ export function resolveTemplateFile(app: App, templatePath: string): TFile | nul
   return app.metadataCache.getFirstLinkpathDest(p.replace(/\.md$/, ""), "") ?? null;
 }
 
+/** Day facts the holiday / important rule types need. */
+export function ruleContext(settings: ISettings): IRuleContext {
+  return {
+    isHoliday: (date) => holidaysFor(date).length > 0,
+    isImportant: (date) => !!settings.importantDays?.[dayKey(date)],
+  };
+}
+
 /** Which template would be used for this note (no side effects). */
 export function chooseTemplateFor(
   app: App,
@@ -136,6 +147,7 @@ export function chooseTemplateFor(
     },
     g,
     (path) => !!resolveTemplateFile(app, path),
+    ruleContext(settings),
   );
 }
 
