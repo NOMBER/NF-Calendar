@@ -13,7 +13,57 @@ export const IMPORTANT_COLORS = [
   "purple",
   "pink",
 ] as const;
-export type ImportantColor = (typeof IMPORTANT_COLORS)[number];
+export type PresetColor = (typeof IMPORTANT_COLORS)[number];
+/** A preset name or a custom `#rrggbb` (lower-case) from the colour picker. */
+export type ImportantColor = PresetColor | `#${string}`;
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+export function isCustomColor(v: unknown): v is `#${string}` {
+  return typeof v === "string" && HEX_COLOR.test(v);
+}
+
+/** Preset name, or validated hex normalized to lower case; anything else → "red". */
+export function sanitizeImportantColor(v: unknown): ImportantColor {
+  if ((IMPORTANT_COLORS as readonly unknown[]).includes(v)) {
+    return v as PresetColor;
+  }
+  if (isCustomColor(v)) {
+    return v.toLowerCase() as `#${string}`;
+  }
+  return "red";
+}
+
+export function hexToRgb(hex: string): [number, number, number] | null {
+  if (!isCustomColor(hex)) {
+    return null;
+  }
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/**
+ * CSS rules for the custom colours in use, same variables as the presets
+ * (`--cwt-c`, `--cwt-c-rgb`). Only validated hex values get in, so the
+ * text is safe to put into a <style> element via textContent.
+ */
+export function customColorCss(days: ImportantDays): string {
+  const seen = new Set<string>();
+  for (const d of Object.values(days || {})) {
+    const c = d && typeof d.color === "string" ? d.color.toLowerCase() : "";
+    if (isCustomColor(c)) {
+      seen.add(c);
+    }
+  }
+  return [...seen]
+    .sort()
+    .map((c) => {
+      const rgb = hexToRgb(c) as [number, number, number];
+      const sel = ["color", "important", "prepare"].map((a) => `[data-cwt-${a}="${c}"]`).join(", ");
+      return `${sel} { --cwt-c: ${c}; --cwt-c-rgb: ${rgb.join(", ")}; }`;
+    })
+    .join("\n");
+}
 
 export interface IImportantDay {
   title: string;

@@ -1,3 +1,4 @@
+import { customColorCss, sanitizeImportantColor } from "../important";
 /** Path sanitising, data.json validation and regex safety (see docs/ARCHITECTURE.md). */
 import moment from "moment";
 
@@ -12,7 +13,6 @@ import {
   sanitizeLocale,
   sanitizeRules,
   sanitizeWeekStart,
-  sanitizeWordsPerDot,
 } from "../settings";
 
 beforeAll(() => moment.locale("en"));
@@ -96,12 +96,31 @@ describe("settings validation (data.json)", () => {
     expect(sanitizeLocale(5)).toBe("system-default");
   });
 
-  it("wordsPerDot is clamped and finite", () => {
-    expect(sanitizeWordsPerDot(250)).toBe(250);
-    expect(sanitizeWordsPerDot(0)).toBe(LIMITS.wordsPerDot.min);
-    expect(sanitizeWordsPerDot(1e12)).toBe(LIMITS.wordsPerDot.max);
-    expect(sanitizeWordsPerDot(Infinity)).toBe(250);
-    expect(sanitizeWordsPerDot("9")).toBe(250);
+  it("important colour: presets or strict #rrggbb only", () => {
+    expect(sanitizeImportantColor("blue")).toBe("blue");
+    expect(sanitizeImportantColor("#A1b2C3")).toBe("#a1b2c3");
+    for (const bad of ["#abc", "#12345g", "red;}", '#123456"]{', "url(x)", 5, null]) {
+      expect(sanitizeImportantColor(bad)).toBe("red");
+    }
+  });
+
+  it("custom colour CSS only contains validated hex", () => {
+    const css = customColorCss({
+      "2026-01-01": { title: "a", color: "#ff0000", prepDays: 0 },
+      "2026-01-02": { title: "b", color: '#00ff00"]{}body{x' as never, prepDays: 0 },
+      "2026-01-03": { title: "c", color: "blue", prepDays: 0 },
+    });
+    expect(css).toContain('[data-cwt-important="#ff0000"]');
+    expect(css).toContain("--cwt-c-rgb: 255, 0, 0");
+    expect(css).not.toContain("body");
+    expect(css.split("\n")).toHaveLength(1);
+  });
+
+  it("old wordsPerDot is dropped on migration", () => {
+    const { settings } = migrateSettings({ settingsVersion: 3, wordsPerDot: 99 });
+    expect("wordsPerDot" in settings).toBe(false);
+    expect(settings.dotsMode).toBe("tasks");
+    expect(settings.settingsVersion).toBe(4);
   });
 
   it("conditions: unknown types and wrong field types are dropped", () => {

@@ -3,7 +3,13 @@ import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
-import { clampPrepDays, IMPORTANT_COLORS, MAX_PREP_DAYS } from "src/core/important";
+import {
+  clampPrepDays,
+  IMPORTANT_COLORS,
+  isCustomColor,
+  MAX_PREP_DAYS,
+  sanitizeImportantColor,
+} from "src/core/important";
 import type { IImportantDay, ImportantColor } from "src/core/important";
 
 /** "Mark as important…" dialog: title, color, preparation days, remove. */
@@ -53,10 +59,30 @@ export class ImportantDayModal extends Modal {
       sw.addEventListener("click", () => {
         this.value.color = color as ImportantColor;
         swatches.forEach((s) => s.removeClass("is-selected"));
+        picker.removeClass("is-selected");
         sw.addClass("is-selected");
       });
       swatches.push(sw);
     }
+
+    // Any colour: native picker; value is validated as #rrggbb before use.
+    const picker = palette.createEl("input", {
+      cls: "cwt-color-picker",
+      attr: { type: "color", "aria-label": t("important.customColor") },
+    });
+    const custom = isCustomColor(this.value.color);
+    picker.value = custom ? this.value.color : "#e93147";
+    if (custom) {
+      picker.addClass("is-selected");
+    }
+    picker.addEventListener("input", () => {
+      if (!isCustomColor(picker.value)) {
+        return;
+      }
+      this.value.color = sanitizeImportantColor(picker.value);
+      swatches.forEach((s) => s.removeClass("is-selected"));
+      picker.addClass("is-selected");
+    });
 
     new Setting(contentEl)
       .setName(t("important.prep"))

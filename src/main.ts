@@ -7,7 +7,7 @@ import { VIEW_TYPE_CALENDAR } from "./constants";
 import { adjacentDate, datesForMonthFrom, datesUntilEndOf, missingDates } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { setLanguage, t } from "src/core/i18n";
-import { dayKey } from "src/core/important";
+import { customColorCss, dayKey } from "src/core/important";
 import type { IImportantDay } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
@@ -53,7 +53,25 @@ export default class CalendarPlugin extends Plugin {
   private openModals = new Set<Modal>();
   private batchRunning = false;
 
+  /** <style> with rules for custom important-day colours (validated hex only). */
+  private colorStyleEl: HTMLStyleElement | null = null;
+
+  private applyCustomColors(value: ISettings): void {
+    if (typeof document === "undefined" || !document.head) {
+      return;
+    }
+    const css = customColorCss(value.importantDays);
+    if (!this.colorStyleEl) {
+      this.colorStyleEl = document.createElement("style");
+      this.colorStyleEl.setAttribute("data-cwt", "custom-colors");
+      document.head.appendChild(this.colorStyleEl);
+    }
+    this.colorStyleEl.textContent = css;
+  }
+
   onunload(): void {
+    this.colorStyleEl?.remove();
+    this.colorStyleEl = null;
     this.openModals.forEach((m) => m.close());
     this.openModals.clear();
     this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).forEach((leaf) => leaf.detach());
@@ -75,6 +93,7 @@ export default class CalendarPlugin extends Plugin {
       settings.subscribe((value) => {
         this.options = value;
         setLanguage(value.language);
+        this.applyCustomColors(value);
       }),
     );
 

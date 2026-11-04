@@ -18,8 +18,7 @@ import {
   holidaysSource,
   importantDaysSource,
   streakSource,
-  tasksSource,
-  wordCountSource,
+  dotsSource,
 } from "./sources";
 import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./stores";
 import { TemplatePreview } from "./templatePreview";
@@ -103,8 +102,7 @@ export default class CalendarView extends ItemView {
     const sources = [
       customTagsSource,
       streakSource,
-      wordCountSource,
-      tasksSource,
+      dotsSource,
       importantDaysSource,
       holidaysSource,
     ];

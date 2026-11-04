@@ -3,19 +3,20 @@
  */
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
-import { DEFAULT_WORDS_PER_DOT } from "src/constants";
 import { CHART_KINDS, CHART_METRICS } from "./charts";
 import type { ChartKind, ChartMetric } from "./charts";
 import { DEFAULT_FORMATS } from "./dates";
 import type { Granularity } from "./dates";
 import { isValidHolidayPattern } from "./holidays";
 import type { HolidayDateOrder } from "./holidays";
-import { clampPrepDays, IMPORTANT_COLORS } from "./important";
+import { DEFAULT_DOTS_MODE, sanitizeDotsMode } from "./dots";
+import type { DotsMode } from "./dots";
+import { clampPrepDays, sanitizeImportantColor } from "./important";
 import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 /** Where the ⋯ menu button sits. */
 export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar";
@@ -42,7 +43,8 @@ export interface ISettings {
   settingsVersion: number;
   language: Language;
 
-  wordsPerDot: number;
+  /** What the dots under days mean (v4). */
+  dotsMode: DotsMode;
   weekStart: IWeekStartOption;
   shouldConfirmBeforeCreate: boolean;
   localeOverride: ILocaleOverride;
@@ -80,7 +82,7 @@ export function makeDefaultSettings(): ISettings {
   return {
     settingsVersion: SETTINGS_VERSION,
     language: "auto",
-    wordsPerDot: DEFAULT_WORDS_PER_DOT,
+    dotsMode: DEFAULT_DOTS_MODE,
     weekStart: "locale" as IWeekStartOption,
     shouldConfirmBeforeCreate: true,
     localeOverride: "system-default",
@@ -122,7 +124,6 @@ export const LIMITS = {
   text: 200,
   rules: 200,
   importantDays: 5000,
-  wordsPerDot: { min: 1, max: 100000 },
 } as const;
 
 const WEEK_START_OPTIONS = ["locale", ...WEEKDAY_KEYS] as const;
@@ -147,14 +148,6 @@ export function sanitizeWeekStart(v: unknown): IWeekStartOption {
 /** Only well-formed moment locale ids reach `moment.locale()`. */
 export function sanitizeLocale(v: unknown): ILocaleOverride {
   return typeof v === "string" && LOCALE_ID.test(v) ? (v as ILocaleOverride) : "system-default";
-}
-
-export function sanitizeWordsPerDot(v: unknown): number {
-  if (typeof v !== "number" || !Number.isFinite(v)) {
-    return DEFAULT_WORDS_PER_DOT;
-  }
-  const { min, max } = LIMITS.wordsPerDot;
-  return Math.min(max, Math.max(min, Math.round(v)));
 }
 
 function sanitizeWeekdayTemplates(raw: unknown): IWeekdayTemplates {
@@ -237,7 +230,7 @@ export function sanitizeImportant(raw: unknown): ImportantDays {
     const d = v as any;
     out[k] = {
       title: str(d.title, "", LIMITS.text),
-      color: (IMPORTANT_COLORS as readonly string[]).includes(d.color) ? d.color : "red",
+      color: sanitizeImportantColor(d.color),
       prepDays: clampPrepDays(Number(d.prepDays ?? 0)),
     };
   }
@@ -301,7 +294,8 @@ export function migrateSettings(
   const settings: ISettings = {
     settingsVersion: SETTINGS_VERSION,
     language: ["auto", "en", "ru"].includes(r.language) ? r.language : defaults.language,
-    wordsPerDot: sanitizeWordsPerDot(r.wordsPerDot),
+    // v4 (2.3.0): `wordsPerDot` is dropped; dots meaning is a mode.
+    dotsMode: sanitizeDotsMode(r.dotsMode),
     weekStart: sanitizeWeekStart(r.weekStart),
     shouldConfirmBeforeCreate:
       typeof r.shouldConfirmBeforeCreate === "boolean"

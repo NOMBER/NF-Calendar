@@ -1,6 +1,5 @@
 export { streakSource } from "./streak";
 export { customTagsSource } from "./tags";
-export { tasksSource } from "./tasks";
-export { wordCountSource } from "./wordCount";
+export { dotsSource } from "./dots";
 export { importantDaysSource } from "./important";
 export { holidaysSource } from "./holidays";

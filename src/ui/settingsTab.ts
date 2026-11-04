@@ -3,7 +3,6 @@ import type { App } from "obsidian";
 import { get } from "svelte/store";
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
 
-import { DEFAULT_WORDS_PER_DOT } from "src/constants";
 import type { Granularity } from "src/core/dates";
 import {
   defaultCondition,
@@ -14,12 +13,13 @@ import {
   RULE_CONDITION_GROUPS,
   WEEKDAY_KEYS,
 } from "src/core/rules";
+import { DOTS_MODES, sanitizeDotsMode } from "src/core/dots";
 import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
 import type { ITemplateRule, RuleCondition, RuleConditionType } from "src/core/rules";
 import { isValidHolidayPattern } from "src/core/holidays";
 import type { HolidayDateOrder } from "src/core/holidays";
-import { MENU_POSITIONS, mergeExternal, sanitizeWordsPerDot } from "src/core/settings";
+import { MENU_POSITIONS, mergeExternal } from "src/core/settings";
 import type { IPeriodicConfig, ISettings, Language, MenuPosition } from "src/core/settings";
 import { readExternalPeriodicSettings } from "src/io/external";
 import { holidayStore } from "src/io/holidays";
@@ -55,7 +55,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
     this.heading(t("settings.general"));
     this.addLanguage();
-    this.addWordsPerDot();
+    this.addDotsMode();
     this.addWeekStart();
     this.addConfirm();
     this.addPreview();
@@ -103,19 +103,18 @@ export class CalendarSettingsTab extends PluginSettingTab {
       });
   }
 
-  private addWordsPerDot(): void {
+  private addDotsMode(): void {
     new Setting(this.containerEl)
-      .setName(t("settings.wordsPerDot"))
-      .setDesc(t("settings.wordsPerDotDesc"))
-      .addText((text) => {
-        text.inputEl.type = "number";
-        text.setPlaceholder(String(DEFAULT_WORDS_PER_DOT));
-        text.setValue(String(this.options.wordsPerDot ?? ""));
-        text.onChange(async (v) => {
-          const n = Number(v);
-          await this.write(() => ({
-            wordsPerDot: v !== "" && n > 0 ? sanitizeWordsPerDot(n) : DEFAULT_WORDS_PER_DOT,
-          }));
+      .setName(t("settings.dotsMode"))
+      .setDesc(t("settings.dotsModeDesc"))
+      .addDropdown((d) => {
+        for (const mode of DOTS_MODES) {
+          d.addOption(mode, t(`dots.${mode}` as I18nKey));
+        }
+        d.setValue(sanitizeDotsMode(this.options.dotsMode));
+        d.onChange(async (v) => {
+          await this.write(() => ({ dotsMode: sanitizeDotsMode(v) }));
+          this.plugin.getView()?.refresh();
         });
       });
   }

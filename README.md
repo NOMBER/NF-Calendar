@@ -87,7 +87,7 @@ migration from 1.x.
   - For a non-empty note you choose: **Append to end**, **Insert at beginning** (after the note's frontmatter),
     **Replace content** (asks for confirmation) or **Skip (leave unchanged)**. Skip is the default button, and Esc does the same.
 - **Important days.**
-  - Right-click a day → "Mark as important…": set a name, a color from a theme-aware palette and "prepare N days before" (0–30).
+  - Right-click a day → "Mark as important…": set a name, a color from a theme-aware palette or any custom colour from the colour picker, and "prepare N days before" (0–30).
   - The day gets a colored outline and the preparation days are softly highlighted.
   - A collapsible **Upcoming important days** list under the calendar opens the note on click.
   - Important days are stored in the plugin's `data.json`, so they need no note.
@@ -154,7 +154,7 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 
 - **General:**
   - Language;
-  - words per dot;
+  - what the dots under days mean: done tasks (default; one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), note exists, or no dots;
   - start of the week (locale default or a fixed day);
   - confirm before creating a note by click;
   - template preview on hover;
@@ -224,7 +224,7 @@ What has been checked and enforced in the code (details in [docs/ARCHITECTURE.md
   - Existing notes are never overwritten.
   - Note creation re-checks the path right before writing, and concurrent creations of the same note are merged.
   - The only way to change an existing note is "Apply template", after you pick an action; Replace also asks for confirmation.
-- **`data.json` validation.** On load, types, allowed values and limits are checked: week start, locale id, words per dot,
+- **`data.json` validation.** On load, types, allowed values and limits are checked: week start, locale id, dots mode, custom colours (`#rrggbb` only),
   rule conditions, important days, string lengths and number of rules (200) and important days (5000).
 - **Template injection / ReDoS.** Placeholder patterns are linear, values are inserted literally, and carried-over text is not
   re-expanded. There are tests for this, including timing tests on hostile input.
@@ -255,7 +255,7 @@ by Obsidian at runtime, and everything else is build or test tooling.
   packages, `jest` / `ts-jest` / `babel-*` and `ejs` / `jake`, `svelte-check` / `svelte-preprocess` / `glob` / `rimraf` /
   `sorcery`, and `@rollup/plugin-commonjs` / `@rollup/plugin-node-resolve` / `deepmerge`. Most fixes need breaking major
   upgrades of the toolchain; they are planned but not done yet.
-- **Technical debt:** `src/ui/stores.ts` and the calendar sources in `src/ui/sources/` (`tags`, `tasks`, `wordCount`) still use
+- **Technical debt:** `src/ui/stores.ts` and the calendar sources in `src/ui/sources/` (`tags`, `dots`) still use
   the global `window.app` instead of the plugin's `app` instance. This works in Obsidian but should be passed in explicitly.
 
 ## Development

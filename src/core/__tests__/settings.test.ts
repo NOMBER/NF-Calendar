@@ -48,7 +48,7 @@ describe("migrateSettings", () => {
     expect(settings.weekdayTemplates.monday).toBe("T/Mon.md");
     expect(settings.weekdayTemplates.friday).toBe("");
     expect(settings).toMatchObject({
-      wordsPerDot: 100,
+      dotsMode: "tasks",
       weekStart: "monday",
       localeOverride: "ru",
       useWeekdayTemplates: true,
@@ -146,7 +146,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(3);
+    expect(settings.settingsVersion).toBe(4);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -163,7 +163,7 @@ describe("v3 (2.2.0) migration", () => {
       menuPosition: "somewhere",
       statsView: { mode: "charts", metric: "tasks", kind: "pie" },
     });
-    expect(migratedFrom).toBeNull();
+    expect(migratedFrom).toBe(3);
     expect(settings.holidaysFolder).toBe("Meta/Dates");
     expect(settings.holidayDateOrder).toBe("monthFirst");
     expect(settings.holidayPattern).toBe("");
