@@ -14,6 +14,15 @@
 .cwt-view {
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+}
+
+/* 2.3.1: .cwt-view is a column flex box inside Obsidian's fixed-height
+   .view-content. Children had the default flex-shrink: 1, so a long
+   "Upcoming" list squeezed the month grid. Nothing shrinks now; the view
+   itself scrolls, and the list has its own height limit. */
+.cwt-view > * {
+  flex-shrink: 0;
 }
 
 .cwt-toolbar {
@@ -64,6 +73,20 @@
 /* ----- upcoming important days ----- */
 .cwt-upcoming-container {
   margin-top: 8px;
+  min-width: 0;
+}
+
+.cwt-upcoming[open] {
+  max-height: min(40vh, 22em);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.cwt-upcoming > summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--background-secondary, var(--background-primary));
 }
 
 .cwt-upcoming > summary {
