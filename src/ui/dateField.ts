@@ -69,6 +69,7 @@ export function createDateField(
     attr: { type: "button", "aria-label": t("dateField.pick") },
   });
   setIcon(btn, "calendar");
+  wrap.appendChild(picker); // native picker last, never between field and icon
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     picker.value = getValue() || "";

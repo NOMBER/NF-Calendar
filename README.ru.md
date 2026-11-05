@@ -1,4 +1,4 @@
-# NF-Calendar 2.8.0
+# NF-Calendar 2.8.1
 
 [English](README.md) · **Русский** · [Другие плагины NomberProjects](https://nomberobsidian.github.io/)
 
