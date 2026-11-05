@@ -1,7 +1,7 @@
 /**
  * "Open a random daily note": pure selection over existing days.
- * Days are "YYYY-MM-DD" keys, one per day (duplicates already merged by
- * the note index). `random` is injectable for tests.
+ * Days are "YYYY-MM-DD" keys. Prefs may hold several ranges; the pick draws
+ * from their union (deduped). `random` is injectable for tests.
  */
 
 export type RandomScope =
@@ -48,20 +48,32 @@ export function inScope(day: string, scope: RandomScope): boolean {
   }
 }
 
-/** Unique, valid days within the scope (sorted). */
-export function randomCandidates(days: Iterable<string>, scope: RandomScope): string[] {
-  return Array.from(new Set(days))
-    .filter((d) => inScope(d, scope))
-    .sort();
+export function normalizeScopes(scope: RandomScope | RandomScope[]): RandomScope[] {
+  return Array.isArray(scope) ? scope : [scope];
+}
+
+/** Unique, valid days within any of the scopes (sorted). */
+export function randomCandidates(
+  days: Iterable<string>,
+  scope: RandomScope | RandomScope[],
+): string[] {
+  const scopes = normalizeScopes(scope);
+  if (!scopes.length) return [];
+  const set = new Set<string>();
+  for (const d of days) {
+    if (!DAY_RE.test(d)) continue;
+    if (scopes.some((s) => inScope(d, s))) set.add(d);
+  }
+  return Array.from(set).sort();
 }
 
 const pickIndex = (n: number, random: () => number) =>
   Math.min(n - 1, Math.max(0, Math.floor(random() * n)));
 
-/** Random day in the scope, or null when there is none. */
+/** Random day in the (union of) scope(s), or null when there is none. */
 export function pickRandomDay(
   days: Iterable<string>,
-  scope: RandomScope,
+  scope: RandomScope | RandomScope[],
   opts: IRandomOptions = {},
 ): string | null {
   const random = opts.random || Math.random;
@@ -77,7 +89,7 @@ export function pickRandomDay(
  */
 export async function pickRandomNonEmptyDay(
   days: Iterable<string>,
-  scope: RandomScope,
+  scope: RandomScope | RandomScope[],
   isEmpty: (day: string) => Promise<boolean>,
   opts: IRandomOptions = {},
 ): Promise<string | null> {
@@ -94,7 +106,6 @@ export async function pickRandomNonEmptyDay(
     c[i] = c[n - 1];
     if (!(await isEmpty(day))) return day;
   }
-  // The excluded one is still better than nothing.
   if (excluded && !(await isEmpty(excluded))) return excluded;
   return null;
 }
@@ -124,18 +135,32 @@ export function isBlankDailyNote(text: string): boolean {
 export type RandomKind = RandomScope["kind"];
 export const RANDOM_KINDS: RandomKind[] = ["all", "year", "month", "lastDays", "range"];
 
-export interface IRandomPrefs {
+/** One period row in the multi-range random prefs. */
+export interface IRandomRange {
   kind: RandomKind;
   days: number;
   from: string;
   to: string;
+  /** Month 1..12 when kind is "month" (year comes from context unless year is set). */
+  month: number;
+  /** Optional year override for year/month kinds; 0 / omitted → use context year. */
+  year: number;
+}
+
+export interface IRandomPrefs {
+  ranges: IRandomRange[];
   skipEmpty: boolean;
 }
 
 export const MAX_RANDOM_DAYS = 36500;
+export const MAX_RANDOM_RANGES = 12;
+
+export function defaultRandomRange(): IRandomRange {
+  return { kind: "all", days: 30, from: "", to: "", month: 1, year: 0 };
+}
 
 export function defaultRandomPrefs(): IRandomPrefs {
-  return { kind: "all", days: 30, from: "", to: "", skipEmpty: false };
+  return { ranges: [defaultRandomRange()], skipEmpty: false };
 }
 
 export function isDayKey(v: unknown): v is string {
@@ -146,32 +171,58 @@ export function isDayKey(v: unknown): v is string {
   return d.toISOString().slice(0, 10) === v;
 }
 
-export function sanitizeRandomPrefs(raw: unknown): IRandomPrefs {
-  const d = defaultRandomPrefs();
+function sanitizeRange(raw: unknown): IRandomRange {
+  const d = defaultRandomRange();
   if (!raw || typeof raw !== "object") return d;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = raw as any;
   const days = Math.floor(Number(r.days));
+  const month = Math.floor(Number(r.month));
+  const year = Math.floor(Number(r.year));
   return {
     kind: RANDOM_KINDS.includes(r.kind) ? r.kind : d.kind,
     days: days >= 1 && days <= MAX_RANDOM_DAYS ? days : d.days,
     from: isDayKey(r.from) ? r.from : "",
     to: isDayKey(r.to) ? r.to : "",
-    skipEmpty: r.skipEmpty === true,
+    month: month >= 1 && month <= 12 ? month : d.month,
+    year: year >= 1000 && year <= 9999 ? year : 0,
   };
 }
 
 /**
- * Scope for given prefs. `year`/`month` (1..12) are the context (navigator's
- * year, or today for the command). A range with a missing end is open on
- * that side; with both ends missing it means all notes.
+ * Accepts v12 `{ ranges, skipEmpty }` and legacy single-range
+ * `{ kind, days, from, to, skipEmpty }`.
  */
-export function scopeFromPrefs(
-  p: IRandomPrefs,
+export function sanitizeRandomPrefs(raw: unknown): IRandomPrefs {
+  const d = defaultRandomPrefs();
+  if (!raw || typeof raw !== "object") return d;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  let ranges: IRandomRange[];
+  if (Array.isArray(r.ranges) && r.ranges.length) {
+    ranges = r.ranges.slice(0, MAX_RANDOM_RANGES).map(sanitizeRange);
+  } else if (r.kind || r.from || r.to || r.days) {
+    // v11 and earlier: one flat range object.
+    ranges = [sanitizeRange(r)];
+  } else {
+    ranges = [defaultRandomRange()];
+  }
+  if (!ranges.length) ranges = [defaultRandomRange()];
+  return { ranges, skipEmpty: r.skipEmpty === true };
+}
+
+/**
+ * Scope for one range row. `ctxYear`/`ctxMonth` (1..12) are the navigator
+ * (or today for the command) when the row has no year override.
+ */
+export function scopeFromRange(
+  p: IRandomRange,
   today: string,
-  year: number,
-  month: number,
+  ctxYear: number,
+  ctxMonth: number,
 ): RandomScope {
+  const year = p.year >= 1000 ? p.year : ctxYear;
+  const month = p.month >= 1 && p.month <= 12 ? p.month : ctxMonth;
   switch (p.kind) {
     case "year":
       return { kind: "year", year };
@@ -185,4 +236,28 @@ export function scopeFromPrefs(
     default:
       return { kind: "all" };
   }
+}
+
+/** All scopes for the current prefs (one per range row). */
+export function scopesFromPrefs(
+  p: IRandomPrefs,
+  today: string,
+  ctxYear: number,
+  ctxMonth: number,
+): RandomScope[] {
+  const ranges = p.ranges?.length ? p.ranges : [defaultRandomRange()];
+  return ranges.map((r) => scopeFromRange(r, today, ctxYear, ctxMonth));
+}
+
+/** @deprecated use scopesFromPrefs; kept for older call sites / tests. */
+export function scopeFromPrefs(
+  p: IRandomPrefs | (IRandomRange & { skipEmpty?: boolean }),
+  today: string,
+  year: number,
+  month: number,
+): RandomScope {
+  if (p && typeof p === "object" && Array.isArray((p as IRandomPrefs).ranges)) {
+    return scopesFromPrefs(p as IRandomPrefs, today, year, month)[0] ?? { kind: "all" };
+  }
+  return scopeFromRange(sanitizeRange(p), today, year, month);
 }

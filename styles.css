@@ -1018,3 +1018,69 @@
 .cwt-stats-header {
   margin-bottom: 4px;
 }
+
+
+/* Wrapping action rows in settings (organize, random add, …) — avoid Setting.controlEl flex stretch. */
+.cwt-settings .cwt-button-row,
+.nf-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.35rem 0 0.85rem;
+  max-width: 100%;
+}
+.cwt-settings .cwt-button-row > button {
+  flex: 0 1 auto;
+  white-space: normal;
+  text-align: center;
+  height: auto;
+  min-height: var(--input-height, 2rem);
+  padding: 0.35rem 0.75rem;
+}
+
+/* Multi-range random prefs in settings */
+.cwt-settings .cwt-random-ranges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  max-width: 100%;
+}
+.cwt-settings .cwt-random-range {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem 0.5rem;
+  max-width: 100%;
+}
+.cwt-settings .cwt-random-range .setting-item {
+  border: none;
+}
+
+/* Dice quick-open next to the random expand button */
+.cwt-nav-random-dice {
+  flex: 0 0 auto;
+  margin-left: 0.15rem;
+}
+.cwt-nav-random-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.cwt-nav-random-range {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.cwt-nav-random-dates {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.cwt-nav-random-remove {
+  margin-left: auto;
+  font-size: 1.1em;
+  line-height: 1;
+}

@@ -16,9 +16,12 @@ describe("menu items", () => {
     const d = defaultMenuItems();
     expect(d.find((p) => p.id === "missingWeekBack")?.visible).toBe(false);
     expect(d.find((p) => p.id === "missingWeekFull")?.visible).toBe(false);
-    expect(d.filter((p) => !["missingWeekBack", "missingWeekFull"].includes(p.id)).every((p) => p.visible)).toBe(
-      true,
-    );
+    expect(
+      d
+        .filter((p) => !["missingWeekBack", "missingWeekFull", "openRandomSaved"].includes(p.id))
+        .every((p) => p.visible),
+    ).toBe(true);
+    expect(d.find((p) => p.id === "openRandomSaved")?.visible).toBe(false);
     expect(ids(sanitizeMenuItems(undefined))).toEqual([...MENU_ITEM_IDS]);
     expect(ids(sanitizeMenuItems("x"))).toEqual([...MENU_ITEM_IDS]);
   });
@@ -32,9 +35,11 @@ describe("menu items", () => {
       42,
       "openToday",
     ]);
-    expect(s.filter((p) => p.id !== "openYesterday").slice(0, 3)).toEqual([
+    // openRandomSaved is inserted after its predecessor (statistics), default hidden.
+    expect(s.filter((p) => p.id !== "openYesterday").slice(0, 4)).toEqual([
       { id: "settings", visible: true },
       { id: "statistics", visible: false },
+      { id: "openRandomSaved", visible: false },
       { id: "openToday", visible: true },
     ]);
     expect(s).toHaveLength(MENU_ITEM_IDS.length);
@@ -100,7 +105,7 @@ describe("menu items", () => {
   });
 
   it("settings v6 -> v7 migration adds the default menu; stored menu sanitized", () => {
-    expect(SETTINGS_VERSION).toBe(11);
+    expect(SETTINGS_VERSION).toBe(12);
     const m = migrateSettings({ settingsVersion: 6, showHolidayMarks: false });
     expect(m.migratedFrom).toBe(6);
     expect(m.settings.menuItems).toEqual(defaultMenuItems());
@@ -115,5 +120,21 @@ describe("menu items", () => {
       visible: true,
     });
     expect(k.settings.menuItems).toHaveLength(MENU_ITEM_IDS.length);
+  });
+});
+
+describe("v12 openRandomSaved menu item", () => {
+  it("appends hidden by default on migrate", () => {
+    const m = migrateSettings({
+      settingsVersion: 11,
+      menuItems: [
+        { id: "openToday", visible: true },
+        { id: "statistics", visible: true },
+        { id: "settings", visible: true },
+      ],
+    });
+    const item = m.settings.menuItems.find((x) => x.id === "openRandomSaved");
+    expect(item).toEqual({ id: "openRandomSaved", visible: false });
+    expect(m.settings.menuItems.map((x) => x.id)).toContain("openRandomSaved");
   });
 });

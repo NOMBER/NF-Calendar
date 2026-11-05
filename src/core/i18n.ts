@@ -410,7 +410,7 @@ const en = {
   "settings.randomSection": "Random note",
   "settings.randomKind": "Default period",
   "settings.randomKindDesc":
-    'Used by the command "Open random daily note" and as the start value in the date navigator. Year and month mean the current ones for the command and the chosen ones in the navigator.',
+    "One or more periods. The random pick draws from their union (duplicates removed). Used by the command, the dice button, and Go to date → Open random note. Year/month: today for the command/dice; the chosen year (and each range's month) in the window.",
   "settings.randomSkipDesc":
     "Skip notes with only front matter, headings and empty list/task markers.",
   "randomKind.all": "All notes",
@@ -422,6 +422,12 @@ const en = {
   "settings.menuHiddenHint":
     "The ⋯ button is hidden. Everything stays in the command palette; right-click on the month title still opens this menu. Plugin settings: Obsidian Settings → Community plugins → NF-Calendar.",
   "navigator.randomOpen": "Open",
+  "navigator.randomAdd": "+ Add range",
+  "navigator.randomRemove": "Remove range",
+  "navigator.randomDice": "Open random note (saved settings)",
+  "menuItem.openRandomSaved": "Open random note (saved settings)",
+  "settings.randomRangeN": "Range {n}",
+
   "dateField.pick": "Pick a date",
   "settings.missingFromOpenNote": "Create relative to the open note",
   "settings.missingFromOpenNoteDesc":
@@ -871,7 +877,7 @@ const ru: Record<I18nKey, string> = {
   "settings.randomSection": "Случайная заметка",
   "settings.randomKind": "Период по умолчанию",
   "settings.randomKindDesc":
-    "Для команды «Открыть случайную ежедневную заметку» и как начальное значение в окне перехода к дате. Год и месяц: для команды — текущие, в окне — выбранные.",
+    "Один или несколько периодов. Случайная заметка берётся из их объединения (без дубликатов). Для команды, кнопки с кубиком и окна перехода к дате. Год/месяц: для команды и кубика — текущие; в окне — выбранный год и месяц каждого диапазона.",
   "settings.randomSkipDesc":
     "Пропускать заметки, где кроме frontmatter только заголовки и пустые пункты списков/задач.",
   "randomKind.all": "Все заметки",
@@ -883,6 +889,12 @@ const ru: Record<I18nKey, string> = {
   "settings.menuHiddenHint":
     "Кнопка ⋯ скрыта. Все функции есть в палитре команд; правый клик по названию месяца по-прежнему открывает это меню. Настройки плагина: Настройки Obsidian → Сторонние плагины → NF-Calendar.",
   "navigator.randomOpen": "Открыть",
+  "navigator.randomAdd": "+ Добавить диапазон",
+  "navigator.randomRemove": "Удалить диапазон",
+  "navigator.randomDice": "Открыть случайную заметку (сохранённые настройки)",
+  "menuItem.openRandomSaved": "Открыть случайную заметку (сохранённые настройки)",
+  "settings.randomRangeN": "Диапазон {n}",
+
   "dateField.pick": "Выбрать дату",
   "settings.missingFromOpenNote": "Создавать относительно открытой заметки",
   "settings.missingFromOpenNoteDesc":

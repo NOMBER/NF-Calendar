@@ -126,6 +126,11 @@ export function buildMainMenu(
       icon: "bar-chart-2",
       fn: () => plugin.showStatistics(month),
     },
+    openRandomSaved: {
+      title: t("menuItem.openRandomSaved"),
+      icon: "dice",
+      fn: () => plugin.openRandomFromDefaults(),
+    },
     settings: { title: t("cmd.settings"), icon: "settings", fn: () => plugin.openSettings() },
   };
   const { entries } = resolveMenuLayout(options.menuItems, (id) => defs[id].when !== false);

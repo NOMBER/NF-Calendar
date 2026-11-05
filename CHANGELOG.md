@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.12.0
+
+- **Multi-range random daily note.** Settings → Random note and Go to date → Open random note support several period rows (all / year / month / last N days / custom range) with “+ Add range” and remove. The pick is uniform over the **union** of the ranges (duplicates removed). Skip empty unchanged. Legacy single-range prefs migrate (`settingsVersion` 12).
+- **Dice quick-open.** Small 🎲 button next to “Open random note” in Go to date opens immediately with the **saved** ranges / skip-empty (no expand); closes the modal or shows a Notice. Equivalent ⋯ menu item “Open random note (saved settings)” (default **hidden**; enable in Settings → Menu). The existing command already used saved prefs — verified. Edits in the random block are persisted as you change them.
+- **Organize settings layout.** The Organize button row no longer sits in a tall overflowing Setting control; buttons wrap in a plain `cwt-button-row` flex row. Same pattern for the random “Add range” row.
+
 ## 2.11.0
 
 - **Daily note folders setting.** Dropdown “Daily note folders” (flat / by year / by year and month) is next to Organize. After Organize, “Also store new notes this way” is **on by default** so new notes (including at year boundaries, e.g. `2027-01-01` → `2027/01/`) match the layout you just applied. Old `yearFolders` still migrates to `folderLayout`.

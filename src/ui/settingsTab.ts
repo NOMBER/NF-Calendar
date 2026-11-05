@@ -5,8 +5,14 @@ import type { DateFieldFormat } from "../core/dateField";
 import { STARTUP_TAB_POSITIONS } from "../core/tabs";
 import type { StartupTabPosition } from "../core/tabs";
 import { preserveView } from "./preserveView";
-import { MAX_RANDOM_DAYS, RANDOM_KINDS, isDayKey } from "../core/random";
-import type { IRandomPrefs, RandomKind } from "../core/random";
+import {
+  MAX_RANDOM_DAYS,
+  MAX_RANDOM_RANGES,
+  RANDOM_KINDS,
+  defaultRandomRange,
+  isDayKey,
+} from "../core/random";
+import type { IRandomPrefs, IRandomRange, RandomKind } from "../core/random";
 import {
   defaultMenuItems,
   moveMenuItem,
@@ -154,49 +160,120 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   private addRandom(): void {
     const r = this.options.random;
-    const save = (patch: Partial<IRandomPrefs>, rerender = false) =>
-      this.write((o) => ({ random: { ...o.random, ...patch } })).then(() => {
+    const save = (next: IRandomPrefs, rerender = false) =>
+      this.write(() => ({ random: next })).then(() => {
         if (rerender) this.redraw();
       });
+    const ranges = r.ranges?.length ? r.ranges.map((x) => ({ ...x })) : [defaultRandomRange()];
+
+    new Setting(this.containerEl).setName(t("settings.randomKind")).setDesc(t("settings.randomKindDesc"));
+
+    const list = this.containerEl.createDiv({ cls: "cwt-random-ranges" });
+    ranges.forEach((range, idx) => {
+      this.renderRandomRangeSetting(list, ranges, range, idx, () =>
+        void save({ ranges: ranges.map((x) => ({ ...x })), skipEmpty: r.skipEmpty }, true),
+      );
+    });
+
+    const addRow = this.containerEl.createDiv({ cls: "cwt-button-row" });
+    const addBtn = addRow.createEl("button", {
+      text: t("navigator.randomAdd"),
+      attr: { type: "button" },
+    });
+    addBtn.disabled = ranges.length >= MAX_RANDOM_RANGES;
+    addBtn.addEventListener("click", () => {
+      if (ranges.length >= MAX_RANDOM_RANGES) return;
+      ranges.push(defaultRandomRange());
+      void save({ ranges, skipEmpty: r.skipEmpty }, true);
+    });
+
     new Setting(this.containerEl)
-      .setName(t("settings.randomKind"))
-      .setDesc(t("settings.randomKindDesc"))
+      .setName(t("navigator.randomSkipEmpty"))
+      .setDesc(t("settings.randomSkipDesc"))
+      .addToggle((tg) =>
+        tg.setValue(r.skipEmpty).onChange((v) =>
+          void save({ ranges: this.options.random.ranges, skipEmpty: v }),
+        ),
+      );
+  }
+
+  private renderRandomRangeSetting(
+    list: HTMLElement,
+    ranges: IRandomRange[],
+    range: IRandomRange,
+    idx: number,
+    onChange: () => void,
+  ): void {
+    const wrap = list.createDiv({ cls: "cwt-random-range" });
+    const head = new Setting(wrap)
+      .setName(t("settings.randomRangeN", { n: String(idx + 1) }))
       .addDropdown((d) => {
         RANDOM_KINDS.forEach((k) => d.addOption(k, t(`randomKind.${k}` as I18nKey)));
-        d.setValue(r.kind);
-        d.onChange((v) => void save({ kind: v as RandomKind }, true));
+        d.setValue(range.kind);
+        d.onChange((v) => {
+          range.kind = v as RandomKind;
+          onChange();
+        });
       });
-    if (r.kind === "lastDays") {
-      new Setting(this.containerEl).setName(t("navigator.randomDays")).addText((tx) => {
-        tx.inputEl.type = "number";
-        tx.inputEl.min = "1";
-        tx.inputEl.max = String(MAX_RANDOM_DAYS);
-        tx.setValue(String(r.days));
-        tx.onChange((v) => {
-          const n = Math.floor(Number(v));
-          if (n >= 1 && n <= MAX_RANDOM_DAYS) void save({ days: n });
+    if (ranges.length > 1) {
+      head.addExtraButton((b) =>
+        b
+          .setIcon("x")
+          .setTooltip(t("navigator.randomRemove"))
+          .onClick(() => {
+            ranges.splice(idx, 1);
+            onChange();
+          }),
+      );
+    }
+    if (range.kind === "month") {
+      new Setting(wrap).setName(t("navigator.randomMonthPick")).addDropdown((d) => {
+        for (let m = 1; m <= 12; m++) {
+          d.addOption(
+            String(m),
+            window.moment({ year: 2026, month: m - 1, day: 1 }).format("MMMM"),
+          );
+        }
+        d.setValue(String(range.month >= 1 && range.month <= 12 ? range.month : 1));
+        d.onChange((v) => {
+          range.month = Number(v) || 1;
+          onChange();
         });
       });
     }
-    if (r.kind === "range") {
+    if (range.kind === "lastDays") {
+      new Setting(wrap).setName(t("navigator.randomDays")).addText((tx) => {
+        tx.inputEl.type = "number";
+        tx.inputEl.min = "1";
+        tx.inputEl.max = String(MAX_RANDOM_DAYS);
+        tx.setValue(String(range.days));
+        tx.onChange((v) => {
+          const n = Math.floor(Number(v));
+          if (n >= 1 && n <= MAX_RANDOM_DAYS) {
+            range.days = n;
+            onChange();
+          }
+        });
+      });
+    }
+    if (range.kind === "range") {
       const date = (key: "from" | "to", name: string) => {
-        const s = new Setting(this.containerEl).setName(name);
+        const s = new Setting(wrap).setName(name);
         createDateField(s.controlEl, {
-          value: r[key],
+          value: range[key],
           format: this.options.dateFieldFormat,
           label: name,
           onChange: (v) => {
-            if (v === "" || isDayKey(v)) void save({ [key]: v });
+            if (v === "" || isDayKey(v)) {
+              range[key] = v;
+              onChange();
+            }
           },
         });
       };
       date("from", t("navigator.randomFrom"));
       date("to", t("navigator.randomTo"));
     }
-    new Setting(this.containerEl)
-      .setName(t("navigator.randomSkipEmpty"))
-      .setDesc(t("settings.randomSkipDesc"))
-      .addToggle((tg) => tg.setValue(r.skipEmpty).onChange((v) => void save({ skipEmpty: v })));
   }
 
   // ---------- ⋯ menu ----------
@@ -225,6 +302,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       applyTemplate: t("cmd.applyTemplate"),
       importantList: t("cmd.importantList"),
       statistics: t("cmd.statistics"),
+      openRandomSaved: t("menuItem.openRandomSaved"),
       settings: t("cmd.settings"),
     };
     const conditional: MenuItemId[] = [
@@ -638,26 +716,19 @@ export class CalendarSettingsTab extends PluginSettingTab {
         });
       new Setting(this.containerEl)
         .setName(t("cmd.organize"))
-        .setDesc(t("settings.organizeDesc"))
-        .addButton((b) =>
-          b.setButtonText(t("settings.organizeButton")).onClick(() => {
-            this.plugin.organizeDailyNotes("year");
-          }),
-        )
-        .addButton((b) =>
-          b.setButtonText(t("cmd.organizeYearMonth")).onClick(() => {
-            this.plugin.organizeDailyNotes("year-month");
-          }),
-        )
-        .addButton((b) =>
-          b.setButtonText(t("cmd.organizeFlat")).onClick(() => {
-            this.plugin.organizeDailyNotes("flat");
-          }),
-        )
-        .addButton((b) => {
-          b.setButtonText(t("cmd.undoOrganize")).onClick(() => void this.plugin.undoLastOrganize());
-          b.setDisabled(!this.options.lastOrganize);
-        });
+        .setDesc(t("settings.organizeDesc"));
+      // Plain wrapping row — Obsidian Setting.controlEl flex was stretching tall and overflowing.
+      const row = this.containerEl.createDiv({ cls: "cwt-button-row" });
+      const mk = (label: string, onClick: () => void, disabled = false) => {
+        const b = row.createEl("button", { text: label, attr: { type: "button" } });
+        b.disabled = disabled;
+        b.addEventListener("click", onClick);
+        return b;
+      };
+      mk(t("settings.organizeButton"), () => this.plugin.organizeDailyNotes("year"));
+      mk(t("cmd.organizeYearMonth"), () => this.plugin.organizeDailyNotes("year-month"));
+      mk(t("cmd.organizeFlat"), () => this.plugin.organizeDailyNotes("flat"));
+      mk(t("cmd.undoOrganize"), () => void this.plugin.undoLastOrganize(), !this.options.lastOrganize);
     }
   }
 

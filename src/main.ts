@@ -60,9 +60,9 @@ import {
   isBlankDailyNote,
   pickRandomDay,
   pickRandomNonEmptyDay,
-  scopeFromPrefs,
+  scopesFromPrefs,
 } from "src/core/random";
-import type { RandomScope } from "src/core/random";
+import type { IRandomPrefs, RandomScope } from "src/core/random";
 import { ImportantDayModal } from "src/ui/modals/importantDay";
 import { ImportantListModal } from "src/ui/modals/importantList";
 import { StatsModal } from "src/ui/modals/stats";
@@ -615,23 +615,23 @@ export default class CalendarPlugin extends Plugin {
 
   private lastRandomDay: string | null = null;
 
-  /** Command palette: the defaults from Settings → Random note (year/month = today's). */
+  /** Command palette / dice / ⋯ menu: saved Random note prefs (year/month = today's). */
   openRandomFromDefaults(): Promise<boolean> {
     const p = this.options.random;
     const now = window.moment();
     return this.openRandomDailyNote(
-      scopeFromPrefs(p, now.format("YYYY-MM-DD"), now.year(), now.month() + 1),
+      scopesFromPrefs(p, now.format("YYYY-MM-DD"), now.year(), now.month() + 1),
       p.skipEmpty,
     );
   }
 
   /**
-   * Opens a random existing daily note in the scope. Uses the note index
-   * (flat + year folders, one file per day); file contents are read only
-   * with `skipEmpty`, and then only for the drawn candidates.
+   * Opens a random existing daily note in the (union of) scope(s). Uses the
+   * note index (flat + year folders, one file per day); file contents are
+   * read only with `skipEmpty`, and then only for the drawn candidates.
    */
   async openRandomDailyNote(
-    scope: RandomScope = { kind: "all" },
+    scope: RandomScope | RandomScope[] = { kind: "all" },
     skipEmpty = false,
   ): Promise<boolean> {
     const byDay = new Map<string, TFile>();
@@ -952,6 +952,8 @@ export default class CalendarPlugin extends Plugin {
         hasNote: (d) => !!this.findDailyNote(d),
         openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),
         randomDefaults: this.options.random,
+        saveRandom: (prefs: IRandomPrefs) =>
+          void this.writeOptions(() => ({ random: prefs })),
         dateFormat: this.options.dateFieldFormat,
         stats,
       }),

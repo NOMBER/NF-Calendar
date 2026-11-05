@@ -44,6 +44,30 @@ describe("random daily note", () => {
     expect(shiftDay("2024-03-01", -1)).toBe("2024-02-29");
   });
 
+  it("union of scopes dedupes overlapping days", () => {
+    const union = randomCandidates(days, [
+      { kind: "year", year: 2025 },
+      { kind: "month", year: 2026, month: 1 },
+      { kind: "year", year: 2025 }, // overlap
+    ]);
+    expect(union).toEqual(["2025-12-31", "2026-01-15"]);
+  });
+
+  it("empty union yields null pick", () => {
+    expect(pickRandomDay(days, [])).toBeNull();
+    expect(pickRandomDay(days, [{ kind: "year", year: 1999 }, { kind: "year", year: 1998 }])).toBeNull();
+  });
+
+  it("picks with injected random across union", () => {
+    const scopes = [
+      { kind: "year" as const, year: 2025 },
+      { kind: "month" as const, year: 2026, month: 2 },
+    ];
+    // candidates: 2025-12-31, 2026-02-01
+    expect(pickRandomDay(days, scopes, { random: () => 0 })).toBe("2025-12-31");
+    expect(pickRandomDay(days, scopes, { random: () => 0.9999 })).toBe("2026-02-01");
+  });
+
   it("picks with injected random, edges and empty", () => {
     expect(pickRandomDay(days, { kind: "all" }, { random: () => 0 })).toBe("2025-12-31");
     expect(pickRandomDay(days, { kind: "all" }, { random: () => 0.9999 })).toBe("2026-11-05");
@@ -96,7 +120,13 @@ describe("random daily note", () => {
   });
 });
 
-import { defaultRandomPrefs, sanitizeRandomPrefs, scopeFromPrefs } from "src/core/random";
+import {
+  defaultRandomPrefs,
+  defaultRandomRange,
+  sanitizeRandomPrefs,
+  scopeFromPrefs,
+  scopesFromPrefs,
+} from "src/core/random";
 
 describe("2.7.0 random range and prefs", () => {
   it("range is inclusive and order-insensitive", () => {
@@ -110,27 +140,50 @@ describe("2.7.0 random range and prefs", () => {
   it("scopeFromPrefs maps every kind", () => {
     const p = defaultRandomPrefs();
     expect(scopeFromPrefs(p, "2027-05-05", 2027, 5)).toEqual({ kind: "all" });
-    expect(scopeFromPrefs({ ...p, kind: "year" }, "2027-05-05", 2026, 1)).toEqual({
-      kind: "year",
-      year: 2026,
-    });
-    expect(scopeFromPrefs({ ...p, kind: "month" }, "t", 2027, 2)).toEqual({
-      kind: "month",
-      year: 2027,
-      month: 2,
-    });
-    expect(scopeFromPrefs({ ...p, kind: "lastDays", days: 7 }, "2027-05-05", 0, 0)).toEqual({
-      kind: "lastDays",
-      days: 7,
-      today: "2027-05-05",
-    });
-    expect(scopeFromPrefs({ ...p, kind: "range" }, "t", 0, 0)).toEqual({ kind: "all" });
-    const open = scopeFromPrefs({ ...p, kind: "range", from: "2027-01-01" }, "t", 0, 0);
+    expect(
+      scopeFromPrefs(
+        { ranges: [{ ...defaultRandomRange(), kind: "year" }], skipEmpty: false },
+        "2027-05-05",
+        2026,
+        1,
+      ),
+    ).toEqual({ kind: "year", year: 2026 });
+    expect(
+      scopesFromPrefs(
+        {
+          ranges: [
+            { ...defaultRandomRange(), kind: "month", month: 2 },
+            { ...defaultRandomRange(), kind: "lastDays", days: 7 },
+          ],
+          skipEmpty: true,
+        },
+        "2027-05-05",
+        2027,
+        5,
+      ),
+    ).toEqual([
+      { kind: "month", year: 2027, month: 2 },
+      { kind: "lastDays", days: 7, today: "2027-05-05" },
+    ]);
+    expect(
+      scopeFromPrefs(
+        { ranges: [{ ...defaultRandomRange(), kind: "range" }], skipEmpty: false },
+        "t",
+        0,
+        0,
+      ),
+    ).toEqual({ kind: "all" });
+    const open = scopeFromPrefs(
+      { ranges: [{ ...defaultRandomRange(), kind: "range", from: "2027-01-01" }], skipEmpty: false },
+      "t",
+      0,
+      0,
+    );
     expect(inScope("2999-01-01", open)).toBe(true);
     expect(inScope("2026-12-31", open)).toBe(false);
   });
 
-  it("sanitizeRandomPrefs rejects junk", () => {
+  it("sanitizeRandomPrefs migrates legacy single range and rejects junk", () => {
     expect(sanitizeRandomPrefs(null)).toEqual(defaultRandomPrefs());
     expect(
       sanitizeRandomPrefs({
@@ -140,9 +193,26 @@ describe("2.7.0 random range and prefs", () => {
         to: "2027-01-02",
         skipEmpty: "yes",
       }),
-    ).toEqual({ kind: "all", days: 30, from: "", to: "2027-01-02", skipEmpty: false });
-    expect(sanitizeRandomPrefs({ kind: "range", days: 99999999, skipEmpty: true }).skipEmpty).toBe(
-      true,
-    );
+    ).toEqual({
+      ranges: [{ kind: "all", days: 30, from: "", to: "2027-01-02", month: 1, year: 0 }],
+      skipEmpty: false,
+    });
+    const multi = sanitizeRandomPrefs({
+      ranges: [
+        { kind: "year", days: 10 },
+        { kind: "lastDays", days: 14, skipEmpty: true },
+      ],
+      skipEmpty: true,
+    });
+    expect(multi.skipEmpty).toBe(true);
+    expect(multi.ranges).toHaveLength(2);
+    expect(multi.ranges[0].kind).toBe("year");
+    expect(multi.ranges[1]).toMatchObject({ kind: "lastDays", days: 14 });
+    // Legacy flat prefs → one range
+    const legacy = sanitizeRandomPrefs({ kind: "lastDays", days: 7, skipEmpty: true });
+    expect(legacy.ranges).toHaveLength(1);
+    expect(legacy.ranges[0].kind).toBe("lastDays");
+    expect(legacy.ranges[0].days).toBe(7);
+    expect(legacy.skipEmpty).toBe(true);
   });
 });

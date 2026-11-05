@@ -21,6 +21,7 @@ export const MENU_ITEM_IDS = [
   "applyTemplate",
   "importantList",
   "statistics",
+  "openRandomSaved",
   "settings",
 ] as const;
 
@@ -50,6 +51,7 @@ export const MENU_ITEM_GROUP: Record<MenuItemId, number> = {
   applyTemplate: 2,
   importantList: 3,
   statistics: 3,
+  openRandomSaved: 3,
   settings: 3,
 };
 
@@ -60,6 +62,7 @@ export const MENU_FALLBACK_ITEM: MenuItemId = "settings";
 export const MENU_ITEM_DEFAULT_VISIBLE: Partial<Record<MenuItemId, boolean>> = {
   missingWeekBack: false,
   missingWeekFull: false,
+  openRandomSaved: false,
 };
 
 export function defaultMenuItems(): IMenuItemPref[] {
@@ -74,8 +77,8 @@ const isId = (v: unknown): v is MenuItemId =>
 
 /**
  * Drops unknown and duplicate ids, keeps the user's order, and inserts
- * items unknown to the stored list (added in a later version) visible,
- * right after their default predecessor.
+ * items unknown to the stored list (added in a later version) at their
+ * default visibility, right after their default predecessor.
  */
 export function sanitizeMenuItems(raw: unknown): IMenuItemPref[] {
   if (!Array.isArray(raw)) return defaultMenuItems();

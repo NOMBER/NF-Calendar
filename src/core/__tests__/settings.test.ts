@@ -156,7 +156,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(11);
+    expect(settings.settingsVersion).toBe(12);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -254,17 +254,21 @@ describe("2.5.1: grid display switches", () => {
 describe("2.7.0 migration (v8)", () => {
   it("v7 data gets random defaults; hidden menu position accepted", () => {
     const { settings } = migrateSettings({ settingsVersion: 7, menuPosition: "hidden" });
-    expect(SETTINGS_VERSION).toBe(11);
-    expect(settings.settingsVersion).toBe(11);
+    expect(SETTINGS_VERSION).toBe(12);
+    expect(settings.settingsVersion).toBe(12);
     expect(settings.menuPosition).toBe("hidden");
-    expect(settings.random).toEqual({ kind: "all", days: 30, from: "", to: "", skipEmpty: false });
+    expect(settings.random).toEqual({
+      ranges: [{ kind: "all", days: 30, from: "", to: "", month: 1, year: 0 }],
+      skipEmpty: false,
+    });
     const s2 = migrateSettings({
       settingsVersion: 8,
       random: { kind: "range", days: 5, from: "2027-01-01", to: "2027-02-01", skipEmpty: true },
     }).settings;
-    expect(s2.random.kind).toBe("range");
+    expect(s2.random.ranges[0].kind).toBe("range");
+    expect(s2.random.ranges[0].from).toBe("2027-01-01");
     expect(s2.random.skipEmpty).toBe(true);
-    expect(makeDefaultSettings().random.kind).toBe("all");
+    expect(makeDefaultSettings().random.ranges[0].kind).toBe("all");
   });
 });
 
@@ -276,7 +280,7 @@ describe("v11 (2.10.0): folderLayout", () => {
     });
     expect(a.daily.folderLayout).toBe("year");
     expect(a.daily.yearFolders).toBe(true);
-    expect(a.settingsVersion).toBe(11);
+    expect(a.settingsVersion).toBe(12);
 
     const { settings: b } = migrateSettings({
       settingsVersion: 11,
@@ -294,5 +298,34 @@ describe("v11 (2.10.0): folderLayout", () => {
 
     const { settings: c } = migrateSettings(null);
     expect(c.daily.folderLayout).toBe("flat");
+  });
+});
+
+
+describe("v12 (2.12.0): multi-range random", () => {
+  it("migrates legacy single-range random into ranges[]", () => {
+    const { settings } = migrateSettings({
+      settingsVersion: 11,
+      random: { kind: "lastDays", days: 14, from: "", to: "", skipEmpty: true },
+    });
+    expect(settings.settingsVersion).toBe(12);
+    expect(settings.random.ranges).toHaveLength(1);
+    expect(settings.random.ranges[0]).toMatchObject({ kind: "lastDays", days: 14 });
+    expect(settings.random.skipEmpty).toBe(true);
+  });
+
+  it("keeps multi-range prefs", () => {
+    const { settings } = migrateSettings({
+      settingsVersion: 12,
+      random: {
+        ranges: [
+          { kind: "year", days: 30, from: "", to: "", month: 1, year: 0 },
+          { kind: "month", days: 30, from: "", to: "", month: 3, year: 0 },
+        ],
+        skipEmpty: false,
+      },
+    });
+    expect(settings.random.ranges).toHaveLength(2);
+    expect(settings.random.ranges[1].month).toBe(3);
   });
 });

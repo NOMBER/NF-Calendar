@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.11.0
+- Plugin id: `nf-calendar`, version 2.12.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -51,6 +51,7 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
+- **2.12.0.** Several period ranges for random daily notes (union, dedupe); dice button + ⋯ item for one-click open with saved settings; Organize button row wraps correctly in settings.
 - **2.11.0.** Daily note folders dropdown next to Organize; Organize offers “Also store new notes this way” (on by default). Reverse organize to year-only or flat; optional cleanup of empty year/month folders. Go to date → Open statistics switches **in the same modal** (Back returns); fixed closed random-collapse overlay stealing clicks.
 - **2.10.0.** Create missing daily notes from start of week / for the whole week; organize into year **or** year/month folders (`folder/2026/11/…`); Daily note folders setting (flat / year / year-month). **Every ⋯ and modal action is also a command** (no default hotkeys) — assign them in Obsidian → Settings → Hotkeys. Statistics opens reliably from the menu; Upcoming filter no longer shifts the header when expanded.
 - **2.9.2.** Upcoming filter is a button + Obsidian menu (native `<select>` inside `<summary>` could not open after 2.9.1). Fixed-width disclosure chevron so the title no longer shifts on expand/collapse.
@@ -62,13 +63,13 @@ migration from 1.x.
   its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
   date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
   the open note", on by default) and the confirmation shows the range and count.
-- **Random daily note** (2.6.0, reworked in 2.7.0). In the date navigator the "Random note" button sits next to "Open
+- **Random daily note** (2.6.0, reworked in 2.7.0 / 2.12.0). In the date navigator the "Random note" button sits next to "Open
   statistics"; right below it a labelled box picks the period: all notes, the chosen year, a month of that year, the last
   N days or a date range (from–to, an empty end is open); optional "Skip empty" (a note with only front matter, headings and empty
   list/task markers counts as empty). Only existing daily notes are used (flat folder, year folders and mixed layouts; a
   day with duplicate files counts once). The note opened last is not repeated right away if there is another one. With
   no notes in the period a notice says so. File contents are read only with "Skip empty", and only for drawn candidates.
-  Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (period, skip empty), which
+  From 2.12.0 you can add several period rows; the pick is the union (deduped). A dice button next to "Open random note" (and an optional ⋯ menu item) opens immediately with the saved ranges. Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (ranges, skip empty), which
   are also the navigator's starting values.
 - **Holidays folder.** Point the plugin to a folder (e.g. `Meta/Dates`) whose note names start with a date:
   `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, `1000-09-01 Knowledge Day` (the separator

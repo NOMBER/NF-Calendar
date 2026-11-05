@@ -124,7 +124,7 @@ describe("settings validation (data.json)", () => {
     const { settings } = migrateSettings({ settingsVersion: 3, wordsPerDot: 99 });
     expect("wordsPerDot" in settings).toBe(false);
     expect(settings.dotsMode).toBe("exists");
-    expect(settings.settingsVersion).toBe(11);
+    expect(settings.settingsVersion).toBe(12);
   });
 
   it("conditions: unknown types and wrong field types are dropped", () => {

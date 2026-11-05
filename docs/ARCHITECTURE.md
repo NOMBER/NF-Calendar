@@ -1,5 +1,7 @@
 # Архитектура NF-Calendar
 
+**2.12.0:** `IRandomPrefs.ranges[]` (union pick / dedupe), dice quick-open + `openRandomSaved` menu item (default hidden), Organize buttons use `.cwt-button-row`.
+
 Плагин разделён на три слоя. Зависимости направлены только вниз: `ui` → `io` → `core`.
 
 ```

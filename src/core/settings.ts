@@ -32,7 +32,7 @@ import type { ImportantDays, IImportantEvent, UpcomingFilter } from "./important
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 11;
+export const SETTINGS_VERSION = 12;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
