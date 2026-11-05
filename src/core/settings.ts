@@ -18,7 +18,20 @@ import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
+
+/**
+ * Open today's note on startup only when the plugin was loaded as part of
+ * the app start (layout not ready yet at onload). Enabling the plugin or
+ * reloading it in a running session must not open anything.
+ */
+export function shouldOpenOnStartup(
+  enabled: boolean,
+  layoutReadyAtLoad: boolean,
+  dailyEnabled: boolean,
+): boolean {
+  return enabled && dailyEnabled && !layoutReadyAtLoad;
+}
 
 /** Where the ⋯ menu button sits. */
 export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar";
@@ -57,6 +70,8 @@ export interface ISettings {
   dotsMode: DotsMode;
   weekStart: IWeekStartOption;
   shouldConfirmBeforeCreate: boolean;
+  /** 2.5.0: open (or create) today's daily note when Obsidian starts. */
+  openDailyOnStartup: boolean;
   localeOverride: ILocaleOverride;
 
   daily: IPeriodicConfig;
@@ -96,6 +111,7 @@ export function makeDefaultSettings(): ISettings {
     dotsMode: DEFAULT_DOTS_MODE,
     weekStart: "locale" as IWeekStartOption,
     shouldConfirmBeforeCreate: true,
+    openDailyOnStartup: false,
     localeOverride: "system-default",
     daily: defaultPeriodic("day", true),
     weekly: defaultPeriodic("week", false),
@@ -313,6 +329,7 @@ export function migrateSettings(
     // explicitly, so it is switched once (a choice made in v5+ is kept).
     dotsMode: version < 5 && r.dotsMode === "tasks" ? "exists" : sanitizeDotsMode(r.dotsMode),
     weekStart: sanitizeWeekStart(r.weekStart),
+    openDailyOnStartup: r.openDailyOnStartup === true,
     shouldConfirmBeforeCreate:
       typeof r.shouldConfirmBeforeCreate === "boolean"
         ? r.shouldConfirmBeforeCreate

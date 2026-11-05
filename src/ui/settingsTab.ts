@@ -284,7 +284,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
     name: string,
     desc: string,
     key:
-      "shouldConfirmBeforeCreate" | "showTemplatePreview" | "showUpcoming" | "useWeekdayTemplates",
+      | "shouldConfirmBeforeCreate"
+      | "openDailyOnStartup"
+      | "showTemplatePreview"
+      | "showUpcoming"
+      | "useWeekdayTemplates",
     rerender = false,
   ): void {
     new Setting(this.containerEl)
@@ -382,6 +386,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
     });
 
     if (g === "day") {
+      this.toggle(
+        t("settings.openOnStartup"),
+        t("settings.openOnStartupDesc"),
+        "openDailyOnStartup",
+      );
       new Setting(this.containerEl)
         .setName(t("settings.yearFolders"))
         .setDesc(t("settings.yearFoldersDesc"))

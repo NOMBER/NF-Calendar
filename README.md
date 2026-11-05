@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.4.1
+- Plugin id: `nf-calendar`, version 2.5.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -187,6 +187,16 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 | Holiday | Holiday from folder | Daily | `Templates/Holiday.md` |
 
 Rules are checked top to bottom, so place more specific rules (a single date) above broader ones (a range).
+
+## Open daily note on startup
+
+Setting in the Daily notes section, **off** by default. When it is on and Obsidian starts, NF-Calendar opens today's note.
+If the note is missing, NF-Calendar creates it the usual way, without the confirmation dialog: special rules, then weekday template, then default; year folders are respected.
+Before creating, it checks every possible path on disk and never overwrites anything.
+If today's note is already open in a tab, that tab is focused instead of opening a second one. Enabling or reloading the plugin while Obsidian is running does not open anything.
+
+With this option on you can **turn the core Daily notes plugin off completely**. If you keep it, turn off its own "Open daily note on startup" option,
+otherwise both plugins open or create today's note and you may get duplicates, for example a flat copy next to the note in the year folder.
 
 ## Organize daily notes by year
 

@@ -14,7 +14,7 @@ import { OrganizeModal } from "src/ui/modals/organize";
 import type { IImportantDay } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
-import { migrateSettings, periodicConfig } from "src/core/settings";
+import { migrateSettings, periodicConfig, shouldOpenOnStartup } from "src/core/settings";
 import type { ISettings } from "src/core/settings";
 import { otherDailyNoteCreators, readExternalPeriodicSettings } from "src/io/external";
 import { holidaysFor, rebuildHolidays, touchesHolidays } from "src/io/holidays";
@@ -112,6 +112,8 @@ export default class CalendarPlugin extends Plugin {
     this.registerCommands();
     this.addSettingTab(new CalendarSettingsTab(this.app, this));
 
+    // Captured before onLayoutReady: false only during the app start.
+    const layoutReadyAtLoad = this.app.workspace.layoutReady;
     this.app.workspace.onLayoutReady(async () => {
       if (isV1) {
         // v1.0.0 read folder/format/template from Daily Notes / Periodic
@@ -136,7 +138,44 @@ export default class CalendarPlugin extends Plugin {
       }
       this.reindexAll();
       this.initLeaf();
+      if (
+        shouldOpenOnStartup(
+          this.options.openDailyOnStartup,
+          layoutReadyAtLoad,
+          this.options.daily.enabled !== false,
+        )
+      ) {
+        await this.openTodayOnStartup();
+      }
     });
+  }
+
+  /** Startup: focus today's note if a tab already shows it, else open / create it (no confirmation). */
+  private async openTodayOnStartup(): Promise<void> {
+    try {
+      const today = window.moment();
+      let file = findNote(this.app, this.options, today, "day");
+      if (!file) {
+        file = await createNote(this.app, today, this.options, "day");
+      }
+      if (!file) {
+        return;
+      }
+      const path = file.path;
+      const leaf = this.app.workspace
+        .getLeavesOfType("markdown")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .find((l) => (l.view as any)?.file?.path === path);
+      if (leaf) {
+        this.app.workspace.setActiveLeaf(leaf, { focus: true });
+      } else {
+        await openFile(this.app, file, false);
+      }
+      activeFile.setFile(file);
+      dailyNotes.reindex();
+    } catch (err) {
+      console.error("[NF-Calendar] open daily note on startup failed", err);
+    }
   }
 
   private warnedDuplicates = new Set<string>();

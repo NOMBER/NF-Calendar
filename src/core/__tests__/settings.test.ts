@@ -3,6 +3,7 @@ import {
   mergeExternal,
   migrateSettings,
   SETTINGS_VERSION,
+  shouldOpenOnStartup,
 } from "src/core/settings";
 
 describe("migrateSettings", () => {
@@ -146,7 +147,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(5);
+    expect(settings.settingsVersion).toBe(6);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -202,5 +203,26 @@ describe("v5 (2.4.0) migration", () => {
     expect(
       migrateSettings({ upcomingHorizonDays: 2, settingsVersion: 5 }).settings.upcomingHorizonDays,
     ).toBe(7);
+  });
+});
+
+describe("v6 (2.5.0): open daily note on startup", () => {
+  it("is off by default and after migration; only true is kept", () => {
+    expect(migrateSettings(null).settings.openDailyOnStartup).toBe(false);
+    expect(migrateSettings({ settingsVersion: 5 }).settings.openDailyOnStartup).toBe(false);
+    expect(
+      migrateSettings({ settingsVersion: 6, openDailyOnStartup: "yes" }).settings
+        .openDailyOnStartup,
+    ).toBe(false);
+    expect(
+      migrateSettings({ settingsVersion: 6, openDailyOnStartup: true }).settings.openDailyOnStartup,
+    ).toBe(true);
+    expect(migrateSettings({ settingsVersion: 5 }).migratedFrom).toBe(5);
+  });
+  it("fires only at app start, not on plugin enable / reload", () => {
+    expect(shouldOpenOnStartup(true, false, true)).toBe(true);
+    expect(shouldOpenOnStartup(true, true, true)).toBe(false);
+    expect(shouldOpenOnStartup(false, false, true)).toBe(false);
+    expect(shouldOpenOnStartup(true, false, false)).toBe(false);
   });
 });

@@ -10,6 +10,9 @@ const en = {
   // commands
   "cmd.organize": "Organize daily notes by year",
   "cmd.undoOrganize": "Undo last organize",
+  "settings.openOnStartup": "Open daily note on startup",
+  "settings.openOnStartupDesc":
+    'When Obsidian starts, open today\'s note (create it from the usual template if missing). Turn off "Open daily note on startup" in the core Daily notes plugin (or disable that plugin), otherwise you may get duplicates.',
   "settings.yearFolders": "Keep new daily notes in year folders",
   "settings.yearFoldersDesc":
     "New notes go to <folder>/<YYYY>/. Existing notes are found in both layouts (flat folder and year folders).",
@@ -364,6 +367,9 @@ const ru: Record<I18nKey, string> = {
 
   "cmd.organize": "Разложить ежедневные заметки по годам",
   "cmd.undoOrganize": "Отменить последнюю раскладку",
+  "settings.openOnStartup": "Открывать ежедневную заметку при запуске",
+  "settings.openOnStartupDesc":
+    "При запуске Obsidian открывать сегодняшнюю заметку (если её нет — создать по обычному шаблону). Отключите «Open daily note on startup» во встроенном плагине Daily notes (или сам плагин), иначе возможны дубли.",
   "settings.yearFolders": "Хранить новые ежедневные заметки в подпапках по годам",
   "settings.yearFoldersDesc":
     "Новые заметки создаются в <папка>/<ГГГГ>/. Существующие находятся в обеих структурах (плоская папка и подпапки по годам).",
