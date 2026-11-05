@@ -1,3 +1,10 @@
+import {
+  defaultMenuItems,
+  moveMenuItem,
+  sanitizeMenuItems,
+  setMenuItemVisible,
+} from "../core/menuItems";
+import type { IMenuItemPref, MenuItemId } from "../core/menuItems";
 import { Notice, PluginSettingTab, Setting } from "obsidian";
 import type { SliderComponent, TextComponent } from "obsidian";
 import type { App } from "obsidian";
@@ -85,6 +92,71 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
     this.heading(t("settings.advanced"));
     this.addLocaleOverride();
+
+    this.heading(t("settings.menuSection"));
+    this.addMenuItems();
+  }
+
+  // ---------- ⋯ menu ----------
+
+  private addMenuItems(): void {
+    const list = sanitizeMenuItems(this.options.menuItems);
+    const save = async (next: IMenuItemPref[]) => {
+      await this.write(() => ({ menuItems: next }));
+      this.display();
+    };
+    const label: Record<MenuItemId, string> = {
+      openYesterday: t("cmd.openYesterday"),
+      openToday: t("cmd.openToday"),
+      openTomorrow: t("cmd.openTomorrow"),
+      openWeekly: t("cmd.openWeekly"),
+      openMonthly: t("menuItem.openMonthly"),
+      toggleHolidays: t("settings.showHolidayMarks"),
+      toggleImportant: t("settings.showImportantMarks"),
+      missingWeek: t("cmd.missingWeek"),
+      missingMonth: t("cmd.missingMonth"),
+      missingDisplayedMonth: t("menuItem.missingDisplayedMonth"),
+      prevDaily: t("cmd.prevDaily"),
+      nextDaily: t("cmd.nextDaily"),
+      applyTemplate: t("cmd.applyTemplate"),
+      importantList: t("cmd.importantList"),
+      statistics: t("cmd.statistics"),
+      settings: t("cmd.settings"),
+    };
+    const conditional: MenuItemId[] = [
+      "openWeekly",
+      "openMonthly",
+      "missingDisplayedMonth",
+      "prevDaily",
+      "nextDaily",
+      "applyTemplate",
+    ];
+    new Setting(this.containerEl)
+      .setDesc(t("settings.menuSectionDesc"))
+      .addButton((b) =>
+        b.setButtonText(t("settings.menuReset")).onClick(() => void save(defaultMenuItems())),
+      );
+    if (!list.some((p) => p.visible)) {
+      new Setting(this.containerEl).setDesc(t("settings.menuAllHidden"));
+    }
+    list.forEach((p, idx) => {
+      const row = new Setting(this.containerEl).setName(label[p.id]);
+      if (conditional.includes(p.id)) row.setDesc(t("settings.menuOnlyWhen"));
+      row
+        .addExtraButton((b) => {
+          b.setIcon("arrow-up").setTooltip(t("settings.menuUp"));
+          b.setDisabled(idx === 0);
+          b.onClick(() => void save(moveMenuItem(list, p.id, -1)));
+        })
+        .addExtraButton((b) => {
+          b.setIcon("arrow-down").setTooltip(t("settings.menuDown"));
+          b.setDisabled(idx === list.length - 1);
+          b.onClick(() => void save(moveMenuItem(list, p.id, 1)));
+        })
+        .addToggle((tg) =>
+          tg.setValue(p.visible).onChange((v) => void save(setMenuItemVisible(list, p.id, v))),
+        );
+    });
   }
 
   private heading(text: string): void {

@@ -35,6 +35,8 @@ import { BatchCreateModal } from "src/ui/modals/batchCreate";
 import type { IBatchItem } from "src/ui/modals/batchCreate";
 import { ConfirmationModal } from "src/ui/modals/confirm";
 import { DateNavigatorModal } from "src/ui/modals/dateNavigator";
+import { isBlankDailyNote, pickRandomDay, pickRandomNonEmptyDay } from "src/core/random";
+import type { RandomScope } from "src/core/random";
 import { ImportantDayModal } from "src/ui/modals/importantDay";
 import { ImportantListModal } from "src/ui/modals/importantList";
 import { StatsModal } from "src/ui/modals/stats";
@@ -275,6 +277,7 @@ export default class CalendarPlugin extends Plugin {
       () => !!this.app.workspace.getActiveFile(),
     );
     cmd("show-important-days", t("cmd.importantList"), () => this.showImportantDays());
+    cmd("open-random-daily-note", t("cmd.randomDaily"), () => this.openRandomDailyNote());
     cmd("show-statistics", t("cmd.statistics"), () => this.showStatistics());
     cmd("reveal-active-note", t("cmd.reveal"), () => this.getView()?.revealActiveNote());
   }
@@ -476,6 +479,42 @@ export default class CalendarPlugin extends Plugin {
     }
     await openFile(this.app, note, false);
     activeFile.setFile(note);
+  }
+
+  private lastRandomDay: string | null = null;
+
+  /**
+   * Opens a random existing daily note in the scope. Uses the note index
+   * (flat + year folders, one file per day); file contents are read only
+   * with `skipEmpty`, and then only for the drawn candidates.
+   */
+  async openRandomDailyNote(
+    scope: RandomScope = { kind: "all" },
+    skipEmpty = false,
+  ): Promise<boolean> {
+    const byDay = new Map<string, TFile>();
+    for (const f of Object.values(getAllNotes(this.app, this.options, "day"))) {
+      const d = getDateFromFile(f, this.options, "day");
+      if (d) byDay.set(d.format("YYYY-MM-DD"), f);
+    }
+    const opts = { exclude: this.lastRandomDay };
+    const day = skipEmpty
+      ? await pickRandomNonEmptyDay(
+          byDay.keys(),
+          scope,
+          async (k) => isBlankDailyNote(await this.app.vault.cachedRead(byDay.get(k) as TFile)),
+          opts,
+        )
+      : pickRandomDay(byDay.keys(), scope, opts);
+    const file = day ? byDay.get(day) : null;
+    if (!day || !file) {
+      new Notice(t(skipEmpty ? "notice.randomNoneNonEmpty" : "notice.randomNone"));
+      return false;
+    }
+    this.lastRandomDay = day;
+    await openFile(this.app, file, false);
+    activeFile.setFile(file);
+    return true;
   }
 
   async openDailyNoteForOffset(daysFromToday: number): Promise<void> {
@@ -693,6 +732,7 @@ export default class CalendarPlugin extends Plugin {
         showStats: (m) => this.showStatistics(m),
         openDay: (d) => void this.openPeriodic(d, "day", false),
         hasNote: (d) => !!this.findDailyNote(d),
+        openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),
       }),
     );
   }

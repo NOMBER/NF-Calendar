@@ -147,7 +147,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(6);
+    expect(settings.settingsVersion).toBe(7);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");

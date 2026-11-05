@@ -13,12 +13,14 @@ import type { IMove } from "./organize";
 import { sanitizeVaultPath } from "./paths";
 import { DEFAULT_DOTS_MODE, sanitizeDotsMode } from "./dots";
 import type { DotsMode } from "./dots";
+import { defaultMenuItems, sanitizeMenuItems } from "./menuItems";
+import type { IMenuItemPref } from "./menuItems";
 import { clampPrepDays, sanitizeImportantColor } from "./important";
 import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 6;
+export const SETTINGS_VERSION = 7;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
@@ -101,6 +103,8 @@ export interface ISettings {
   holidayPattern: string;
 
   menuPosition: MenuPosition;
+  /** v7 (2.6.0): ⋯ menu items, order and visibility. */
+  menuItems: IMenuItemPref[];
   statsView: IStatsView;
 }
 
@@ -135,6 +139,7 @@ export function makeDefaultSettings(): ISettings {
     holidayDateOrder: "dayFirst",
     holidayPattern: "",
     menuPosition: "navRight",
+    menuItems: defaultMenuItems(),
     statsView: { mode: "table", metric: "words", kind: "bar" },
   };
 }
@@ -368,6 +373,8 @@ export function migrateSettings(
       return isValidHolidayPattern(p) ? p : "";
     })(),
     menuPosition: MENU_POSITIONS.includes(r.menuPosition) ? r.menuPosition : defaults.menuPosition,
+    // v7 (2.6.0): new field; older data gets the full default menu.
+    menuItems: sanitizeMenuItems(r.menuItems),
     statsView: sanitizeStatsView(r.statsView),
     lastOrganize: sanitizeJournal(r.lastOrganize),
   };

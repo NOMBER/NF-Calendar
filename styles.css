@@ -463,6 +463,24 @@
   gap: 6px;
 }
 
+.cwt-nav-random {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cwt-nav-random-days {
+  width: 6em;
+}
+
+.cwt-nav-random-icon {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
 .cwt-nav-status {
   flex-basis: 100%;
   color: var(--text-muted);

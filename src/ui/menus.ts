@@ -1,3 +1,5 @@
+import { resolveMenuLayout } from "../core/menuItems";
+import type { MenuItemId } from "../core/menuItems";
 /** Context menus of the calendar view (header ⋯, month title, day, week). */
 import type { Moment } from "moment";
 import { Menu } from "obsidian";
@@ -15,76 +17,114 @@ export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): 
   const now = window.moment();
   const month = (displayedMonth || now).clone();
   const options = plugin.options;
-  const item = (title: string, icon: string, fn: () => unknown) =>
-    menu.addItem((i) =>
-      i
-        .setTitle(title)
-        .setIcon(icon)
-        .onClick(() => void fn()),
-    );
-
-  item(t("cmd.openYesterday"), "arrow-left", () => plugin.openDailyNoteForOffset(-1));
-  item(t("cmd.openToday"), "calendar-check", () => plugin.openDailyNoteForOffset(0));
-  item(t("cmd.openTomorrow"), "arrow-right", () => plugin.openDailyNoteForOffset(1));
-  if (options.weekly.enabled) {
-    item(t("cmd.openWeekly"), "calendar-range", () => plugin.openPeriodic(now, "week", false));
-  }
-  if (options.monthly.enabled) {
-    item(t("menu.openMonthly", { month: month.format("MMMM YYYY") }), "calendar", () =>
-      plugin.openPeriodic(month, "month", false),
-    );
-  }
-  menu.addSeparator();
-  // Display switches (same settings as in the settings tab). Organize / undo
-  // live in settings and the command palette only.
-  const toggle = (
-    title: string,
-    icon: string,
-    on: boolean,
-    key: "showHolidayMarks" | "showImportantMarks",
-  ) =>
-    menu.addItem((i) =>
-      i
-        .setTitle(title)
-        .setIcon(icon)
-        .setChecked(on)
-        .onClick(() => void plugin.writeOptions(() => ({ [key]: !on }))),
-    );
-  toggle(
-    t("settings.showHolidayMarks"),
-    "party-popper",
-    options.showHolidayMarks !== false,
-    "showHolidayMarks",
-  );
-  toggle(
-    t("settings.showImportantMarks"),
-    "circle-dot",
-    options.showImportantMarks !== false,
-    "showImportantMarks",
-  );
-  menu.addSeparator();
-  item(t("cmd.missingWeek"), "calendar-plus", () => plugin.createMissingDailyNotes("week"));
-  item(t("cmd.missingMonth"), "calendar-plus", () => plugin.createMissingDailyNotes("month"));
-  if (month.isAfter(now, "month")) {
-    item(
-      t("menu.missingDisplayedMonth", { month: month.format("MMMM YYYY") }),
-      "calendar-plus",
-      () => plugin.createMissingDailyNotes(month),
-    );
-  }
   const active = plugin.app.workspace.getActiveFile();
   const activeInfo = active ? plugin.noteDateOf(active) : null;
-  if (activeInfo?.g === "day") {
-    item(t("cmd.prevDaily"), "chevron-left", () => plugin.openAdjacentDailyNote(-1));
-    item(t("cmd.nextDaily"), "chevron-right", () => plugin.openAdjacentDailyNote(1));
+  const toggle = (key: "showHolidayMarks" | "showImportantMarks") => ({
+    checked: options[key] !== false,
+    fn: () => plugin.writeOptions(() => ({ [key]: !(options[key] !== false) })),
+  });
+  // Every item the ⋯ menu knows about; order and visibility come from
+  // settings (core/menuItems). `when` hides items that make no sense now.
+  const defs: Record<
+    MenuItemId,
+    { title: string; icon: string; fn: () => unknown; when?: boolean; checked?: boolean }
+  > = {
+    openYesterday: {
+      title: t("cmd.openYesterday"),
+      icon: "arrow-left",
+      fn: () => plugin.openDailyNoteForOffset(-1),
+    },
+    openToday: {
+      title: t("cmd.openToday"),
+      icon: "calendar-check",
+      fn: () => plugin.openDailyNoteForOffset(0),
+    },
+    openTomorrow: {
+      title: t("cmd.openTomorrow"),
+      icon: "arrow-right",
+      fn: () => plugin.openDailyNoteForOffset(1),
+    },
+    openWeekly: {
+      title: t("cmd.openWeekly"),
+      icon: "calendar-range",
+      when: options.weekly.enabled,
+      fn: () => plugin.openPeriodic(now, "week", false),
+    },
+    openMonthly: {
+      title: t("menu.openMonthly", { month: month.format("MMMM YYYY") }),
+      icon: "calendar",
+      when: options.monthly.enabled,
+      fn: () => plugin.openPeriodic(month, "month", false),
+    },
+    toggleHolidays: {
+      title: t("settings.showHolidayMarks"),
+      icon: "party-popper",
+      ...toggle("showHolidayMarks"),
+    },
+    toggleImportant: {
+      title: t("settings.showImportantMarks"),
+      icon: "circle-dot",
+      ...toggle("showImportantMarks"),
+    },
+    missingWeek: {
+      title: t("cmd.missingWeek"),
+      icon: "calendar-plus",
+      fn: () => plugin.createMissingDailyNotes("week"),
+    },
+    missingMonth: {
+      title: t("cmd.missingMonth"),
+      icon: "calendar-plus",
+      fn: () => plugin.createMissingDailyNotes("month"),
+    },
+    missingDisplayedMonth: {
+      title: t("menu.missingDisplayedMonth", { month: month.format("MMMM YYYY") }),
+      icon: "calendar-plus",
+      when: month.isAfter(now, "month"),
+      fn: () => plugin.createMissingDailyNotes(month),
+    },
+    prevDaily: {
+      title: t("cmd.prevDaily"),
+      icon: "chevron-left",
+      when: activeInfo?.g === "day",
+      fn: () => plugin.openAdjacentDailyNote(-1),
+    },
+    nextDaily: {
+      title: t("cmd.nextDaily"),
+      icon: "chevron-right",
+      when: activeInfo?.g === "day",
+      fn: () => plugin.openAdjacentDailyNote(1),
+    },
+    applyTemplate: {
+      title: t("cmd.applyTemplate"),
+      icon: "file-input",
+      when: !!activeInfo,
+      fn: () => plugin.applyTemplateToActiveNote(),
+    },
+    importantList: {
+      title: t("cmd.importantList"),
+      icon: "star",
+      fn: () => plugin.showImportantDays(),
+    },
+    statistics: {
+      title: t("cmd.statistics"),
+      icon: "bar-chart-2",
+      fn: () => plugin.showStatistics(month),
+    },
+    settings: { title: t("cmd.settings"), icon: "settings", fn: () => plugin.openSettings() },
+  };
+  const { entries } = resolveMenuLayout(options.menuItems, (id) => defs[id].when !== false);
+  for (const e of entries) {
+    if (e === "separator") {
+      menu.addSeparator();
+      continue;
+    }
+    const d = defs[e];
+    menu.addItem((i) => {
+      i.setTitle(d.title).setIcon(d.icon);
+      if (d.checked !== undefined) i.setChecked(d.checked);
+      i.onClick(() => void d.fn());
+    });
   }
-  if (activeInfo) {
-    item(t("cmd.applyTemplate"), "file-input", () => plugin.applyTemplateToActiveNote());
-  }
-  menu.addSeparator();
-  item(t("cmd.importantList"), "star", () => plugin.showImportantDays());
-  item(t("cmd.statistics"), "bar-chart-2", () => plugin.showStatistics(month));
-  item(t("cmd.settings"), "settings", () => plugin.openSettings());
   return menu;
 }
 

@@ -3,6 +3,7 @@ import { Modal, setIcon } from "obsidian";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
+import type { RandomScope } from "src/core/random";
 
 export interface IDateNavigatorDeps {
   month: Moment;
@@ -10,7 +11,13 @@ export interface IDateNavigatorDeps {
   showStats: (month: Moment) => void;
   openDay: (date: Moment) => void;
   hasNote: (date: Moment) => boolean;
+  /** Resolves true when a note was opened. */
+  openRandom: (scope: RandomScope, skipEmpty: boolean) => Promise<boolean>;
 }
+
+type RandomKind = RandomScope["kind"];
+/** Remembered for the session (not saved). */
+const randomState = { kind: "all" as RandomKind, month: 0, days: 30, skipEmpty: false };
 
 type Target = "calendar" | "stats";
 
@@ -164,6 +171,79 @@ export class DateNavigatorModal extends Modal {
     todayBtn.addEventListener("click", () => {
       this.close();
       this.deps.goToMonth(window.moment().startOf("month"));
+    });
+
+    this.renderRandom(today);
+  }
+
+  /** "Open random note": scope (all / chosen year / month / last N days) + skip empty. */
+  private renderRandom(today: Moment): void {
+    const row = this.contentEl.createDiv("cwt-nav-random");
+    const kind = row.createEl("select", {
+      cls: "dropdown",
+      attr: { "aria-label": t("navigator.randomScope") },
+    });
+    const kinds: [RandomKind, string][] = [
+      ["all", t("navigator.randomAll")],
+      ["year", t("navigator.randomYear", { year: String(this.year) })],
+      ["month", t("navigator.randomMonth", { year: String(this.year) })],
+      ["lastDays", t("navigator.randomLast")],
+    ];
+    kinds.forEach(([v, label]) => kind.createEl("option", { value: v, text: label }));
+    kind.value = randomState.kind;
+    if (!randomState.month) randomState.month = today.month() + 1;
+    const monthSel = row.createEl("select", {
+      cls: "dropdown",
+      attr: { "aria-label": t("navigator.randomMonthPick") },
+    });
+    for (let m = 1; m <= 12; m++) {
+      monthSel.createEl("option", {
+        value: String(m),
+        text: window.moment({ year: this.year, month: m - 1, day: 1 }).format("MMMM"),
+      });
+    }
+    monthSel.value = String(randomState.month);
+    const days = row.createEl("input", {
+      type: "number",
+      cls: "cwt-nav-random-days",
+      attr: { min: "1", max: "36500", "aria-label": t("navigator.randomDays") },
+    });
+    days.value = String(randomState.days);
+    const sync = () => {
+      randomState.kind = kind.value as RandomKind;
+      randomState.month = Number(monthSel.value);
+      const n = Math.floor(Number(days.value));
+      if (n >= 1 && n <= 36500) randomState.days = n;
+      monthSel.toggle(randomState.kind === "month");
+      days.toggle(randomState.kind === "lastDays");
+    };
+    [kind, monthSel, days].forEach((el) => el.addEventListener("change", sync));
+    sync();
+
+    const row2 = this.contentEl.createDiv("cwt-nav-random");
+    const label = row2.createEl("label", { cls: "cwt-nav-random-skip" });
+    const skip = label.createEl("input", { type: "checkbox" });
+    skip.checked = randomState.skipEmpty;
+    label.appendText(" " + t("navigator.randomSkipEmpty"));
+    skip.addEventListener("change", () => (randomState.skipEmpty = skip.checked));
+    const go = row2.createEl("button", { text: t("navigator.random") });
+    setIcon(go.createSpan({ cls: "cwt-nav-random-icon", prepend: true }), "dice");
+    go.addEventListener("click", () => {
+      sync();
+      const s = randomState;
+      const scope: RandomScope =
+        s.kind === "year"
+          ? { kind: "year", year: this.year }
+          : s.kind === "month"
+            ? { kind: "month", year: this.year, month: s.month }
+            : s.kind === "lastDays"
+              ? { kind: "lastDays", days: s.days, today: today.format("YYYY-MM-DD") }
+              : { kind: "all" };
+      go.disabled = true;
+      void this.deps.openRandom(scope, s.skipEmpty).then((opened) => {
+        go.disabled = false;
+        if (opened) this.close();
+      });
     });
   }
 }
