@@ -1,3 +1,6 @@
+import { DEFAULT_DATE_FIELD_FORMAT, sanitizeDateFieldFormat } from "src/core/dateField";
+import type { DateFieldFormat } from "src/core/dateField";
+import type { StartupTabPosition } from "src/core/tabs";
 /**
  * Settings shape, defaults and migration (pure, no Obsidian API).
  */
@@ -22,7 +25,7 @@ import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 8;
+export const SETTINGS_VERSION = 9;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
@@ -82,6 +85,12 @@ export interface ISettings {
   shouldConfirmBeforeCreate: boolean;
   /** 2.5.0: open (or create) today's daily note when Obsidian starts. */
   openDailyOnStartup: boolean;
+  /** 2.8.0: new startup tab left (after pinned) or right. */
+  startupTabPosition: StartupTabPosition;
+  /** 2.8.0: order/separator of typed date fields. */
+  dateFieldFormat: DateFieldFormat;
+  /** 2.8.0: "create missing until end of week/month" from the open daily note. */
+  missingFromOpenNote: boolean;
   localeOverride: ILocaleOverride;
 
   daily: IPeriodicConfig;
@@ -130,6 +139,9 @@ export function makeDefaultSettings(): ISettings {
     weekStart: "locale" as IWeekStartOption,
     shouldConfirmBeforeCreate: true,
     openDailyOnStartup: false,
+    startupTabPosition: "left",
+    dateFieldFormat: DEFAULT_DATE_FIELD_FORMAT,
+    missingFromOpenNote: true,
     localeOverride: "system-default",
     daily: defaultPeriodic("day", true),
     weekly: defaultPeriodic("week", false),
@@ -388,6 +400,10 @@ export function migrateSettings(
     menuItems: sanitizeMenuItems(r.menuItems),
     // v8 (2.7.0): new field; menuPosition gains "hidden".
     random: sanitizeRandomPrefs(r.random),
+    // v9 (2.8.0): new fields.
+    startupTabPosition: r.startupTabPosition === "right" ? "right" : "left",
+    dateFieldFormat: sanitizeDateFieldFormat(r.dateFieldFormat),
+    missingFromOpenNote: r.missingFromOpenNote !== false,
     statsView: sanitizeStatsView(r.statsView),
     lastOrganize: sanitizeJournal(r.lastOrganize),
   };

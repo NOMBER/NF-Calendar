@@ -1,10 +1,17 @@
+import { startupInsertIndex } from "src/core/tabs";
 import type { Moment, WeekSpec } from "moment";
-import { Notice, Plugin, TFile } from "obsidian";
+import { Notice, Platform, Plugin, TFile } from "obsidian";
 import type { App, Modal, TAbstractFile, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
 import { VIEW_TYPE_CALENDAR } from "./constants";
-import { adjacentDate, datesForMonthFrom, datesUntilEndOf, missingDates } from "src/core/dates";
+import {
+  adjacentDate,
+  contextDate,
+  datesForMonthFrom,
+  datesUntilEndOf,
+  missingDates,
+} from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { setLanguage, t } from "src/core/i18n";
 import { customColorCss, dayKey } from "src/core/important";
@@ -176,13 +183,53 @@ export default class CalendarPlugin extends Plugin {
       if (leaf) {
         this.app.workspace.setActiveLeaf(leaf, { focus: true });
       } else {
-        await openFile(this.app, file, false);
+        await this.openInStartupTab(file);
       }
       activeFile.setFile(file);
       dailyNotes.reindex();
     } catch (err) {
       console.error("[NF-Calendar] open daily note on startup failed", err);
     }
+  }
+
+  /**
+   * New tab for today's note on startup. "left": a fresh leaf created with the
+   * public createLeafInParent() in the active tab group, right after its last
+   * pinned tab (first if none). Mobile, "right" or anything unexpected: the
+   * old behaviour (current/next tab).
+   */
+  private async openInStartupTab(file: TFile): Promise<void> {
+    if (this.options.startupTabPosition === "left" && !Platform?.isMobile) {
+      try {
+        const ws = this.app.workspace;
+        const ref = ws.getMostRecentLeaf(ws.rootSplit) ?? ws.getMostRecentLeaf();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parent = ref?.parent as any;
+        const children: WorkspaceLeaf[] | undefined = parent?.children;
+        if (parent && Array.isArray(children) && children.length > 0) {
+          const pinned = children.map((l) => {
+            try {
+              return !!l.getViewState?.().pinned;
+            } catch {
+              return false;
+            }
+          });
+          // An empty current tab (e.g. a fresh vault) is simply reused.
+          const refEmpty = ref?.view?.getViewType?.() === "empty";
+          if (!refEmpty) {
+            const leaf = ws.createLeafInParent(parent, startupInsertIndex(pinned));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mode = (this.app.vault as any).getConfig?.("defaultViewMode");
+            await leaf.openFile(file, { active: true, ...(mode ? { state: { mode } } : {}) });
+            ws.setActiveLeaf(leaf, { focus: true });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("[NF-Calendar] startup tab left failed, opening on the right", err);
+      }
+    }
+    await openFile(this.app, file, false);
   }
 
   private warnedDuplicates = new Set<string>();
@@ -547,9 +594,17 @@ export default class CalendarPlugin extends Plugin {
       return;
     }
     const today = window.moment().startOf("day");
+    const active = this.app.workspace.getActiveFile();
+    const anchor = contextDate(
+      active && this.options.missingFromOpenNote
+        ? getDateFromFile(active, this.options, "day")
+        : null,
+      null,
+      today,
+    );
     const dates =
       scope === "week" || scope === "month"
-        ? datesUntilEndOf(today, scope)
+        ? datesUntilEndOf(anchor, scope)
         : datesForMonthFrom(today, scope);
     if (!dates.length) {
       return;
@@ -580,7 +635,14 @@ export default class CalendarPlugin extends Plugin {
       };
     });
     const existingCount = dates.length - missing.length;
-    this.show(new BatchCreateModal(this.app, items, existingCount, () => this.runBatch(missing)));
+    const range = t("batch.range", {
+      from: dates[0].format("LL"),
+      to: dates[dates.length - 1].format("LL"),
+      count: missing.length,
+    });
+    this.show(
+      new BatchCreateModal(this.app, items, existingCount, () => this.runBatch(missing), range),
+    );
   }
 
   /** Sequential on purpose: predictable order and no parallel writes. */
@@ -749,6 +811,7 @@ export default class CalendarPlugin extends Plugin {
         hasNote: (d) => !!this.findDailyNote(d),
         openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),
         randomDefaults: this.options.random,
+        dateFormat: this.options.dateFieldFormat,
       }),
     );
   }

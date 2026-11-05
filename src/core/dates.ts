@@ -93,6 +93,18 @@ export function parseNoteDate(
  * Week boundaries follow the moment locale (the plugin configures the
  * global locale with the user's "start week on" setting).
  */
+/**
+ * 2.8.0: anchor for "create missing until end of week/month": the date of the
+ * open daily note (any period, past included), else the selected day, else today.
+ */
+export function contextDate(
+  activeNote: Moment | null | undefined,
+  selected: Moment | null | undefined,
+  today: Moment,
+): Moment {
+  return (activeNote ?? selected ?? today).clone().startOf("day");
+}
+
 export function datesUntilEndOf(from: Moment, unit: "week" | "month"): Moment[] {
   const start = from.clone().startOf("day");
   const end = from.clone().endOf(unit).startOf("day");

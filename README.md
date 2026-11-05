@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.7.0
+- Plugin id: `nf-calendar`, version 2.8.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -51,6 +51,10 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
+- **2.8.0.** Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
+  its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
+  date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
+  the open note", on by default) and the confirmation shows the range and count.
 - **Random daily note** (2.6.0, reworked in 2.7.0). In the date navigator the "Random note" button sits next to "Open
   statistics"; right below it a labelled box picks the period: all notes, the chosen year, a month of that year, the last
   N days or a date range (from–to, an empty end is open); optional "Skip empty" (a note with only front matter, headings and empty

@@ -19,11 +19,13 @@ export class BatchCreateModal extends Modal {
     items: IBatchItem[],
     existingCount: number,
     onConfirm: () => Promise<void>,
+    rangeLabel?: string,
   ) {
     super(app);
     this.titleEl.setText(t("batch.title"));
     const { contentEl } = this;
     contentEl.addClass("cwt-batch-modal");
+    if (rangeLabel) contentEl.createEl("p", { cls: "cwt-batch-range", text: rangeLabel });
     contentEl.createEl("p", { text: t("batch.summary", { count: items.length }) });
     if (existingCount > 0) {
       contentEl.createEl("p", {

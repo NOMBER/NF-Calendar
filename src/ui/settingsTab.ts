@@ -1,3 +1,9 @@
+import { getLanguage } from "../core/i18n";
+import { createDateField } from "./dateField";
+import { DATE_FIELD_FORMATS, dateFieldPlaceholder } from "../core/dateField";
+import type { DateFieldFormat } from "../core/dateField";
+import { STARTUP_TAB_POSITIONS } from "../core/tabs";
+import type { StartupTabPosition } from "../core/tabs";
 import { preserveView } from "./preserveView";
 import { MAX_RANDOM_DAYS, RANDOM_KINDS, isDayKey } from "../core/random";
 import type { IRandomPrefs, RandomKind } from "../core/random";
@@ -81,6 +87,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     this.addConfirm();
     this.addPreview();
     this.addMenuPosition();
+    this.addDateFieldFormat();
 
     this.heading(t("settings.importantSection"), "important", t("nav.important"));
     this.addUpcoming();
@@ -172,14 +179,17 @@ export class CalendarSettingsTab extends PluginSettingTab {
       });
     }
     if (r.kind === "range") {
-      const date = (key: "from" | "to", name: string) =>
-        new Setting(this.containerEl).setName(name).addText((tx) => {
-          tx.inputEl.type = "date";
-          tx.setValue(r[key]);
-          tx.onChange((v) => {
+      const date = (key: "from" | "to", name: string) => {
+        const s = new Setting(this.containerEl).setName(name);
+        createDateField(s.controlEl, {
+          value: r[key],
+          format: this.options.dateFieldFormat,
+          label: name,
+          onChange: (v) => {
             if (v === "" || isDayKey(v)) void save({ [key]: v });
-          });
+          },
         });
+      };
       date("from", t("navigator.randomFrom"));
       date("to", t("navigator.randomTo"));
     }
@@ -377,6 +387,20 @@ export class CalendarSettingsTab extends PluginSettingTab {
     return firstDay < 0 ? 1 : firstDay;
   }
 
+  private addDateFieldFormat(): void {
+    new Setting(this.containerEl)
+      .setName(t("settings.dateFieldFormat"))
+      .setDesc(t("settings.dateFieldFormatDesc"))
+      .addDropdown((d) => {
+        DATE_FIELD_FORMATS.forEach((f) => d.addOption(f, dateFieldPlaceholder(f, getLanguage())));
+        d.setValue(this.options.dateFieldFormat);
+        d.onChange(async (v) => {
+          await this.write(() => ({ dateFieldFormat: v as DateFieldFormat }));
+          this.redraw();
+        });
+      });
+  }
+
   private addMenuPosition(): void {
     new Setting(this.containerEl)
       .setName(t("settings.menuPosition"))
@@ -463,6 +487,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     key:
       | "shouldConfirmBeforeCreate"
       | "openDailyOnStartup"
+      | "missingFromOpenNote"
       | "showTemplatePreview"
       | "showUpcoming"
       | "showHolidayMarks"
@@ -570,6 +595,21 @@ export class CalendarSettingsTab extends PluginSettingTab {
         t("settings.openOnStartupDesc"),
         "openDailyOnStartup",
       );
+      this.toggle(
+        t("settings.missingFromOpenNote"),
+        t("settings.missingFromOpenNoteDesc"),
+        "missingFromOpenNote",
+      );
+      new Setting(this.containerEl)
+        .setName(t("settings.startupTab"))
+        .setDesc(t("settings.startupTabDesc"))
+        .addDropdown((d) => {
+          STARTUP_TAB_POSITIONS.forEach((p) => d.addOption(p, t(`startupTab.${p}` as I18nKey)));
+          d.setValue(this.options.startupTabPosition);
+          d.onChange(async (v) => {
+            await this.write(() => ({ startupTabPosition: v as StartupTabPosition }));
+          });
+        });
       new Setting(this.containerEl)
         .setName(t("settings.yearFolders"))
         .setDesc(t("settings.yearFoldersDesc"))
@@ -818,9 +858,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
       if (label) {
         setting.controlEl.createSpan({ cls: "cwt-cond-label", text: label });
       }
-      const input = setting.controlEl.createEl("input", { type: "date", cls: "cwt-date-input" });
-      input.value = value;
-      input.addEventListener("change", () => onChange(input.value));
+      createDateField(setting.controlEl, {
+        value,
+        format: this.options.dateFieldFormat,
+        label,
+        onChange,
+      });
     };
 
     const numberInput = (

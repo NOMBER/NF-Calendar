@@ -104,6 +104,7 @@ const en = {
   // batch modal
   "batch.title": "Create missing daily notes",
   "batch.summary": "{count} note(s) will be created:",
+  "batch.range": "From {from} to {to}: {count} missing note(s).",
   "batch.create": "Create",
   "batch.cancel": "Cancel",
   "batch.empty": "empty note",
@@ -376,6 +377,19 @@ const en = {
   "menuPos.hidden": "Hide the button",
   "settings.menuHiddenHint":
     "The ⋯ button is hidden. Everything stays in the command palette; right-click on the month title still opens this menu. Plugin settings: Obsidian Settings → Community plugins → NF-Calendar.",
+  "navigator.randomOpen": "Open",
+  "dateField.pick": "Pick a date",
+  "settings.missingFromOpenNote": "Create relative to the open note",
+  "settings.missingFromOpenNoteDesc":
+    '"Create missing daily notes until end of week / month": from the date of the open daily note to the end of ITS week or month (past periods too). Off: from today, as before.',
+  "settings.dateFieldFormat": "Date field format",
+  "settings.dateFieldFormatDesc":
+    "Order and separator of typed dates everywhere in the plugin (Go to date, random note range, rule dates). Notes and settings keep ISO dates; ISO input (2027-01-31) is always accepted.",
+  "settings.startupTab": "Startup tab position",
+  "settings.startupTabDesc":
+    "Where today's note opens as a new tab: left of the open tabs but after pinned ones, or right (as before). If it is already open, its tab is just activated. On mobile the current tab is used.",
+  "startupTab.left": "Left (after pinned tabs)",
+  "startupTab.right": "Right (as before)",
   "navigator.today": "Today",
   "holiday.age": "{age} y",
   "holiday.menuTitle": "Holidays",
@@ -515,6 +529,7 @@ const ru: Record<I18nKey, string> = {
 
   "batch.title": "Создать недостающие ежедневные заметки",
   "batch.summary": "Будет создано заметок: {count}",
+  "batch.range": "С {from} по {to}: недостающих заметок — {count}.",
   "batch.create": "Создать",
   "batch.cancel": "Отмена",
   "batch.empty": "пустая заметка",
@@ -779,6 +794,19 @@ const ru: Record<I18nKey, string> = {
   "menuPos.hidden": "Скрыть кнопку",
   "settings.menuHiddenHint":
     "Кнопка ⋯ скрыта. Все функции есть в палитре команд; правый клик по названию месяца по-прежнему открывает это меню. Настройки плагина: Настройки Obsidian → Сторонние плагины → NF-Calendar.",
+  "navigator.randomOpen": "Открыть",
+  "dateField.pick": "Выбрать дату",
+  "settings.missingFromOpenNote": "Создавать относительно открытой заметки",
+  "settings.missingFromOpenNoteDesc":
+    "«Создать недостающие заметки до конца недели / месяца»: от даты открытой ежедневной заметки до конца ЕЁ недели или месяца (прошлые периоды тоже). Выключено — от сегодня, как раньше.",
+  "settings.dateFieldFormat": "Формат полей даты",
+  "settings.dateFieldFormatDesc":
+    "Порядок и разделитель при вводе дат везде в плагине (переход к дате, диапазон случайной заметки, даты в правилах). В заметках и настройках даты хранятся в ISO; ввод в ISO (2027-01-31) принимается всегда.",
+  "settings.startupTab": "Позиция вкладки при запуске",
+  "settings.startupTabDesc":
+    "Где открывать заметку дня новой вкладкой: слева от открытых, но после закреплённых, или справа (как раньше). Если заметка уже открыта — просто активируется её вкладка. На мобильных — текущая вкладка.",
+  "startupTab.left": "Слева (после закреплённых)",
+  "startupTab.right": "Справа (как раньше)",
   "navigator.today": "Сегодня",
   "holiday.age": "{age} лет",
   "holiday.menuTitle": "Праздники",

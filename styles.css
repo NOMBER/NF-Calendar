@@ -753,3 +753,91 @@
   white-space: nowrap;
   text-decoration: none;
 }
+
+/* ----- 2.8: collapsible random box, date fields ----- */
+.cwt-nav-random-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin: 0;
+  transition:
+    grid-template-rows 0.2s ease,
+    margin 0.2s ease;
+}
+
+.cwt-nav-random-collapse.is-open {
+  grid-template-rows: 1fr;
+  /* keep the box border clear of the year field below */
+  margin: 8px 0 12px;
+}
+
+.cwt-nav-random-collapse > .cwt-nav-random {
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.cwt-nav-random-collapse:not(.is-open) > .cwt-nav-random {
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+}
+
+.cwt-nav-random-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cwt-nav-random-chevron {
+  display: inline-flex;
+  margin-left: 4px;
+  vertical-align: middle;
+  transition: transform 0.2s ease;
+}
+
+.cwt-nav-random-btn[aria-expanded="true"] .cwt-nav-random-chevron {
+  transform: rotate(180deg);
+}
+
+.cwt-nav-random input,
+.cwt-nav-random select {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cwt-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  max-width: 100%;
+}
+
+.cwt-date-field .cwt-date-input {
+  width: 8.5em;
+  min-width: 0;
+}
+
+.cwt-date-input.is-invalid {
+  border-color: var(--text-error);
+}
+
+.cwt-date-picker-native {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cwt-nav-random-collapse,
+  .cwt-nav-random-chevron {
+    transition: none;
+  }
+}
