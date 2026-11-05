@@ -12,7 +12,7 @@ import { getDateFromFile, noteFormat } from "src/io/notes";
 import type CalendarPlugin from "src/main";
 
 import Calendar from "./Calendar.svelte";
-import { buildMainMenu, showDayMenu, showHolidayMenu, showWeekMenu } from "./menus";
+import { showMainMenu, showDayMenu, showHolidayMenu, showWeekMenu } from "./menus";
 import {
   customTagsSource,
   holidaysSource,
@@ -120,7 +120,7 @@ export default class CalendarView extends ItemView {
     setIcon(this.menuButton, "more-horizontal");
     this.menuButton.addEventListener("click", (e) => {
       this.preview.hide();
-      buildMainMenu(this.plugin, this.displayedMonth()).showAtMouseEvent(e);
+      showMainMenu(this.plugin, this.displayedMonth(), e, { toggle: true });
     });
 
     const calendarEl = root.createDiv("cwt-calendar");
@@ -185,7 +185,7 @@ export default class CalendarView extends ItemView {
       }
       e.preventDefault();
       this.preview.hide();
-      buildMainMenu(this.plugin, this.displayedMonth()).showAtMouseEvent(e);
+      showMainMenu(this.plugin, this.displayedMonth(), e);
     });
 
     this.upcomingEl = root.createDiv("cwt-upcoming-container");

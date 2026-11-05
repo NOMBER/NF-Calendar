@@ -5,6 +5,9 @@ import type { Moment } from "moment";
 import { Menu } from "obsidian";
 import type { App, TFile } from "obsidian";
 
+import { showExclusiveMenu } from "src/ui/exclusiveMenu";
+import type { MenuAnchor } from "src/ui/exclusiveMenu";
+
 import { holidayAge } from "src/core/holidays";
 import { t } from "src/core/i18n";
 import { dayKey } from "src/core/important";
@@ -12,8 +15,11 @@ import { holidaysFor } from "src/io/holidays";
 import type CalendarPlugin from "src/main";
 
 /** Every action of the plugin (header button / right click on the month title). */
-export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): Menu {
-  const menu = new Menu();
+export function buildMainMenu(
+  plugin: CalendarPlugin,
+  displayedMonth?: Moment,
+  menu: Menu = new Menu(),
+): Menu {
   const now = window.moment();
   const month = (displayedMonth || now).clone();
   const options = plugin.options;
@@ -138,9 +144,31 @@ export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): 
   return menu;
 }
 
+/** Header ⋯ / title context: exclusive so menus do not stack. */
+export function showMainMenu(
+  plugin: CalendarPlugin,
+  displayedMonth: Moment | undefined,
+  at: MenuAnchor,
+  opts?: { toggle?: boolean },
+): void {
+  showExclusiveMenu(
+    "main",
+    (menu) => {
+      buildMainMenu(plugin, displayedMonth, menu);
+    },
+    at,
+    opts,
+  );
+}
+
 /** Right click on a day cell. */
 export function showDayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEvent): void {
-  const menu = new Menu();
+  showExclusiveMenu("day", (menu) => {
+    fillDayMenu(plugin, date, menu);
+  }, event);
+}
+
+function fillDayMenu(plugin: CalendarPlugin, date: Moment, menu: Menu): void {
   const note = plugin.findDailyNote(date);
   const important = plugin.options.importantDays[dayKey(date)];
   const item = (title: string, icon: string, fn: () => unknown) =>
@@ -175,7 +203,6 @@ export function showDayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEv
     menu.addSeparator();
     addFileItems(plugin.app, menu, note);
   }
-  menu.showAtMouseEvent(event);
 }
 
 /** "🎉 name" items that open the day's holiday notes. */
@@ -198,17 +225,19 @@ function addHolidayItems(plugin: CalendarPlugin, menu: Menu, date: Moment): numb
 
 /** Click on the 🎉 mark of a day: list of its holiday notes. */
 export function showHolidayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEvent): void {
-  const menu = new Menu();
-  if (addHolidayItems(plugin, menu, date)) {
-    menu.showAtMouseEvent(event);
+  if (!holidaysFor(date).length) {
+    return;
   }
+  showExclusiveMenu("holiday", (menu) => {
+    addHolidayItems(plugin, menu, date);
+  }, event);
 }
 
 /** Right click on a week number (only when the weekly note exists). */
 export function showWeekMenu(app: App, note: TFile, event: MouseEvent): void {
-  const menu = new Menu();
-  addFileItems(app, menu, note);
-  menu.showAtMouseEvent(event);
+  showExclusiveMenu("week", (menu) => {
+    addFileItems(app, menu, note);
+  }, event);
 }
 
 /** "Delete" (Obsidian's own confirmation) + items other plugins add to file menus. */

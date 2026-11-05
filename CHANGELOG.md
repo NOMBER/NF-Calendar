@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.1
+
+### Fixed
+- **Upcoming filter menus stacked.** Each click on the filter button next to "Upcoming important days" opened a new Obsidian Menu without closing the previous one (`stopPropagation` blocked the usual outside-click dismiss). All plugin Menus now go through a shared exclusive helper: hide the previous Menu before opening, clear the ref on `onHide`, and toggle (second click while open closes) for the filter and ⋯ buttons. Same guard on day / holiday / week / upcoming-dismiss menus.
+- **Go to date → Open statistics.** Choosing "Open statistics" then a month closed the navigator and opened Stats in the same click; Obsidian dismissed the new Modal immediately (`setTimeout(0)` was enough for Menu→Modal in 2.10.0, not for Modal→Modal). Month→stats now waits `MODAL_HANDOFF_MS` after close. Failures still show a Notice. Regression tests cover exclusive menus and the navigator mode/month wiring (mock DOM).
+
 ## 2.10.0
 
 ### Added

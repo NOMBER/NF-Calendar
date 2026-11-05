@@ -110,10 +110,11 @@ export default class CalendarPlugin extends Plugin {
 
   /**
    * Open a modal and remember it until it closes.
-   * Deferred one tick so Obsidian can finish closing a Menu first — opening a
-   * Modal synchronously from Menu.onClick often fails silently.
+   * Deferred so Obsidian can finish closing a Menu (delay 0 = one tick) or
+   * another Modal (pass MODAL_HANDOFF_MS) first — opening synchronously from
+   * Menu.onClick / Modal button handlers often fails or is dismissed silently.
    */
-  private show(modal: Modal): void {
+  private show(modal: Modal, delayMs = 0): void {
     const onClose = modal.onClose?.bind(modal);
     modal.onClose = () => {
       this.openModals.delete(modal);
@@ -128,7 +129,7 @@ export default class CalendarPlugin extends Plugin {
         console.error("[NF-Calendar] failed to open modal", err);
         new Notice(t("notice.modalFailed"));
       }
-    }, 0);
+    }, delayMs);
   }
 
   async onload(): Promise<void> {
@@ -924,7 +925,14 @@ export default class CalendarPlugin extends Plugin {
       new DateNavigatorModal(this.app, {
         month,
         goToMonth,
-        showStats: (m) => this.showStatistics(m),
+        showStats: (m) => {
+          try {
+            this.showStatistics(m);
+          } catch (err) {
+            console.error("[NF-Calendar] navigator → statistics failed", err);
+            new Notice(t("notice.statsFailed"));
+          }
+        },
         openDay: (d) => void this.openPeriodic(d, "day", false),
         hasNote: (d) => !!this.findDailyNote(d),
         openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),

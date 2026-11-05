@@ -1,4 +1,6 @@
-import { Menu, setIcon } from "obsidian";
+import { setIcon } from "obsidian";
+
+import { showExclusiveMenu } from "src/ui/exclusiveMenu";
 
 import { holidayAge, upcomingHolidays } from "src/core/holidays";
 import { t } from "src/core/i18n";
@@ -68,21 +70,29 @@ export function renderUpcoming(
     const openFilterMenu = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      const menu = new Menu();
       const current = sanitizeOrAll(settings.upcomingFilter);
-      for (const value of UPCOMING_FILTERS) {
-        menu.addItem((item) => {
-          item
-            .setTitle(t(upcomingFilterLabelKey(value)))
-            .setChecked(value === current)
-            .onClick(() => {
-              if (value !== current) {
-                actions.onFilterChange(value);
-              }
+      // stopPropagation on the filter button prevents Obsidian from treating
+      // the click as "outside" the previous Menu, so without hide/toggle
+      // each click stacked another Menu.
+      showExclusiveMenu(
+        "upcoming-filter",
+        (menu) => {
+          for (const value of UPCOMING_FILTERS) {
+            menu.addItem((item) => {
+              item
+                .setTitle(t(upcomingFilterLabelKey(value)))
+                .setChecked(value === current)
+                .onClick(() => {
+                  if (value !== current) {
+                    actions.onFilterChange(value);
+                  }
+                });
             });
-        });
-      }
-      menu.showAtMouseEvent(e);
+          }
+        },
+        e,
+        { toggle: true },
+      );
     };
     btn.addEventListener("click", openFilterMenu);
     btn.addEventListener("mousedown", (e) => {
@@ -178,21 +188,27 @@ function bindDismiss(row: HTMLElement, onDismiss: () => void): void {
   const open = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    const menu = new Menu();
-    menu.addItem((i) =>
-      i
-        .setTitle(t("upcoming.dismiss"))
-        .setIcon("check")
-        .onClick(() => onDismiss()),
-    );
+    let at: MouseEvent | { x: number; y: number };
     if (e instanceof MouseEvent) {
-      menu.showAtMouseEvent(e);
+      at = e;
     } else if (e instanceof TouchEvent && e.touches[0]) {
-      menu.showAtPosition({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      at = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     } else {
       const r = row.getBoundingClientRect();
-      menu.showAtPosition({ x: r.left + r.width / 2, y: r.bottom });
+      at = { x: r.left + r.width / 2, y: r.bottom };
     }
+    showExclusiveMenu(
+      "upcoming-dismiss",
+      (menu) => {
+        menu.addItem((i) =>
+          i
+            .setTitle(t("upcoming.dismiss"))
+            .setIcon("check")
+            .onClick(() => onDismiss()),
+        );
+      },
+      at,
+    );
   };
   row.addEventListener("contextmenu", open);
   let pressTimer: number | null = null;

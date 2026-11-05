@@ -7,6 +7,11 @@ import { MAX_RANDOM_DAYS as MAX_DAYS, RANDOM_KINDS, scopeFromPrefs } from "src/c
 import type { DateFieldFormat } from "src/core/dateField";
 import { createDateField } from "src/ui/dateField";
 import type { IRandomPrefs, RandomKind, RandomScope } from "src/core/random";
+import {
+  MODAL_HANDOFF_MS,
+  afterModalClose,
+  navigatorMonthAction,
+} from "src/ui/modals/modalHandoff";
 
 export interface IDateNavigatorDeps {
   month: Moment;
@@ -146,11 +151,19 @@ export class DateNavigatorModal extends Modal {
         b.toggleClass("is-current", month.isSame(today, "month"));
         b.toggleClass("is-active", month.isSame(this.deps.month, "month"));
         b.addEventListener("click", () => {
-          this.close();
-          if (this.target === "stats") {
-            this.deps.showStats(month);
+          const chosen = month.clone();
+          const action = navigatorMonthAction(this.target);
+          if (action === "showStats") {
+            // Modal→Modal: defer past this navigator's teardown and the
+            // originating click's mouseup, or Stats opens and is dismissed.
+            afterModalClose(
+              () => this.close(),
+              () => this.deps.showStats(chosen),
+              MODAL_HANDOFF_MS,
+            );
           } else {
-            this.deps.goToMonth(month);
+            this.close();
+            this.deps.goToMonth(chosen);
           }
         });
       }
