@@ -2,7 +2,7 @@ import type { Moment } from "moment";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
-import { getDayMarks } from "src/core/important";
+import { dayTitle, getDayMarks } from "src/core/important";
 import { firstLines } from "src/core/placeholders";
 import type { ISettings } from "src/core/settings";
 import { holidayAge } from "src/core/holidays";
@@ -98,14 +98,16 @@ export class TemplatePreview {
     if (marks.important) {
       el.createDiv({
         cls: "cwt-preview-important",
-        text: t("preview.important", { title: marks.important.title || t("important.untitled") }),
+        text: t("preview.important", {
+          title: dayTitle(marks.important) || t("important.untitled"),
+        }),
       }).setAttr("data-cwt-color", marks.important.color);
     } else if (marks.preparingFor.length) {
       const p = marks.preparingFor[0];
       el.createDiv({
         cls: "cwt-preview-important",
         text: t("preview.prepare", {
-          title: p.day.title || t("important.untitled"),
+          title: dayTitle(p.day) || t("important.untitled"),
           days: p.daysLeft,
         }),
       }).setAttr("data-cwt-color", p.day.color);

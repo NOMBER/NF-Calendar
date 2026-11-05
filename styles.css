@@ -129,13 +129,49 @@
 /* No own scrollbar here (2.4.0): it scrolled inside the panel and made
    widths jump; the whole view scrolls instead, with a stable gutter. */
 
-.cwt-upcoming > summary {
+.cwt-upcoming > summary,
+.cwt-upcoming-summary {
   cursor: pointer;
   color: var(--text-muted);
   font-size: var(--font-ui-small);
   font-weight: 600;
   padding: 4px 0;
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cwt-upcoming-summary-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cwt-upcoming-filter {
+  flex: 0 0 auto;
+  max-width: 11em;
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.cwt-important-events {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+
+.cwt-important-event-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cwt-important-event-title {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .cwt-upcoming-empty {

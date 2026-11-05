@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.8.1
+- Plugin id: `nf-calendar`, version 2.9.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -51,6 +51,9 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
+- **2.9.0.** Several important events on one day (shared colour, separate rows in Upcoming). Right-click /
+  long-press an Upcoming row → Complete / dismiss (removes a user mark or hides a holiday for that day).
+  Compact All / Holidays / Important filter next to the Upcoming header.
 - **2.8.0.** Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
   its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
   date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
@@ -112,9 +115,9 @@ migration from 1.x.
   - For a non-empty note you choose: **Append to end**, **Insert at beginning** (after the note's frontmatter),
     **Replace content** (asks for confirmation) or **Skip (leave unchanged)**. Skip is the default button, and Esc does the same.
 - **Important days.**
-  - Right-click a day → "Mark as important…": set a name, a color from a theme-aware palette or any custom colour from the colour picker, and "prepare N days before" (0–30).
+  - Right-click a day → "Mark as important…": one or more event titles, a shared color from a theme-aware palette or any custom colour from the colour picker, and "prepare N days before" (0–30). Add further events via "Add another event…".
   - The day gets a colored outline and the preparation days are softly highlighted.
-  - A collapsible **Upcoming important days** list under the calendar opens the note on click.
+  - A collapsible **Upcoming important days** list under the calendar opens the note on click. Filter All / Holidays / Important days; right-click (or long-press) a row → Complete / dismiss.
   - Important days are stored in the plugin's `data.json`, so they need no note.
 - **Template preview.** Hover an empty day for about 0.4 s to see:
   - which template would be used and why, and which files are missing;

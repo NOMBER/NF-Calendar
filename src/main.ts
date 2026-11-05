@@ -14,11 +14,17 @@ import {
 } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { setLanguage, t } from "src/core/i18n";
-import { customColorCss, dayKey } from "src/core/important";
+import {
+  customColorCss,
+  dayKey,
+  holidayDismissKey,
+  importantDismissKey,
+  removeEventFromDay,
+} from "src/core/important";
 import { planUndo } from "src/core/organize";
 import { buildOrganizePlan, runMoves } from "src/io/organize";
 import { OrganizeModal } from "src/ui/modals/organize";
-import type { IImportantDay } from "src/core/important";
+import type { IImportantDay, UpcomingFilter } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
 import { migrateSettings, periodicConfig, shouldOpenOnStartup } from "src/core/settings";
@@ -738,7 +744,7 @@ export default class CalendarPlugin extends Plugin {
 
   // ---------- important days ----------
 
-  openImportantDayModal(date: Moment, after?: () => void): void {
+  openImportantDayModal(date: Moment, after?: () => void, addEvent = false): void {
     const key = dayKey(date);
     const existing = this.options.importantDays[key] ?? null;
     this.show(
@@ -758,6 +764,7 @@ export default class CalendarPlugin extends Plugin {
               after?.();
             }
           : null,
+        addEvent,
       ),
     );
   }
@@ -769,6 +776,40 @@ export default class CalendarPlugin extends Plugin {
       delete next[key];
       return { importantDays: next };
     });
+  }
+
+  async dismissImportantEvent(dateKey: string, eventId: string): Promise<void> {
+    await this.writeOptions((old) => {
+      const day = old.importantDays[dateKey];
+      if (!day) {
+        return {};
+      }
+      const nextDay = removeEventFromDay(day, eventId);
+      const importantDays = { ...old.importantDays };
+      if (nextDay) {
+        importantDays[dateKey] = nextDay;
+      } else {
+        delete importantDays[dateKey];
+      }
+      // Drop a matching dismiss key if any (event is gone).
+      const key = importantDismissKey(dateKey, eventId);
+      const dismissedUpcoming = old.dismissedUpcoming.filter((k) => k !== key);
+      return { importantDays, dismissedUpcoming };
+    });
+  }
+
+  async dismissHolidayUpcoming(dateKey: string, path: string): Promise<void> {
+    const key = holidayDismissKey(dateKey, path);
+    await this.writeOptions((old) => {
+      if (old.dismissedUpcoming.includes(key)) {
+        return {};
+      }
+      return { dismissedUpcoming: [...old.dismissedUpcoming, key] };
+    });
+  }
+
+  async setUpcomingFilter(filter: UpcomingFilter): Promise<void> {
+    await this.writeOptions(() => ({ upcomingFilter: filter }));
   }
 
   showImportantDays(): void {

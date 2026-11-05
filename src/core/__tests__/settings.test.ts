@@ -107,7 +107,11 @@ describe("migrateSettings", () => {
       },
     ]);
     expect(settings.importantDays).toEqual({
-      "2026-11-10": { title: "Exam", color: "red", prepDays: 30 },
+      "2026-11-10": {
+        color: "red",
+        prepDays: 30,
+        events: [{ id: "e-2026-11-10-0", title: "Exam" }],
+      },
     });
   });
 
@@ -147,7 +151,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(9);
+    expect(settings.settingsVersion).toBe(10);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -244,8 +248,8 @@ describe("2.5.1: grid display switches", () => {
 describe("2.7.0 migration (v8)", () => {
   it("v7 data gets random defaults; hidden menu position accepted", () => {
     const { settings } = migrateSettings({ settingsVersion: 7, menuPosition: "hidden" });
-    expect(SETTINGS_VERSION).toBe(9);
-    expect(settings.settingsVersion).toBe(9);
+    expect(SETTINGS_VERSION).toBe(10);
+    expect(settings.settingsVersion).toBe(10);
     expect(settings.menuPosition).toBe("hidden");
     expect(settings.random).toEqual({ kind: "all", days: 30, from: "", to: "", skipEmpty: false });
     const s2 = migrateSettings({

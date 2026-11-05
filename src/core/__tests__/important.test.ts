@@ -1,19 +1,37 @@
 import moment from "moment";
 
-import { allImportantDays, clampPrepDays, getDayMarks, upcomingImportantDays } from "../important";
+import {
+  allImportantDays,
+  allImportantEvents,
+  clampPrepDays,
+  dayTitle,
+  getDayMarks,
+  holidayDismissKey,
+  importantDismissKey,
+  isDismissed,
+  removeEventFromDay,
+  upcomingImportantDays,
+} from "../important";
 import type { ImportantDays } from "../important";
 
 const d = (s: string) => moment(s, "YYYY-MM-DD");
 
 const days: ImportantDays = {
-  "2026-11-10": { title: "Exam", color: "red", prepDays: 3 },
-  "2026-11-12": { title: "Trip", color: "blue", prepDays: 5 },
-  "2026-12-31": { title: "", color: "green", prepDays: 0 },
+  "2026-11-10": {
+    color: "red",
+    prepDays: 3,
+    events: [
+      { id: "a", title: "Exam" },
+      { id: "b", title: "Deadline" },
+    ],
+  },
+  "2026-11-12": { color: "blue", prepDays: 5, events: [{ id: "c", title: "Trip" }] },
+  "2026-12-31": { color: "green", prepDays: 0, events: [{ id: "d", title: "" }] },
 };
 
 describe("preparation window", () => {
   it("marks the important day itself", () => {
-    expect(getDayMarks(moment, d("2026-11-10"), days).important?.title).toBe("Exam");
+    expect(dayTitle(getDayMarks(moment, d("2026-11-10"), days).important)).toBe("Exam, Deadline");
   });
 
   it("highlights exactly N days before, nearest first", () => {
@@ -37,11 +55,12 @@ describe("preparation window", () => {
 });
 
 describe("upcoming list", () => {
-  it("includes today, respects the horizon, sorted", () => {
+  it("includes today, one row per event, respects the horizon, sorted", () => {
     const list = upcomingImportantDays(moment, d("2026-11-10"), days, 30);
-    expect(list.map((x) => [x.date, x.daysLeft])).toEqual([
-      ["2026-11-10", 0],
-      ["2026-11-12", 2],
+    expect(list.map((x) => [x.date, x.event.id, x.daysLeft])).toEqual([
+      ["2026-11-10", "a", 0],
+      ["2026-11-10", "b", 0],
+      ["2026-11-12", "c", 2],
     ]);
     expect(upcomingImportantDays(moment, d("2026-11-11"), days, 60).map((x) => x.date)).toEqual([
       "2026-11-12",
@@ -49,11 +68,28 @@ describe("upcoming list", () => {
     ]);
   });
 
-  it("all days sorted by date", () => {
+  it("all days / events sorted by date", () => {
     expect(allImportantDays(days).map((x) => x.date)).toEqual([
       "2026-11-10",
       "2026-11-12",
       "2026-12-31",
     ]);
+    expect(allImportantEvents(days).map((x) => x.event.id)).toEqual(["a", "b", "c", "d"]);
+  });
+});
+
+describe("multi-event helpers", () => {
+  it("removes one event and drops the day when empty", () => {
+    const day = days["2026-11-10"];
+    const next = removeEventFromDay(day, "a");
+    expect(next?.events.map((e) => e.id)).toEqual(["b"]);
+    expect(removeEventFromDay(next!, "b")).toBeNull();
+  });
+
+  it("dismiss keys", () => {
+    expect(importantDismissKey("2026-11-10", "a")).toBe("i:2026-11-10:a");
+    expect(holidayDismissKey("2026-11-10", "H/x.md")).toBe("h:2026-11-10:H/x.md");
+    expect(isDismissed(["i:2026-11-10:a"], "i:2026-11-10:a")).toBe(true);
+    expect(isDismissed([], "i:2026-11-10:a")).toBe(false);
   });
 });

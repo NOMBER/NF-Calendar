@@ -81,14 +81,14 @@ describe("missing notes range from the open note", () => {
 
 describe("settings v9", () => {
   it("defaults for new fields; values kept", () => {
-    expect(SETTINGS_VERSION).toBe(9);
+    expect(SETTINGS_VERSION).toBe(10);
     const a = migrateSettings({ settingsVersion: 8 });
     expect(a.migratedFrom).toBe(8);
     expect(a.settings.startupTabPosition).toBe("left");
     expect(a.settings.dateFieldFormat).toBe("DD.MM.YYYY");
     expect(a.settings.missingFromOpenNote).toBe(true);
     const b = migrateSettings({
-      settingsVersion: 9,
+      settingsVersion: 10,
       startupTabPosition: "right",
       dateFieldFormat: "YYYY/MM/DD",
       missingFromOpenNote: false,

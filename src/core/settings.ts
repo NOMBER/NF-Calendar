@@ -20,12 +20,18 @@ import { defaultMenuItems, sanitizeMenuItems } from "./menuItems";
 import { defaultRandomPrefs, sanitizeRandomPrefs } from "./random";
 import type { IRandomPrefs } from "./random";
 import type { IMenuItemPref } from "./menuItems";
-import { clampPrepDays, sanitizeImportantColor } from "./important";
-import type { ImportantDays } from "./important";
+import {
+  clampPrepDays,
+  MAX_EVENTS_PER_DAY,
+  sanitizeEventId,
+  sanitizeImportantColor,
+  sanitizeUpcomingFilter,
+} from "./important";
+import type { ImportantDays, IImportantEvent, UpcomingFilter } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 9;
+export const SETTINGS_VERSION = 10;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
@@ -102,6 +108,10 @@ export interface ISettings {
   templateRules: ITemplateRule[];
 
   importantDays: ImportantDays;
+  /** v10 (2.9.0): dismissed upcoming rows (`i:date:eventId` / `h:date:path`). */
+  dismissedUpcoming: string[];
+  /** v10 (2.9.0): filter for the upcoming list under the calendar. */
+  upcomingFilter: UpcomingFilter;
   lastOrganize: IOrganizeJournal | null;
   showUpcoming: boolean;
   /** 2.5.1: draw holiday marks (🎉) in the grid. Display only. */
@@ -150,6 +160,8 @@ export function makeDefaultSettings(): ISettings {
     weekdayTemplates: { ...EMPTY_WEEKDAY_TEMPLATES },
     templateRules: [],
     importantDays: {},
+    dismissedUpcoming: [],
+    upcomingFilter: "all",
     lastOrganize: null,
     showUpcoming: true,
     showHolidayMarks: true,
@@ -186,6 +198,9 @@ export const LIMITS = {
   text: 200,
   rules: 200,
   importantDays: 5000,
+  importantEventsPerDay: MAX_EVENTS_PER_DAY,
+  dismissedUpcoming: 2000,
+  dismissedKey: 300,
 } as const;
 
 const WEEK_START_OPTIONS = ["locale", ...WEEKDAY_KEYS] as const;
@@ -292,11 +307,67 @@ export function sanitizeImportant(raw: unknown): ImportantDays {
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = v as any;
+    const events = sanitizeImportantEvents(d, k);
+    if (!events.length) {
+      continue;
+    }
     out[k] = {
-      title: str(d.title, "", LIMITS.text),
       color: sanitizeImportantColor(d.color),
       prepDays: clampPrepDays(Number(d.prepDays ?? 0)),
+      events,
     };
+  }
+  return out;
+}
+
+/** Accept v2.8 single-title shape or v2.9 `events[]`; drop empty days. */
+function sanitizeImportantEvents(d: Record<string, unknown>, date: string): IImportantEvent[] {
+  const rawList = Array.isArray(d.events) ? d.events : null;
+  const events: IImportantEvent[] = [];
+  if (rawList) {
+    for (const item of rawList) {
+      if (!item || typeof item !== "object") {
+        continue;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const e = item as any;
+      events.push({
+        id: sanitizeEventId(e.id, date, events.length),
+        title: str(e.title, "", LIMITS.text),
+      });
+      if (events.length >= LIMITS.importantEventsPerDay) {
+        break;
+      }
+    }
+  } else if (typeof d.title === "string" || d.title === undefined) {
+    // Pre-2.9: one title on the day object.
+    events.push({
+      id: sanitizeEventId(undefined, date, 0),
+      title: str(d.title, "", LIMITS.text),
+    });
+  }
+  return events;
+}
+
+export function sanitizeDismissedUpcoming(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (typeof item !== "string") {
+      continue;
+    }
+    const key = item.slice(0, LIMITS.dismissedKey);
+    if (!/^[ih]:\d{4}-\d{2}-\d{2}:/.test(key) || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(key);
+    if (out.length >= LIMITS.dismissedUpcoming) {
+      break;
+    }
   }
   return out;
 }
@@ -376,6 +447,9 @@ export function migrateSettings(
     weekdayTemplates: sanitizeWeekdayTemplates(r.weekdayTemplates),
     templateRules: sanitizeRules(r.templateRules),
     importantDays: sanitizeImportant(r.importantDays),
+    // v10 (2.9.0): multi-event days (via sanitizeImportant), dismiss set, upcoming filter.
+    dismissedUpcoming: sanitizeDismissedUpcoming(r.dismissedUpcoming),
+    upcomingFilter: sanitizeUpcomingFilter(r.upcomingFilter),
     showUpcoming: typeof r.showUpcoming === "boolean" ? r.showUpcoming : defaults.showUpcoming,
     showHolidayMarks: r.showHolidayMarks !== false,
     showImportantMarks: r.showImportantMarks !== false,

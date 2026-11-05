@@ -257,17 +257,19 @@ export default class CalendarView extends ItemView {
     if (!this.upcomingEl || !this.settings) {
       return;
     }
-    renderUpcoming(
-      this.upcomingEl,
-      this.settings,
-      (date) => void this.plugin.openPeriodic(window.moment(date, "YYYY-MM-DD"), "day", false),
-      (collapsed) => {
+    renderUpcoming(this.upcomingEl, this.settings, {
+      onOpenDay: (date) =>
+        void this.plugin.openPeriodic(window.moment(date, "YYYY-MM-DD"), "day", false),
+      onToggle: (collapsed) => {
         if (collapsed !== this.settings.upcomingCollapsed) {
           void this.plugin.writeOptions(() => ({ upcomingCollapsed: collapsed }));
         }
       },
-      (path) => void this.plugin.openHoliday(path),
-    );
+      onOpenHoliday: (path) => void this.plugin.openHoliday(path),
+      onFilterChange: (filter) => void this.plugin.setUpcomingFilter(filter),
+      onDismissImportant: (date, eventId) => void this.plugin.dismissImportantEvent(date, eventId),
+      onDismissHoliday: (date, path) => void this.plugin.dismissHolidayUpcoming(date, path),
+    });
   }
 
   private async onClickDay(date: Moment, inNewSplit: boolean): Promise<void> {

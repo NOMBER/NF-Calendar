@@ -7,7 +7,7 @@ import { datesBetween } from "src/core/dates";
 import type { IHoliday } from "src/core/holidays";
 import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
-import { getDayMarks } from "src/core/important";
+import { dayTitle, getDayMarks } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
 import type { IStatsView } from "src/core/settings";
 import { currentStreak, isAllTasksDone, summarizeMonth } from "src/core/stats";
@@ -121,11 +121,12 @@ export class StatsModal extends Modal {
           cls: "cwt-marker",
           attr: {
             "data-cwt-color": marks.important.color,
-            "aria-label": marks.important.title || t("important.untitled"),
+            "aria-label": dayTitle(marks.important) || t("important.untitled"),
           },
         });
-        if (marks.important.title) {
-          dayCell.createSpan({ cls: "cwt-stats-important-title", text: marks.important.title });
+        const title = dayTitle(marks.important);
+        if (title) {
+          dayCell.createSpan({ cls: "cwt-stats-important-title", text: title });
         }
       }
       const holidays = this.deps.holidays(date);

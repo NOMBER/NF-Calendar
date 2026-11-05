@@ -156,6 +156,9 @@ export function showDayMenu(plugin: CalendarPlugin, date: Moment, event: MouseEv
     plugin.openImportantDayModal(date),
   );
   if (important) {
+    item(t("menu.addImportantEvent"), "plus", () =>
+      plugin.openImportantDayModal(date, undefined, true),
+    );
     item(t("menu.removeImportant"), "star-off", () => plugin.removeImportantDay(date));
   }
   if (note) {

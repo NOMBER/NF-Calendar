@@ -5,16 +5,20 @@ import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
 import {
   clampPrepDays,
+  emptyImportantDay,
   IMPORTANT_COLORS,
   isCustomColor,
+  MAX_EVENTS_PER_DAY,
   MAX_PREP_DAYS,
+  newEventId,
   sanitizeImportantColor,
 } from "src/core/important";
-import type { IImportantDay, ImportantColor } from "src/core/important";
+import type { IImportantDay, IImportantEvent, ImportantColor } from "src/core/important";
 
-/** "Mark as important…" dialog: title, color, preparation days, remove. */
+/** "Mark as important…" dialog: shared colour/prep + one or more events. */
 export class ImportantDayModal extends Modal {
   private value: IImportantDay;
+  private focusNew = false;
 
   constructor(
     app: App,
@@ -22,24 +26,51 @@ export class ImportantDayModal extends Modal {
     existing: IImportantDay | null,
     private onSave: (day: IImportantDay) => Promise<void>,
     private onRemove: (() => Promise<void>) | null,
+    /** When true, append an empty event and focus it (day already marked). */
+    addEvent = false,
   ) {
     super(app);
-    this.value = existing ? { ...existing } : { title: "", color: "red", prepDays: 0 };
+    if (existing?.events?.length) {
+      this.value = {
+        color: existing.color,
+        prepDays: existing.prepDays,
+        events: existing.events.map((e) => ({ ...e })),
+      };
+      if (addEvent && this.value.events.length < MAX_EVENTS_PER_DAY) {
+        this.value.events.push({ id: newEventId(), title: "" });
+        this.focusNew = true;
+      }
+    } else {
+      this.value = emptyImportantDay();
+    }
   }
 
   onOpen(): void {
+    this.render();
+  }
+
+  private render(): void {
     const { contentEl } = this;
+    contentEl.empty();
     this.titleEl.setText(`${t("important.title")}: ${this.dateLabel}`);
     contentEl.addClass("cwt-important-modal");
 
-    new Setting(contentEl)
-      .setName(t("important.name"))
-      .setDesc(t("important.nameDesc"))
-      .addText((text) => {
-        text.setValue(this.value.title);
-        text.onChange((v) => (this.value.title = v));
-        window.setTimeout(() => text.inputEl.focus(), 0);
+    contentEl.createDiv({ cls: "setting-item-name", text: t("important.events") });
+    const list = contentEl.createDiv("cwt-important-events");
+    this.value.events.forEach((ev, index) => this.renderEventRow(list, ev, index));
+
+    if (this.value.events.length < MAX_EVENTS_PER_DAY) {
+      const add = contentEl.createEl("button", {
+        cls: "cwt-small-button",
+        text: t("important.addEvent"),
+        attr: { type: "button" },
       });
+      add.addEventListener("click", () => {
+        this.value.events.push({ id: newEventId(), title: "" });
+        this.focusNew = true;
+        this.render();
+      });
+    }
 
     const colorSetting = new Setting(contentEl).setName(t("important.color"));
     const palette = colorSetting.controlEl.createDiv("cwt-palette");
@@ -65,7 +96,6 @@ export class ImportantDayModal extends Modal {
       swatches.push(sw);
     }
 
-    // Any colour: native picker; value is validated as #rrggbb before use.
     const picker = palette.createEl("input", {
       cls: "cwt-color-picker",
       attr: { type: "color", "aria-label": t("important.customColor") },
@@ -112,14 +142,54 @@ export class ImportantDayModal extends Modal {
       buttons
         .createEl("button", { cls: "mod-cta", text: t("important.save") })
         .addEventListener("click", async () => {
-          this.close();
-          await this.onSave({
-            title: this.value.title.trim(),
+          const events = this.value.events
+            .map((e) => ({ id: e.id, title: e.title.trim() }))
+            .filter((e) => e.title.length > 0 || this.value.events.length === 1);
+          // Keep at least one event slot (possibly untitled) so the mark remains.
+          const saved: IImportantDay = {
             color: this.value.color,
             prepDays: clampPrepDays(this.value.prepDays),
-          });
+            events: events.length
+              ? events.slice(0, MAX_EVENTS_PER_DAY)
+              : [{ id: newEventId(), title: "" }],
+          };
+          this.close();
+          await this.onSave(saved);
         });
     });
+  }
+
+  private renderEventRow(parent: HTMLElement, ev: IImportantEvent, index: number): void {
+    const row = parent.createDiv("cwt-important-event-row");
+    const input = row.createEl("input", {
+      cls: "cwt-important-event-title",
+      attr: {
+        type: "text",
+        placeholder: t("important.name"),
+        "aria-label": t("important.name"),
+      },
+    });
+    input.value = ev.title;
+    input.addEventListener("input", () => {
+      ev.title = input.value;
+    });
+    if (this.focusNew && index === this.value.events.length - 1) {
+      window.setTimeout(() => input.focus(), 0);
+      this.focusNew = false;
+    } else if (!this.focusNew && index === 0 && this.value.events.length === 1) {
+      window.setTimeout(() => input.focus(), 0);
+    }
+    if (this.value.events.length > 1) {
+      const rm = row.createEl("button", {
+        cls: "cwt-small-button",
+        text: t("important.removeEvent"),
+        attr: { type: "button" },
+      });
+      rm.addEventListener("click", () => {
+        this.value.events.splice(index, 1);
+        this.render();
+      });
+    }
   }
 
   onClose(): void {

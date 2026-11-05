@@ -106,9 +106,13 @@ describe("settings validation (data.json)", () => {
 
   it("custom colour CSS only contains validated hex", () => {
     const css = customColorCss({
-      "2026-01-01": { title: "a", color: "#ff0000", prepDays: 0 },
-      "2026-01-02": { title: "b", color: '#00ff00"]{}body{x' as never, prepDays: 0 },
-      "2026-01-03": { title: "c", color: "blue", prepDays: 0 },
+      "2026-01-01": { color: "#ff0000", prepDays: 0, events: [{ id: "e", title: "a" }] },
+      "2026-01-02": {
+        color: '#00ff00"]{}body{x' as never,
+        prepDays: 0,
+        events: [{ id: "e", title: "b" }],
+      },
+      "2026-01-03": { color: "blue", prepDays: 0, events: [{ id: "e", title: "c" }] },
     });
     expect(css).toContain('[data-cwt-important="#ff0000"]');
     expect(css).toContain("--cwt-c-rgb: 255, 0, 0");
@@ -120,7 +124,7 @@ describe("settings validation (data.json)", () => {
     const { settings } = migrateSettings({ settingsVersion: 3, wordsPerDot: 99 });
     expect("wordsPerDot" in settings).toBe(false);
     expect(settings.dotsMode).toBe("exists");
-    expect(settings.settingsVersion).toBe(9);
+    expect(settings.settingsVersion).toBe(10);
   });
 
   it("conditions: unknown types and wrong field types are dropped", () => {
@@ -163,7 +167,7 @@ describe("settings validation (data.json)", () => {
       __proto__: { title: "bad" },
     });
     expect(Object.keys(out)).toEqual(["2026-10-30"]);
-    expect(out["2026-10-30"].title).toHaveLength(LIMITS.text);
+    expect(out["2026-10-30"].events[0].title).toHaveLength(LIMITS.text);
     expect(out["2026-10-30"].color).toBe("red");
     expect(sanitizeImportant([{ title: "x" }])).toEqual({});
   });

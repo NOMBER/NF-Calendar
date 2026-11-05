@@ -2,10 +2,10 @@ import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
-import { allImportantDays, daysBetween } from "src/core/important";
+import { allImportantEvents, daysBetween } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
 
-/** List of all important days with "open note" and "edit" actions. */
+/** List of all important events with "open note" and "edit" actions. */
 export class ImportantListModal extends Modal {
   constructor(
     app: App,
@@ -25,13 +25,13 @@ export class ImportantListModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("cwt-important-list");
-    const items = allImportantDays(this.getDays());
+    const items = allImportantEvents(this.getDays());
     if (!items.length) {
       contentEl.createEl("p", { cls: "cwt-muted", text: t("important.listEmpty") });
       return;
     }
     const today = window.moment();
-    for (const { date, day } of items) {
+    for (const { date, day, event } of items) {
       const left = daysBetween(window.moment, today, date);
       const row = contentEl.createDiv("cwt-upcoming-item");
       if (left < 0) {
@@ -41,7 +41,7 @@ export class ImportantListModal extends Modal {
       const main = row.createDiv("cwt-upcoming-main");
       main.createDiv({
         cls: "cwt-upcoming-title",
-        text: day.title || t("important.untitled"),
+        text: event.title || t("important.untitled"),
       });
       main.createDiv({
         cls: "cwt-upcoming-date",
