@@ -38,30 +38,41 @@ export function renderUpcoming(
   details.open = !settings.upcomingCollapsed;
   const summary = details.createEl("summary", { cls: "cwt-upcoming-summary" });
   summary.createSpan({ cls: "cwt-upcoming-summary-label", text: t("upcoming.title") });
-  const filter = summary.createEl("select", {
-    cls: "dropdown cwt-upcoming-filter",
-    attr: { "aria-label": t("upcoming.filterAria") },
-  });
-  const opts: Array<[UpcomingFilter, string]> = [
-    ["all", t("upcoming.filterAll")],
-    ["holidays", t("upcoming.filterHolidays")],
-    ["important", t("upcoming.filterImportant")],
-  ];
-  for (const [value, label] of opts) {
-    filter.createEl("option", { text: label, attr: { value } });
+  // When the control is hidden, always show everything (saved filter value is kept).
+  const activeFilter: UpcomingFilter = settings.hideUpcomingFilter
+    ? "all"
+    : settings.upcomingFilter || "all";
+  if (!settings.hideUpcomingFilter) {
+    const filter = summary.createEl("select", {
+      cls: "dropdown cwt-upcoming-filter",
+      attr: { "aria-label": t("upcoming.filterAria") },
+    });
+    const opts: Array<[UpcomingFilter, string]> = [
+      ["all", t("upcoming.filterAll")],
+      ["holidays", t("upcoming.filterHolidays")],
+      ["important", t("upcoming.filterImportant")],
+    ];
+    for (const [value, label] of opts) {
+      filter.createEl("option", { text: label, attr: { value } });
+    }
+    filter.value = settings.upcomingFilter || "all";
+    // Keep the <details> from toggling when using the filter.
+    const stopToggle = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    filter.addEventListener("click", stopToggle);
+    filter.addEventListener("mousedown", stopToggle);
+    filter.addEventListener("pointerdown", stopToggle);
+    filter.addEventListener("change", (e) => {
+      e.stopPropagation();
+      actions.onFilterChange(filter.value as UpcomingFilter);
+    });
   }
-  filter.value = settings.upcomingFilter || "all";
-  // Keep the <details> from toggling when using the filter.
-  filter.addEventListener("click", (e) => e.stopPropagation());
-  filter.addEventListener("mousedown", (e) => e.stopPropagation());
-  filter.addEventListener("change", (e) => {
-    e.stopPropagation();
-    actions.onFilterChange(filter.value as UpcomingFilter);
-  });
   details.addEventListener("toggle", () => actions.onToggle(!details.open));
 
-  const showImportant = settings.upcomingFilter !== "holidays";
-  const showHolidays = settings.upcomingFilter !== "important";
+  const showImportant = activeFilter !== "holidays";
+  const showHolidays = activeFilter !== "important";
   const dismissed = settings.dismissedUpcoming;
 
   const items = showImportant

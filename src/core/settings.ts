@@ -112,6 +112,8 @@ export interface ISettings {
   dismissedUpcoming: string[];
   /** v10 (2.9.0): filter for the upcoming list under the calendar. */
   upcomingFilter: UpcomingFilter;
+  /** 2.9.1: hide the All/Holidays/Important filter control (list shows all). */
+  hideUpcomingFilter: boolean;
   lastOrganize: IOrganizeJournal | null;
   showUpcoming: boolean;
   /** 2.5.1: draw holiday marks (🎉) in the grid. Display only. */
@@ -162,6 +164,7 @@ export function makeDefaultSettings(): ISettings {
     importantDays: {},
     dismissedUpcoming: [],
     upcomingFilter: "all",
+    hideUpcomingFilter: false,
     lastOrganize: null,
     showUpcoming: true,
     showHolidayMarks: true,
@@ -450,6 +453,7 @@ export function migrateSettings(
     // v10 (2.9.0): multi-event days (via sanitizeImportant), dismiss set, upcoming filter.
     dismissedUpcoming: sanitizeDismissedUpcoming(r.dismissedUpcoming),
     upcomingFilter: sanitizeUpcomingFilter(r.upcomingFilter),
+    hideUpcomingFilter: r.hideUpcomingFilter === true,
     showUpcoming: typeof r.showUpcoming === "boolean" ? r.showUpcoming : defaults.showUpcoming,
     showHolidayMarks: r.showHolidayMarks !== false,
     showImportantMarks: r.showImportantMarks !== false,

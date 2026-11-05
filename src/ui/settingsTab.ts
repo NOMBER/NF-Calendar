@@ -332,6 +332,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
       "showImportantMarks",
     );
     this.toggle(t("settings.upcoming"), t("settings.upcomingDesc"), "showUpcoming");
+    this.toggle(
+      t("settings.hideUpcomingFilter"),
+      t("settings.hideUpcomingFilterDesc"),
+      "hideUpcomingFilter",
+    );
     const setting = new Setting(this.containerEl)
       .setName(t("settings.horizon"))
       .setDesc(t("settings.horizonDesc"));
@@ -490,6 +495,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       | "missingFromOpenNote"
       | "showTemplatePreview"
       | "showUpcoming"
+      | "hideUpcomingFilter"
       | "showHolidayMarks"
       | "showImportantMarks"
       | "useWeekdayTemplates",

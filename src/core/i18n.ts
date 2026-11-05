@@ -229,6 +229,9 @@ const en = {
   "menuItem.missingDisplayedMonth": "Create missing daily notes for the shown future month",
   "settings.upcoming": "Show upcoming important days",
   "settings.upcomingDesc": "A collapsible list under the calendar.",
+  "settings.hideUpcomingFilter": "Hide the upcoming-days filter button",
+  "settings.hideUpcomingFilterDesc":
+    "When on, the All / Holidays / Important days control next to the list title is hidden and the list shows everything.",
   "settings.horizon": "Look-ahead for upcoming days",
   "settings.horizonDesc": "How many days ahead the list covers.",
   "settings.daily": "Daily notes",
@@ -658,6 +661,9 @@ const ru: Record<I18nKey, string> = {
   "menuItem.missingDisplayedMonth": "Создать недостающие заметки на показанный будущий месяц",
   "settings.upcoming": "Показывать ближайшие важные дни",
   "settings.upcomingDesc": "Сворачиваемый список под календарём.",
+  "settings.hideUpcomingFilter": "Скрыть кнопку фильтра",
+  "settings.hideUpcomingFilterDesc":
+    "Если включено, переключатель Все / Праздники / Важные дни рядом с заголовком списка не показывается, и в списке видно всё.",
   "settings.horizon": "Горизонт списка",
   "settings.horizonDesc": "На сколько дней вперёд смотреть.",
   "settings.daily": "Ежедневные заметки",

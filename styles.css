@@ -141,6 +141,34 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  list-style: none;
+}
+
+/* display:flex hides the native marker — restore a chevron left of the title */
+.cwt-upcoming > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cwt-upcoming > summary::marker {
+  content: "";
+}
+
+.cwt-upcoming > summary::before {
+  content: "";
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent currentColor;
+  margin-inline-end: 2px;
+  transform: rotate(0deg);
+  transition: transform 0.1s ease;
+}
+
+.cwt-upcoming[open] > summary::before {
+  transform: rotate(90deg);
 }
 
 .cwt-upcoming-summary-label {
@@ -154,6 +182,11 @@
   font-size: var(--font-ui-smaller, 12px);
   font-weight: 400;
   cursor: pointer;
+}
+
+/* Filter only while the list is expanded */
+.cwt-upcoming:not([open]) .cwt-upcoming-filter {
+  display: none;
 }
 
 .cwt-important-events {

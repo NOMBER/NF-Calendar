@@ -67,3 +67,17 @@ describe("v2.9.0 settings (version 10)", () => {
     expect(sanitizeDismissedUpcoming(["i:2026-01-01:a", 1, "x"])).toEqual(["i:2026-01-01:a"]);
   });
 });
+
+describe("2.9.1 hideUpcomingFilter", () => {
+  it("defaults off; true is kept", () => {
+    expect(migrateSettings({ settingsVersion: 10 }).settings.hideUpcomingFilter).toBe(false);
+    expect(
+      migrateSettings({ settingsVersion: 10, hideUpcomingFilter: true }).settings
+        .hideUpcomingFilter,
+    ).toBe(true);
+    expect(
+      migrateSettings({ settingsVersion: 9, hideUpcomingFilter: "yes" as never }).settings
+        .hideUpcomingFilter,
+    ).toBe(false);
+  });
+});

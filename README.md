@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.9.0
+- Plugin id: `nf-calendar`, version 2.9.1
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -53,7 +53,7 @@ migration from 1.x.
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
 - **2.9.0.** Several important events on one day (shared colour, separate rows in Upcoming). Right-click /
   long-press an Upcoming row → Complete / dismiss (removes a user mark or hides a holiday for that day).
-  Compact All / Holidays / Important filter next to the Upcoming header.
+  Compact All / Holidays / Important filter next to the Upcoming header (optional setting to hide it).
 - **2.8.0.** Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
   its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
   date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
