@@ -13,7 +13,11 @@ import { settings } from "src/ui/stores";
  */
 export const importantDaysSource: ICalendarSource = {
   getDailyMetadata: async (date: Moment): Promise<IDayMetadata> => {
-    const marks = getDayMarks(window.moment, date, get(settings).importantDays);
+    const s = get(settings);
+    if (s.showImportantMarks === false) {
+      return { classes: [], dots: [] }; // display only; rules / upcoming unaffected
+    }
+    const marks = getDayMarks(window.moment, date, s.importantDays);
     const classes: string[] = [];
     const dataAttributes: Record<string, string> = {};
     if (marks.important) {

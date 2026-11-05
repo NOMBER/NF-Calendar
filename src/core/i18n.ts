@@ -200,6 +200,12 @@ const en = {
   "settings.confirmDesc": "Show a confirmation dialog before creating a single note by click.",
   "settings.preview": "Template preview on hover",
   "settings.previewDesc": "Hovering an empty day for ~0.4 s shows which template would be used.",
+  "settings.showHolidayMarks": "Show holidays in the calendar",
+  "settings.showHolidayMarksDesc":
+    '🎉 marks on days with holidays from the folder. Display only: rules, statistics and "Upcoming" still use holidays.',
+  "settings.showImportantMarks": "Highlight important days in the calendar",
+  "settings.showImportantMarksDesc":
+    'Coloured ring on important days and highlight of the get-ready days. Display only: rules, statistics and "Upcoming" are not affected.',
   "settings.upcoming": "Show upcoming important days",
   "settings.upcomingDesc": "A collapsible list under the calendar.",
   "settings.horizon": "Look-ahead for upcoming days",
@@ -547,6 +553,12 @@ const ru: Record<I18nKey, string> = {
   "settings.preview": "Предпросмотр шаблона при наведении",
   "settings.previewDesc":
     "При наведении на пустой день (~0,4 с) показывает, какой шаблон будет применён.",
+  "settings.showHolidayMarks": "Показывать праздники в календаре",
+  "settings.showHolidayMarksDesc":
+    "Значок 🎉 на днях с праздниками из папки. Только отображение: правила, статистика и «Ближайшие» продолжают их учитывать.",
+  "settings.showImportantMarks": "Обводить важные дни в календаре",
+  "settings.showImportantMarksDesc":
+    "Цветное кольцо на важных днях и подсветка дней подготовки. Только отображение: правила, статистика и «Ближайшие» не меняются.",
   "settings.upcoming": "Показывать ближайшие важные дни",
   "settings.upcomingDesc": "Сворачиваемый список под календарём.",
   "settings.horizon": "Горизонт списка",

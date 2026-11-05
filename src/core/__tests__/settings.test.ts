@@ -226,3 +226,17 @@ describe("v6 (2.5.0): open daily note on startup", () => {
     expect(shouldOpenOnStartup(true, false, false)).toBe(false);
   });
 });
+
+describe("2.5.1: grid display switches", () => {
+  it("default on, only false turns off, rest of settings untouched", () => {
+    const d = migrateSettings(null).settings;
+    expect([d.showHolidayMarks, d.showImportantMarks]).toEqual([true, true]);
+    const s = migrateSettings({
+      settingsVersion: 6,
+      showHolidayMarks: false,
+      showImportantMarks: "no",
+      showUpcoming: true,
+    }).settings;
+    expect([s.showHolidayMarks, s.showImportantMarks, s.showUpcoming]).toEqual([false, true, true]);
+  });
+});

@@ -35,10 +35,33 @@ export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): 
     );
   }
   menu.addSeparator();
-  item(t("cmd.organize"), "folder-tree", () => plugin.organizeDailyNotes());
-  if (options.lastOrganize) {
-    item(t("cmd.undoOrganize"), "undo-2", () => plugin.undoLastOrganize());
-  }
+  // Display switches (same settings as in the settings tab). Organize / undo
+  // live in settings and the command palette only.
+  const toggle = (
+    title: string,
+    icon: string,
+    on: boolean,
+    key: "showHolidayMarks" | "showImportantMarks",
+  ) =>
+    menu.addItem((i) =>
+      i
+        .setTitle(title)
+        .setIcon(icon)
+        .setChecked(on)
+        .onClick(() => void plugin.writeOptions(() => ({ [key]: !on }))),
+    );
+  toggle(
+    t("settings.showHolidayMarks"),
+    "party-popper",
+    options.showHolidayMarks !== false,
+    "showHolidayMarks",
+  );
+  toggle(
+    t("settings.showImportantMarks"),
+    "circle-dot",
+    options.showImportantMarks !== false,
+    "showImportantMarks",
+  );
   menu.addSeparator();
   item(t("cmd.missingWeek"), "calendar-plus", () => plugin.createMissingDailyNotes("week"));
   item(t("cmd.missingMonth"), "calendar-plus", () => plugin.createMissingDailyNotes("month"));

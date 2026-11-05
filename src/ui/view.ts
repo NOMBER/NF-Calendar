@@ -286,7 +286,7 @@ export default class CalendarView extends ItemView {
     }
     if (!note && this.settings.showTemplatePreview && this.settings.daily.enabled) {
       this.preview.schedule(date, targetEl);
-    } else if (holidaysFor(date).length) {
+    } else if (this.settings.showHolidayMarks !== false && holidaysFor(date).length) {
       this.preview.schedule(date, targetEl, true);
     } else {
       this.preview.hide();

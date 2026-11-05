@@ -85,6 +85,10 @@ export interface ISettings {
   importantDays: ImportantDays;
   lastOrganize: IOrganizeJournal | null;
   showUpcoming: boolean;
+  /** 2.5.1: draw holiday marks (🎉) in the grid. Display only. */
+  showHolidayMarks: boolean;
+  /** 2.5.1: draw important-day rings and "get ready" highlight in the grid. Display only. */
+  showImportantMarks: boolean;
   upcomingCollapsed: boolean;
   upcomingHorizonDays: number;
 
@@ -122,6 +126,8 @@ export function makeDefaultSettings(): ISettings {
     importantDays: {},
     lastOrganize: null,
     showUpcoming: true,
+    showHolidayMarks: true,
+    showImportantMarks: true,
     upcomingCollapsed: false,
     upcomingHorizonDays: 60,
     showTemplatePreview: true,
@@ -343,6 +349,8 @@ export function migrateSettings(
     templateRules: sanitizeRules(r.templateRules),
     importantDays: sanitizeImportant(r.importantDays),
     showUpcoming: typeof r.showUpcoming === "boolean" ? r.showUpcoming : defaults.showUpcoming,
+    showHolidayMarks: r.showHolidayMarks !== false,
+    showImportantMarks: r.showImportantMarks !== false,
     upcomingCollapsed: !!r.upcomingCollapsed,
     upcomingHorizonDays:
       typeof r.upcomingHorizonDays === "number" && r.upcomingHorizonDays > 0

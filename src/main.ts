@@ -302,6 +302,12 @@ export default class CalendarPlugin extends Plugin {
     ) {
       this.rebuildHolidays();
     }
+    if (
+      before.showHolidayMarks !== after.showHolidayMarks ||
+      before.showImportantMarks !== after.showImportantMarks
+    ) {
+      this.getView()?.refresh();
+    }
     await this.saveData(this.options);
   }
 

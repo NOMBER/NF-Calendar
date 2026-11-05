@@ -153,6 +153,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
   }
 
   private addUpcoming(): void {
+    this.toggle(
+      t("settings.showImportantMarks"),
+      t("settings.showImportantMarksDesc"),
+      "showImportantMarks",
+    );
     this.toggle(t("settings.upcoming"), t("settings.upcomingDesc"), "showUpcoming");
     const setting = new Setting(this.containerEl)
       .setName(t("settings.horizon"))
@@ -224,6 +229,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   private addHolidays(): void {
     const { folder, index, unrecognized } = get(holidayStore);
+    this.toggle(
+      t("settings.showHolidayMarks"),
+      t("settings.showHolidayMarksDesc"),
+      "showHolidayMarks",
+    );
     const folderSetting = new Setting(this.containerEl)
       .setName(t("settings.holidaysFolder"))
       .setDesc(
@@ -288,6 +298,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
       | "openDailyOnStartup"
       | "showTemplatePreview"
       | "showUpcoming"
+      | "showHolidayMarks"
+      | "showImportantMarks"
       | "useWeekdayTemplates",
     rerender = false,
   ): void {

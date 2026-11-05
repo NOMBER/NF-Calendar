@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.5.0
+- Plugin id: `nf-calendar`, version 2.5.1
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -75,7 +75,9 @@ migration from 1.x.
   - Reveal active note in calendar
 
   The ⋯ menu also has "Open plugin settings" and, for a future month shown in the calendar, "Create missing daily notes for
-  &lt;month&gt;".
+  &lt;month&gt;". Two checkable items switch grid marks on/off: "Show holidays in the calendar" (🎉 from the holidays folder)
+  and "Highlight important days in the calendar" (rings and get-ready highlight). They change only the display; rules,
+  statistics and the "Upcoming" list are not affected. The same switches are in Settings.
 - **Batch creation of missing notes.**
   - Starts from today and first shows a dialog listing the dates, the chosen templates and the reason for each choice.
   - Existing notes are **always skipped and never changed**. The dialog shows how many will be skipped, and a note that
@@ -200,7 +202,7 @@ otherwise both plugins open or create today's note and you may get duplicates, f
 
 ## Organize daily notes by year
 
-Command **Organize daily notes by year** (also in the ⋯ menu and in Settings → Daily notes) moves daily notes that lie
+Command **Organize daily notes by year** (command palette and Settings → Daily notes; not in the ⋯ menu since 2.5.1) moves daily notes that lie
 directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Daily/2026/2026-10-30.md`.
 
 - **Make a backup of your vault before the first run.**
