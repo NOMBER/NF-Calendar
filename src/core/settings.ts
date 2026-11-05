@@ -14,13 +14,15 @@ import { sanitizeVaultPath } from "./paths";
 import { DEFAULT_DOTS_MODE, sanitizeDotsMode } from "./dots";
 import type { DotsMode } from "./dots";
 import { defaultMenuItems, sanitizeMenuItems } from "./menuItems";
+import { defaultRandomPrefs, sanitizeRandomPrefs } from "./random";
+import type { IRandomPrefs } from "./random";
 import type { IMenuItemPref } from "./menuItems";
 import { clampPrepDays, sanitizeImportantColor } from "./important";
 import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 7;
+export const SETTINGS_VERSION = 8;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
@@ -36,8 +38,14 @@ export function shouldOpenOnStartup(
 }
 
 /** Where the ⋯ menu button sits. */
-export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar";
-export const MENU_POSITIONS: MenuPosition[] = ["navRight", "navLeft", "titleLeft", "toolbar"];
+export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar" | "hidden";
+export const MENU_POSITIONS: MenuPosition[] = [
+  "navRight",
+  "navLeft",
+  "titleLeft",
+  "toolbar",
+  "hidden",
+];
 
 export interface IStatsView {
   mode: "table" | "charts";
@@ -105,6 +113,8 @@ export interface ISettings {
   menuPosition: MenuPosition;
   /** v7 (2.6.0): ⋯ menu items, order and visibility. */
   menuItems: IMenuItemPref[];
+  /** v8 (2.7.0): random note defaults (command + navigator start values). */
+  random: IRandomPrefs;
   statsView: IStatsView;
 }
 
@@ -140,6 +150,7 @@ export function makeDefaultSettings(): ISettings {
     holidayPattern: "",
     menuPosition: "navRight",
     menuItems: defaultMenuItems(),
+    random: defaultRandomPrefs(),
     statsView: { mode: "table", metric: "words", kind: "bar" },
   };
 }
@@ -375,6 +386,8 @@ export function migrateSettings(
     menuPosition: MENU_POSITIONS.includes(r.menuPosition) ? r.menuPosition : defaults.menuPosition,
     // v7 (2.6.0): new field; older data gets the full default menu.
     menuItems: sanitizeMenuItems(r.menuItems),
+    // v8 (2.7.0): new field; menuPosition gains "hidden".
+    random: sanitizeRandomPrefs(r.random),
     statsView: sanitizeStatsView(r.statsView),
     lastOrganize: sanitizeJournal(r.lastOrganize),
   };

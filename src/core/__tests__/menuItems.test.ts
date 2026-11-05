@@ -85,7 +85,7 @@ describe("menu items", () => {
   });
 
   it("settings v6 -> v7 migration adds the default menu; stored menu sanitized", () => {
-    expect(SETTINGS_VERSION).toBe(7);
+    expect(SETTINGS_VERSION).toBe(8);
     const m = migrateSettings({ settingsVersion: 6, showHolidayMarks: false });
     expect(m.migratedFrom).toBe(6);
     expect(m.settings.menuItems).toEqual(defaultMenuItems());
@@ -94,7 +94,7 @@ describe("menu items", () => {
       settingsVersion: 7,
       menuItems: [{ id: "settings", visible: true }, { id: "bogus" }],
     });
-    expect(k.migratedFrom).toBeNull();
+    expect(k.migratedFrom).toBe(7);
     expect(k.settings.menuItems.find((p) => p.id === "settings")).toEqual({
       id: "settings",
       visible: true,

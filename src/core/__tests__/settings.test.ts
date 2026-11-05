@@ -147,7 +147,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(7);
+    expect(settings.settingsVersion).toBe(8);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -238,5 +238,22 @@ describe("2.5.1: grid display switches", () => {
       showUpcoming: true,
     }).settings;
     expect([s.showHolidayMarks, s.showImportantMarks, s.showUpcoming]).toEqual([false, true, true]);
+  });
+});
+
+describe("2.7.0 migration (v8)", () => {
+  it("v7 data gets random defaults; hidden menu position accepted", () => {
+    const { settings } = migrateSettings({ settingsVersion: 7, menuPosition: "hidden" });
+    expect(SETTINGS_VERSION).toBe(8);
+    expect(settings.settingsVersion).toBe(8);
+    expect(settings.menuPosition).toBe("hidden");
+    expect(settings.random).toEqual({ kind: "all", days: 30, from: "", to: "", skipEmpty: false });
+    const s2 = migrateSettings({
+      settingsVersion: 8,
+      random: { kind: "range", days: 5, from: "2027-01-01", to: "2027-02-01", skipEmpty: true },
+    }).settings;
+    expect(s2.random.kind).toBe("range");
+    expect(s2.random.skipEmpty).toBe(true);
+    expect(makeDefaultSettings().random.kind).toBe("all");
   });
 });

@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.6.0
+- Plugin id: `nf-calendar`, version 2.7.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -51,12 +51,14 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
-- **Random daily note** (2.6.0). In the date navigator: "Open random note" from all notes (default), the chosen year, a
-  month of that year or the last N days; optional "Skip empty" (a note with only front matter, headings and empty
+- **Random daily note** (2.6.0, reworked in 2.7.0). In the date navigator the "Random note" button sits next to "Open
+  statistics"; right below it a labelled box picks the period: all notes, the chosen year, a month of that year, the last
+  N days or a date range (from–to, an empty end is open); optional "Skip empty" (a note with only front matter, headings and empty
   list/task markers counts as empty). Only existing daily notes are used (flat folder, year folders and mixed layouts; a
   day with duplicate files counts once). The note opened last is not repeated right away if there is another one. With
   no notes in the period a notice says so. File contents are read only with "Skip empty", and only for drawn candidates.
-  Command palette: "Open random daily note" (all notes).
+  Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (period, skip empty), which
+  are also the navigator's starting values.
 - **Holidays folder.** Point the plugin to a folder (e.g. `Meta/Dates`) whose note names start with a date:
   `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, `1000-09-01 Knowledge Day` (the separator
   after the date is optional). Two-part dates are read by the **Day first / Month first** setting; `YYYY-MM-DD` is always
@@ -68,7 +70,11 @@ migration from 1.x.
   - Holidays also appear in **Upcoming**, can drive special rules (the "holiday" condition) and are shown in statistics.
   - The index is cached and rebuilt only when files in that folder are created, deleted or renamed, or the setting changes.
   - Names that do not start with a recognizable date are counted in settings.
-- **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar.
+- **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar, or
+  hidden (2.7.0): everything stays in the command palette, right-click on the month title still opens the menu, settings
+  are in Obsidian Settings → Community plugins → NF-Calendar.
+- **Settings navigation** (2.7.0): a compact sticky bar of section links at the top of the settings tab; changing a
+  setting no longer scrolls the tab back to the top.
 - **Commands** (command palette, plus the **⋯ menu** in the calendar header and right-click on the month title):
   - Open calendar view
   - Open yesterday's / today's / tomorrow's daily note

@@ -202,6 +202,14 @@ export default class CalendarView extends ItemView {
     const right = nav?.querySelector(".right-nav");
     const btn = this.menuButton;
     let placed = false;
+    // "hidden": the button stays in the (hidden) toolbar so the observer
+    // below does not keep re-adding it; right click on the title still works.
+    btn.toggleClass("cwt-hidden", pos === "hidden");
+    if (pos === "hidden") {
+      this.toolbarEl.append(btn);
+      this.toolbarEl.toggleClass("is-empty", true);
+      return;
+    }
     if (pos === "navLeft" && right) {
       right.prepend(btn);
       placed = true;

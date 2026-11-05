@@ -1,3 +1,6 @@
+import { preserveView } from "./preserveView";
+import { MAX_RANDOM_DAYS, RANDOM_KINDS, isDayKey } from "../core/random";
+import type { IRandomPrefs, RandomKind } from "../core/random";
 import {
   defaultMenuItems,
   moveMenuItem,
@@ -66,35 +69,124 @@ export class CalendarSettingsTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("cwt-settings");
+    this.sections = [];
+    const nav = containerEl.createDiv("cwt-settings-nav");
+    nav.setAttr("role", "navigation");
+    nav.setAttr("aria-label", t("settings.navLabel"));
 
-    this.heading(t("settings.general"));
+    this.heading(t("settings.general"), "general", t("nav.general"));
     this.addLanguage();
     this.addDotsMode();
     this.addWeekStart();
     this.addConfirm();
     this.addPreview();
-    this.addUpcoming();
     this.addMenuPosition();
+
+    this.heading(t("settings.importantSection"), "important", t("nav.important"));
+    this.addUpcoming();
 
     this.addPeriodicSection("day");
     this.addPeriodicSection("week");
     this.addPeriodicSection("month");
     this.addImport();
 
-    this.heading(t("settings.holidays"));
+    this.heading(t("settings.holidays"), "holidays", t("nav.holidays"));
     this.addHolidays();
 
-    this.heading(t("settings.weekdayTemplates"));
+    this.heading(t("settings.weekdayTemplates"), "weekday", t("nav.weekday"));
     this.addWeekdayTemplates();
 
-    this.heading(t("settings.rules"));
+    this.heading(t("settings.rules"), "rules", t("nav.rules"));
     this.addRules();
 
-    this.heading(t("settings.advanced"));
+    this.heading(t("settings.randomSection"), "random", t("nav.random"));
+    this.addRandom();
+
+    this.heading(t("settings.advanced"), "advanced", t("nav.advanced"));
     this.addLocaleOverride();
 
-    this.heading(t("settings.menuSection"));
+    this.heading(t("settings.menuSection"), "menu", t("nav.menu"));
     this.addMenuItems();
+
+    this.fillNav(nav);
+  }
+
+  private sections: { id: string; label: string; el: HTMLElement }[] = [];
+
+  /** Quick links to the sections; sticky at the top of the settings pane (CSS). */
+  private fillNav(nav: HTMLElement): void {
+    for (const s of this.sections) {
+      const a = nav.createEl("a", { cls: "cwt-settings-nav-link", text: s.label, href: "#" });
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        // Keep the heading below the sticky bar.
+        s.el.style.scrollMarginTop = `${nav.offsetHeight + 8}px`;
+        s.el.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }
+
+  /**
+   * Re-render after a change that alters other rows (add/remove/reorder),
+   * keeping the scroll position and, where possible, the focused control.
+   */
+  private redraw(): void {
+    preserveView(this.containerEl, () => this.display());
+  }
+
+  private heading(text: string, id?: string, navLabel?: string): void {
+    const s = new Setting(this.containerEl).setName(text).setHeading();
+    if (id) {
+      s.settingEl.addClass("cwt-settings-section");
+      s.settingEl.setAttr("data-section", id);
+      this.sections.push({ id, label: navLabel || text, el: s.settingEl });
+    }
+  }
+
+  // ---------- random note ----------
+
+  private addRandom(): void {
+    const r = this.options.random;
+    const save = (patch: Partial<IRandomPrefs>, rerender = false) =>
+      this.write((o) => ({ random: { ...o.random, ...patch } })).then(() => {
+        if (rerender) this.redraw();
+      });
+    new Setting(this.containerEl)
+      .setName(t("settings.randomKind"))
+      .setDesc(t("settings.randomKindDesc"))
+      .addDropdown((d) => {
+        RANDOM_KINDS.forEach((k) => d.addOption(k, t(`randomKind.${k}` as I18nKey)));
+        d.setValue(r.kind);
+        d.onChange((v) => void save({ kind: v as RandomKind }, true));
+      });
+    if (r.kind === "lastDays") {
+      new Setting(this.containerEl).setName(t("navigator.randomDays")).addText((tx) => {
+        tx.inputEl.type = "number";
+        tx.inputEl.min = "1";
+        tx.inputEl.max = String(MAX_RANDOM_DAYS);
+        tx.setValue(String(r.days));
+        tx.onChange((v) => {
+          const n = Math.floor(Number(v));
+          if (n >= 1 && n <= MAX_RANDOM_DAYS) void save({ days: n });
+        });
+      });
+    }
+    if (r.kind === "range") {
+      const date = (key: "from" | "to", name: string) =>
+        new Setting(this.containerEl).setName(name).addText((tx) => {
+          tx.inputEl.type = "date";
+          tx.setValue(r[key]);
+          tx.onChange((v) => {
+            if (v === "" || isDayKey(v)) void save({ [key]: v });
+          });
+        });
+      date("from", t("navigator.randomFrom"));
+      date("to", t("navigator.randomTo"));
+    }
+    new Setting(this.containerEl)
+      .setName(t("navigator.randomSkipEmpty"))
+      .setDesc(t("settings.randomSkipDesc"))
+      .addToggle((tg) => tg.setValue(r.skipEmpty).onChange((v) => void save({ skipEmpty: v })));
   }
 
   // ---------- ⋯ menu ----------
@@ -103,7 +195,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     const list = sanitizeMenuItems(this.options.menuItems);
     const save = async (next: IMenuItemPref[]) => {
       await this.write(() => ({ menuItems: next }));
-      this.display();
+      this.redraw();
     };
     const label: Record<MenuItemId, string> = {
       openYesterday: t("cmd.openYesterday"),
@@ -136,6 +228,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .addButton((b) =>
         b.setButtonText(t("settings.menuReset")).onClick(() => void save(defaultMenuItems())),
       );
+    if (this.options.menuPosition === "hidden") {
+      new Setting(this.containerEl).setDesc(t("settings.menuHiddenHint"));
+    }
     if (!list.some((p) => p.visible)) {
       new Setting(this.containerEl).setDesc(t("settings.menuAllHidden"));
     }
@@ -159,10 +254,6 @@ export class CalendarSettingsTab extends PluginSettingTab {
     });
   }
 
-  private heading(text: string): void {
-    new Setting(this.containerEl).setName(text).setHeading();
-  }
-
   // ---------- general ----------
 
   private addLanguage(): void {
@@ -177,7 +268,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.onChange(async (v) => {
           await this.write(() => ({ language: v as Language }));
           this.plugin.getView()?.refresh();
-          this.display();
+          this.redraw();
         });
       });
   }
@@ -211,7 +302,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.setValue(this.options.weekStart);
         d.onChange(async (v) => {
           await this.write(() => ({ weekStart: v as IWeekStartOption }));
-          this.display(); // weekday order below depends on it
+          this.redraw(); // weekday order below depends on it
         });
       });
   }
@@ -295,8 +386,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.setValue(this.options.menuPosition);
         d.onChange(async (v) => {
           await this.write(() => ({ menuPosition: v as MenuPosition }));
+          this.redraw();
         });
       });
+    if (this.options.menuPosition === "hidden") {
+      new Setting(this.containerEl).setDesc(t("settings.menuHiddenHint"));
+    }
   }
 
   private addHolidays(): void {
@@ -341,7 +436,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.setValue(this.options.holidayDateOrder);
         d.onChange(async (v) => {
           await this.write(() => ({ holidayDateOrder: v as HolidayDateOrder }));
-          this.display();
+          this.redraw();
         });
       });
     const pattern = new Setting(this.containerEl)
@@ -383,7 +478,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         tg.onChange(async (v) => {
           await this.write(() => ({ [key]: v }) as Partial<ISettings>);
           if (rerender) {
-            this.display();
+            this.redraw();
           }
         });
       });
@@ -404,7 +499,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
   private addPeriodicSection(g: Granularity): void {
     const key = this.configKey(g);
     const cfg = this.options[key];
-    this.heading(t(`settings.${key}` as I18nKey));
+    this.heading(t(`settings.${key}` as I18nKey), g, t(`nav.${g}` as I18nKey));
 
     new Setting(this.containerEl)
       .setName(t("settings.enabled"))
@@ -413,7 +508,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         tg.setValue(cfg.enabled);
         tg.onChange(async (v) => {
           await this.writePeriodic(g, { enabled: v });
-          this.display();
+          this.redraw();
         });
       });
     if (!cfg.enabled) {
@@ -529,7 +624,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
               : t("notice.importNothing"),
           );
           this.plugin.reindexAll();
-          this.display();
+          this.redraw();
         }),
       );
   }
@@ -589,7 +684,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
   ): Promise<void> {
     await this.write((old) => ({ templateRules: fn(old.templateRules.map((r) => ({ ...r }))) }));
     if (rerender) {
-      this.display();
+      this.redraw();
     }
   }
 

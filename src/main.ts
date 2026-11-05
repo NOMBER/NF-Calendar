@@ -35,7 +35,12 @@ import { BatchCreateModal } from "src/ui/modals/batchCreate";
 import type { IBatchItem } from "src/ui/modals/batchCreate";
 import { ConfirmationModal } from "src/ui/modals/confirm";
 import { DateNavigatorModal } from "src/ui/modals/dateNavigator";
-import { isBlankDailyNote, pickRandomDay, pickRandomNonEmptyDay } from "src/core/random";
+import {
+  isBlankDailyNote,
+  pickRandomDay,
+  pickRandomNonEmptyDay,
+  scopeFromPrefs,
+} from "src/core/random";
 import type { RandomScope } from "src/core/random";
 import { ImportantDayModal } from "src/ui/modals/importantDay";
 import { ImportantListModal } from "src/ui/modals/importantList";
@@ -277,7 +282,7 @@ export default class CalendarPlugin extends Plugin {
       () => !!this.app.workspace.getActiveFile(),
     );
     cmd("show-important-days", t("cmd.importantList"), () => this.showImportantDays());
-    cmd("open-random-daily-note", t("cmd.randomDaily"), () => this.openRandomDailyNote());
+    cmd("open-random-daily-note", t("cmd.randomDaily"), () => this.openRandomFromDefaults());
     cmd("show-statistics", t("cmd.statistics"), () => this.showStatistics());
     cmd("reveal-active-note", t("cmd.reveal"), () => this.getView()?.revealActiveNote());
   }
@@ -482,6 +487,16 @@ export default class CalendarPlugin extends Plugin {
   }
 
   private lastRandomDay: string | null = null;
+
+  /** Command palette: the defaults from Settings → Random note (year/month = today's). */
+  openRandomFromDefaults(): Promise<boolean> {
+    const p = this.options.random;
+    const now = window.moment();
+    return this.openRandomDailyNote(
+      scopeFromPrefs(p, now.format("YYYY-MM-DD"), now.year(), now.month() + 1),
+      p.skipEmpty,
+    );
+  }
 
   /**
    * Opens a random existing daily note in the scope. Uses the note index
@@ -733,6 +748,7 @@ export default class CalendarPlugin extends Plugin {
         openDay: (d) => void this.openPeriodic(d, "day", false),
         hasNote: (d) => !!this.findDailyNote(d),
         openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),
+        randomDefaults: this.options.random,
       }),
     );
   }

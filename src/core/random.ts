@@ -8,7 +8,8 @@ export type RandomScope =
   | { kind: "all" }
   | { kind: "year"; year: number }
   | { kind: "month"; year: number; month: number } // month 1..12
-  | { kind: "lastDays"; days: number; today: string };
+  | { kind: "lastDays"; days: number; today: string }
+  | { kind: "range"; from: string; to: string }; // inclusive, either order
 
 export interface IRandomOptions {
   /** Day to avoid (the note opened last), unless it is the only candidate. */
@@ -36,6 +37,10 @@ export function inScope(day: string, scope: RandomScope): boolean {
       return +m[1] === scope.year;
     case "month":
       return +m[1] === scope.year && +m[2] === scope.month;
+    case "range": {
+      const [a, b] = scope.from <= scope.to ? [scope.from, scope.to] : [scope.to, scope.from];
+      return DAY_RE.test(a) && DAY_RE.test(b) && day >= a && day <= b;
+    }
     case "lastDays": {
       const n = Math.max(1, Math.floor(scope.days));
       return day <= scope.today && day > shiftDay(scope.today, -n);
@@ -113,4 +118,71 @@ export function isBlankDailyNote(text: string): boolean {
         /^(-{3,}|\*{3,}|_{3,})$/.test(l) ||
         /^([-*+]|\d+[.)])(\s+\[[ ]?\])?$/.test(l),
     );
+}
+
+/** Defaults for the random note (settings → "Random note"). */
+export type RandomKind = RandomScope["kind"];
+export const RANDOM_KINDS: RandomKind[] = ["all", "year", "month", "lastDays", "range"];
+
+export interface IRandomPrefs {
+  kind: RandomKind;
+  days: number;
+  from: string;
+  to: string;
+  skipEmpty: boolean;
+}
+
+export const MAX_RANDOM_DAYS = 36500;
+
+export function defaultRandomPrefs(): IRandomPrefs {
+  return { kind: "all", days: 30, from: "", to: "", skipEmpty: false };
+}
+
+export function isDayKey(v: unknown): v is string {
+  if (typeof v !== "string") return false;
+  const m = DAY_RE.exec(v);
+  if (!m) return false;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return d.toISOString().slice(0, 10) === v;
+}
+
+export function sanitizeRandomPrefs(raw: unknown): IRandomPrefs {
+  const d = defaultRandomPrefs();
+  if (!raw || typeof raw !== "object") return d;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  const days = Math.floor(Number(r.days));
+  return {
+    kind: RANDOM_KINDS.includes(r.kind) ? r.kind : d.kind,
+    days: days >= 1 && days <= MAX_RANDOM_DAYS ? days : d.days,
+    from: isDayKey(r.from) ? r.from : "",
+    to: isDayKey(r.to) ? r.to : "",
+    skipEmpty: r.skipEmpty === true,
+  };
+}
+
+/**
+ * Scope for given prefs. `year`/`month` (1..12) are the context (navigator's
+ * year, or today for the command). A range with a missing end is open on
+ * that side; with both ends missing it means all notes.
+ */
+export function scopeFromPrefs(
+  p: IRandomPrefs,
+  today: string,
+  year: number,
+  month: number,
+): RandomScope {
+  switch (p.kind) {
+    case "year":
+      return { kind: "year", year };
+    case "month":
+      return { kind: "month", year, month };
+    case "lastDays":
+      return { kind: "lastDays", days: p.days, today };
+    case "range":
+      if (!p.from && !p.to) return { kind: "all" };
+      return { kind: "range", from: p.from || "0000-01-01", to: p.to || "9999-12-31" };
+    default:
+      return { kind: "all" };
+  }
 }

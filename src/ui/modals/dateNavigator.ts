@@ -3,7 +3,8 @@ import { Modal, setIcon } from "obsidian";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
-import type { RandomScope } from "src/core/random";
+import { MAX_RANDOM_DAYS as MAX_DAYS, RANDOM_KINDS, scopeFromPrefs } from "src/core/random";
+import type { IRandomPrefs, RandomKind, RandomScope } from "src/core/random";
 
 export interface IDateNavigatorDeps {
   month: Moment;
@@ -11,13 +12,16 @@ export interface IDateNavigatorDeps {
   showStats: (month: Moment) => void;
   openDay: (date: Moment) => void;
   hasNote: (date: Moment) => boolean;
+  /** Start values of the random-note controls (Settings → Random note). */
+  randomDefaults: IRandomPrefs;
   /** Resolves true when a note was opened. */
   openRandom: (scope: RandomScope, skipEmpty: boolean) => Promise<boolean>;
 }
 
-type RandomKind = RandomScope["kind"];
-/** Remembered for the session (not saved). */
-const randomState = { kind: "all" as RandomKind, month: 0, days: 30, skipEmpty: false };
+/** Values of the random-note controls while the window is open. */
+interface IRandomState extends IRandomPrefs {
+  month: number;
+}
 
 type Target = "calendar" | "stats";
 
@@ -30,6 +34,7 @@ export class DateNavigatorModal extends Modal {
   private year: number;
   private target: Target = "calendar";
   private yearGrid = false;
+  private random: IRandomState;
 
   constructor(
     app: App,
@@ -37,6 +42,7 @@ export class DateNavigatorModal extends Modal {
   ) {
     super(app);
     this.year = deps.month.year();
+    this.random = { ...deps.randomDefaults, month: deps.month.month() + 1 };
   }
 
   onOpen(): void {
@@ -67,6 +73,11 @@ export class DateNavigatorModal extends Modal {
         this.render();
       });
     });
+    // Random note: same row, right of "Open statistics"; its period right below.
+    const go = modes.createEl("button", { cls: "cwt-nav-random-btn" });
+    setIcon(go.createSpan({ cls: "cwt-nav-random-icon" }), "dice");
+    go.createSpan({ text: t("navigator.random") });
+    this.renderRandomOptions(go);
 
     // Year row.
     const yearRow = contentEl.createDiv("cwt-nav-year");
@@ -172,26 +183,28 @@ export class DateNavigatorModal extends Modal {
       this.close();
       this.deps.goToMonth(window.moment().startOf("month"));
     });
-
-    this.renderRandom(today);
   }
 
-  /** "Open random note": scope (all / chosen year / month / last N days) + skip empty. */
-  private renderRandom(today: Moment): void {
-    const row = this.contentEl.createDiv("cwt-nav-random");
+  /** Period for the random note (all / year / month / last N days / range) + skip empty. */
+  private renderRandomOptions(go: HTMLButtonElement): void {
+    const st = this.random;
+    const box = this.contentEl.createDiv("cwt-nav-random");
+    const row = box.createDiv("cwt-nav-random-row");
+    row.createSpan({ cls: "cwt-nav-random-label", text: t("navigator.randomScope") });
     const kind = row.createEl("select", {
       cls: "dropdown",
       attr: { "aria-label": t("navigator.randomScope") },
     });
-    const kinds: [RandomKind, string][] = [
-      ["all", t("navigator.randomAll")],
-      ["year", t("navigator.randomYear", { year: String(this.year) })],
-      ["month", t("navigator.randomMonth", { year: String(this.year) })],
-      ["lastDays", t("navigator.randomLast")],
-    ];
-    kinds.forEach(([v, label]) => kind.createEl("option", { value: v, text: label }));
-    kind.value = randomState.kind;
-    if (!randomState.month) randomState.month = today.month() + 1;
+    const labels: Record<RandomKind, string> = {
+      all: t("navigator.randomAll"),
+      year: t("navigator.randomYear", { year: String(this.year) }),
+      month: t("navigator.randomMonth", { year: String(this.year) }),
+      lastDays: t("navigator.randomLast"),
+      range: t("navigator.randomRange"),
+    };
+    RANDOM_KINDS.forEach((k) => kind.createEl("option", { value: k, text: labels[k] }));
+    kind.value = st.kind;
+
     const monthSel = row.createEl("select", {
       cls: "dropdown",
       attr: { "aria-label": t("navigator.randomMonthPick") },
@@ -202,45 +215,60 @@ export class DateNavigatorModal extends Modal {
         text: window.moment({ year: this.year, month: m - 1, day: 1 }).format("MMMM"),
       });
     }
-    monthSel.value = String(randomState.month);
+    monthSel.value = String(st.month);
     const days = row.createEl("input", {
       type: "number",
       cls: "cwt-nav-random-days",
-      attr: { min: "1", max: "36500", "aria-label": t("navigator.randomDays") },
+      attr: { min: "1", max: String(MAX_DAYS), "aria-label": t("navigator.randomDays") },
     });
-    days.value = String(randomState.days);
+    days.value = String(st.days);
+    const range = box.createDiv("cwt-nav-random-row");
+    range.createSpan({ text: t("navigator.randomFrom") });
+    const from = range.createEl("input", {
+      type: "date",
+      cls: "cwt-date-input",
+      attr: { "aria-label": t("navigator.randomFrom") },
+    });
+    from.value = st.from;
+    range.createSpan({ text: t("navigator.randomTo") });
+    const to = range.createEl("input", {
+      type: "date",
+      cls: "cwt-date-input",
+      attr: { "aria-label": t("navigator.randomTo") },
+    });
+    to.value = st.to;
+
+    const label = box.createEl("label", { cls: "cwt-nav-random-skip" });
+    const skip = label.createEl("input", { type: "checkbox" });
+    skip.checked = st.skipEmpty;
+    label.appendText(" " + t("navigator.randomSkipEmpty"));
+
     const sync = () => {
-      randomState.kind = kind.value as RandomKind;
-      randomState.month = Number(monthSel.value);
+      st.kind = kind.value as RandomKind;
+      st.month = Number(monthSel.value);
       const n = Math.floor(Number(days.value));
-      if (n >= 1 && n <= 36500) randomState.days = n;
-      monthSel.toggle(randomState.kind === "month");
-      days.toggle(randomState.kind === "lastDays");
+      if (n >= 1 && n <= MAX_DAYS) st.days = n;
+      st.from = from.value;
+      st.to = to.value;
+      st.skipEmpty = skip.checked;
+      monthSel.toggle(st.kind === "month");
+      days.toggle(st.kind === "lastDays");
+      range.toggle(st.kind === "range");
     };
-    [kind, monthSel, days].forEach((el) => el.addEventListener("change", sync));
+    [kind, monthSel, days, from, to, skip].forEach((el) => el.addEventListener("change", sync));
     sync();
 
-    const row2 = this.contentEl.createDiv("cwt-nav-random");
-    const label = row2.createEl("label", { cls: "cwt-nav-random-skip" });
-    const skip = label.createEl("input", { type: "checkbox" });
-    skip.checked = randomState.skipEmpty;
-    label.appendText(" " + t("navigator.randomSkipEmpty"));
-    skip.addEventListener("change", () => (randomState.skipEmpty = skip.checked));
-    const go = row2.createEl("button", { text: t("navigator.random") });
-    setIcon(go.createSpan({ cls: "cwt-nav-random-icon", prepend: true }), "dice");
     go.addEventListener("click", () => {
       sync();
-      const s = randomState;
-      const scope: RandomScope =
-        s.kind === "year"
-          ? { kind: "year", year: this.year }
-          : s.kind === "month"
-            ? { kind: "month", year: this.year, month: s.month }
-            : s.kind === "lastDays"
-              ? { kind: "lastDays", days: s.days, today: today.format("YYYY-MM-DD") }
-              : { kind: "all" };
+      const today = window.moment();
+      const scope: RandomScope = scopeFromPrefs(
+        st,
+        today.format("YYYY-MM-DD"),
+        this.year,
+        st.month,
+      );
       go.disabled = true;
-      void this.deps.openRandom(scope, s.skipEmpty).then((opened) => {
+      void this.deps.openRandom(scope, st.skipEmpty).then((opened) => {
         go.disabled = false;
         if (opened) this.close();
       });

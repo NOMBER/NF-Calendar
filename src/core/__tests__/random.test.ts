@@ -95,3 +95,58 @@ describe("random daily note", () => {
     expect(isBlankDailyNote("---\ntitle: x\n---\nhello")).toBe(false);
   });
 });
+
+import {
+  defaultRandomPrefs,
+  sanitizeRandomPrefs,
+  scopeFromPrefs,
+} from "src/core/random";
+
+describe("2.7.0 random range and prefs", () => {
+  it("range is inclusive and order-insensitive", () => {
+    const s = { kind: "range" as const, from: "2027-03-10", to: "2027-03-01" };
+    expect(inScope("2027-03-01", s)).toBe(true);
+    expect(inScope("2027-03-10", s)).toBe(true);
+    expect(inScope("2027-03-11", s)).toBe(false);
+    expect(randomCandidates(["2027-02-28", "2027-03-05", "x"], s)).toEqual(["2027-03-05"]);
+  });
+
+  it("scopeFromPrefs maps every kind", () => {
+    const p = defaultRandomPrefs();
+    expect(scopeFromPrefs(p, "2027-05-05", 2027, 5)).toEqual({ kind: "all" });
+    expect(scopeFromPrefs({ ...p, kind: "year" }, "2027-05-05", 2026, 1)).toEqual({
+      kind: "year",
+      year: 2026,
+    });
+    expect(scopeFromPrefs({ ...p, kind: "month" }, "t", 2027, 2)).toEqual({
+      kind: "month",
+      year: 2027,
+      month: 2,
+    });
+    expect(scopeFromPrefs({ ...p, kind: "lastDays", days: 7 }, "2027-05-05", 0, 0)).toEqual({
+      kind: "lastDays",
+      days: 7,
+      today: "2027-05-05",
+    });
+    expect(scopeFromPrefs({ ...p, kind: "range" }, "t", 0, 0)).toEqual({ kind: "all" });
+    const open = scopeFromPrefs({ ...p, kind: "range", from: "2027-01-01" }, "t", 0, 0);
+    expect(inScope("2999-01-01", open)).toBe(true);
+    expect(inScope("2026-12-31", open)).toBe(false);
+  });
+
+  it("sanitizeRandomPrefs rejects junk", () => {
+    expect(sanitizeRandomPrefs(null)).toEqual(defaultRandomPrefs());
+    expect(
+      sanitizeRandomPrefs({
+        kind: "zzz",
+        days: 0,
+        from: "2027-13",
+        to: "2027-01-02",
+        skipEmpty: "yes",
+      }),
+    ).toEqual({ kind: "all", days: 30, from: "", to: "2027-01-02", skipEmpty: false });
+    expect(sanitizeRandomPrefs({ kind: "range", days: 99999999, skipEmpty: true }).skipEmpty).toBe(
+      true,
+    );
+  });
+});
