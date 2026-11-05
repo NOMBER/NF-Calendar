@@ -16,7 +16,7 @@ import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
 import { migrateSettings, periodicConfig } from "src/core/settings";
 import type { ISettings } from "src/core/settings";
-import { readExternalPeriodicSettings } from "src/io/external";
+import { otherDailyNoteCreators, readExternalPeriodicSettings } from "src/io/external";
 import { holidaysFor, rebuildHolidays, touchesHolidays } from "src/io/holidays";
 import {
   chooseTemplateFor,
@@ -24,6 +24,7 @@ import {
   findNote,
   getAllNotes,
   getDateFromFile,
+  notePaths,
   getNotePath,
   openFile,
   renderTemplateFor,
@@ -129,9 +130,47 @@ export default class CalendarPlugin extends Plugin {
       this.registerEvent(this.app.vault.on("create", (f) => onHolidayEvent(f)));
       this.registerEvent(this.app.vault.on("delete", (f) => onHolidayEvent(f)));
       this.registerEvent(this.app.vault.on("rename", (f, old) => onHolidayEvent(f, old)));
+      this.registerEvent(this.app.vault.on("create", (f) => this.checkDuplicateDaily(f)));
+      for (const f of this.app.vault.getMarkdownFiles()) {
+        this.checkDuplicateDaily(f); // a note created by another plugin before we were ready
+      }
       this.reindexAll();
       this.initLeaf();
     });
+  }
+
+  private warnedDuplicates = new Set<string>();
+
+  /**
+   * Year folders on, and a daily note appears directly in the daily folder
+   * while the same date already exists in a year folder: something else
+   * (usually the core Daily notes plugin or Periodic Notes) created it.
+   * We never delete it; we tell the user which file to check.
+   */
+  private checkDuplicateDaily(f: TAbstractFile): void {
+    if (!(f instanceof TFile) || f.extension !== "md" || !this.options.daily.yearFolders) {
+      return;
+    }
+    const date = getDateFromFile(f, this.options, "day");
+    if (!date) {
+      return;
+    }
+    const [expected] = notePaths(date, this.options, "day", this.app.vault.configDir);
+    if (!expected || expected === f.path || this.warnedDuplicates.has(f.path)) {
+      return;
+    }
+    if (this.app.vault.getAbstractFileByPath(expected) instanceof TFile) {
+      this.warnedDuplicates.add(f.path);
+      const who = otherDailyNoteCreators(this.app);
+      new Notice(
+        t("notice.duplicateDaily", {
+          dup: f.path,
+          main: expected,
+          who: who.length ? who.join(", ") : "?",
+        }),
+        0,
+      );
+    }
   }
 
   private registerCommands(): void {

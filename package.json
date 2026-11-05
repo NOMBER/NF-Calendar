@@ -1,6 +1,6 @@
 {
   "name": "nf-calendar",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Calendar + daily/weekly/monthly notes with weekday and rule-based templates, important days and statistics (fork of liamcain/obsidian-calendar-plugin)",
   "author": "liamcain (original), weekday templates fork",
   "main": "main.js",

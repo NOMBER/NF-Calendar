@@ -610,3 +610,8 @@
 .cwt-organize-row { font-family: var(--font-monospace); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; }
 .cwt-organize-modal ul { margin: 4px 0 8px; }
 .cwt-number-input { width: 5em; }
+
+/* confirmation modal (2.4.1): compact, path wraps, question on its own line */
+.cwt-confirm .modal-title { margin-bottom: 0.4em; }
+.cwt-confirm .cwt-confirm-line { margin: 0.2em 0; overflow-wrap: anywhere; }
+.cwt-confirm .modal-button-container { margin-top: 1em; }

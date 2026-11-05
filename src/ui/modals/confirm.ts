@@ -15,8 +15,12 @@ export class ConfirmationModal extends Modal {
   constructor(app: App, config: IConfirmationDialogParams) {
     super(app);
     const { cta, onAccept, text, title, warning } = config;
-    this.contentEl.createEl("h2", { text: title });
-    this.contentEl.createEl("p", { text });
+    this.titleEl.setText(title);
+    this.modalEl.addClass("cwt-confirm");
+    // One paragraph per line ("File … does not exist." / "Create it?").
+    for (const line of text.split("\n")) {
+      this.contentEl.createEl("p", { cls: "cwt-confirm-line", text: line });
+    }
     this.contentEl.createDiv("modal-button-container", (buttonsEl) => {
       buttonsEl
         .createEl("button", { text: t("confirm.cancel") })

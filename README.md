@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.4.0
+- Plugin id: `nf-calendar`, version 2.4.1
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -205,6 +205,12 @@ directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Da
   go to `Daily/YYYY/`.
 - The plugin finds a note in either layout: the expected path first, then the other layout, then by date in any subfolder. Flat, year and
   mixed folders all work, so the calendar does not break after organizing.
+- **A flat duplicate appeared (e.g. `Daily/2026-11-05.md` next to `Daily/2026/2026-11-05.md`)?** NF-Calendar does not create it:
+  with year folders on, it creates notes only in `Daily/YYYY/`, and before creating it checks every possible path on disk.
+  Usually the core **Daily notes** plugin (option "Open daily note on startup") or **Periodic Notes** creates it, because they do not know about year folders.
+  NF-Calendar shows a notice naming both files and keeps opening the one in the year folder.
+  To fix it, turn off the other plugin, or at least its startup option; the calendar does not need it.
+  Delete the flat file if it is empty. If your real note looks lost, check the year folder, the system trash or `.trash`, and File recovery (core plugin).
 - Weekly and monthly notes have no organize command and stay where they are. The year folder setting exists only for daily notes.
 
 ## Templater compatibility

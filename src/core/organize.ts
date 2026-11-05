@@ -123,6 +123,20 @@ export function notePathCandidates(
   return order.filter((p, i): p is string => !!p && order.indexOf(p) === i);
 }
 
+/**
+ * Two files for the same date (e.g. a flat one created by another plugin next
+ * to the organized one in a year folder): which one the calendar shows.
+ * Lower rank wins: position in `candidates` (expected path first), any other
+ * location after them. Ties keep the current one, so the result is stable.
+ */
+export function preferNotePath(current: string, next: string, candidates: string[]): string {
+  const rank = (p: string) => {
+    const i = candidates.findIndex((c) => c.toLowerCase() === p.toLowerCase());
+    return i < 0 ? candidates.length : i;
+  };
+  return rank(next) < rank(current) ? next : current;
+}
+
 /** Reverse of a journal: moves to undo, newest first. */
 export function planUndo(
   moves: IMove[],

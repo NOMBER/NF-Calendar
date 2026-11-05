@@ -1,7 +1,13 @@
 import moment from "moment";
 
 import { getDateUID, parseNoteDate } from "../dates";
-import { isInYearFolder, notePathCandidates, planOrganize, planUndo } from "../organize";
+import {
+  isInYearFolder,
+  notePathCandidates,
+  planOrganize,
+  planUndo,
+  preferNotePath,
+} from "../organize";
 
 describe("organize by year: plan", () => {
   const files = [
@@ -103,5 +109,22 @@ describe("undo", () => {
     const r = planUndo(moves, (p) => exists.has(p));
     expect(r.undo).toEqual([{ from: "D/2026/a.md", to: "D/a.md", year: "2026" }]);
     expect(r.skipped).toHaveLength(1);
+  });
+});
+
+describe("duplicates after organize (2.4.1 regression)", () => {
+  const year = notePathCandidates("Diaries/Daily Diary", "2026-11-05", "2026", true);
+  it("year-folder note wins over a flat duplicate, in any listing order", () => {
+    const a = "Diaries/Daily Diary/2026/2026-11-05.md";
+    const b = "Diaries/Daily Diary/2026-11-05.md";
+    expect(preferNotePath(a, b, year)).toBe(a);
+    expect(preferNotePath(b, a, year)).toBe(a);
+  });
+  it("flat wins when year folders are off; unknown places lose", () => {
+    const flat = notePathCandidates("D", "2026-11-05", "2026", false);
+    expect(preferNotePath("D/2026/2026-11-05.md", "D/2026-11-05.md", flat)).toBe("D/2026-11-05.md");
+    expect(preferNotePath("D/x/2026-11-05.md", "D/2026/2026-11-05.md", flat)).toBe(
+      "D/2026/2026-11-05.md",
+    );
   });
 });

@@ -14,7 +14,7 @@ import type { App, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_FORMATS, getDateUID, parseNoteDate } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { t } from "src/core/i18n";
-import { notePathCandidates, periodYear } from "src/core/organize";
+import { notePathCandidates, periodYear, preferNotePath } from "src/core/organize";
 import { buildNotePath, parentFolders, relativeNotePath, sanitizeVaultPath } from "src/core/paths";
 import { applyTemplate, usesCarryover } from "src/core/placeholders";
 import { dayKey } from "src/core/important";
@@ -106,7 +106,16 @@ export function getAllNotes(app: App, settings: ISettings, g: Granularity): Reco
   for (const file of app.vault.getMarkdownFiles()) {
     const date = getDateFromFile(file, settings, g);
     if (date) {
-      index[getDateUID(date, g)] = file;
+      const uid = getDateUID(date, g);
+      const prev = index[uid];
+      // Duplicates (flat + year folder): keep the one at the expected path,
+      // never "whichever the vault listed last".
+      index[uid] =
+        prev &&
+        preferNotePath(prev.path, file.path, notePaths(date, settings, g, app.vault.configDir)) ===
+          prev.path
+          ? prev
+          : file;
     }
   }
   return index;
@@ -311,16 +320,23 @@ async function createAt(
   g: Granularity,
   options: IRenderOptions,
 ): Promise<TFile | null> {
-  const existing = findNote(app, settings, date, g);
-  if (existing) {
-    return existing;
-  }
+  // Wait until Obsidian has loaded the vault: before that the file cache may
+  // not know the organized notes yet.
+  await layoutReady(app);
   try {
+    const existing = await findExistingOnDisk(app, settings, date, g);
+    if (existing) {
+      return existing;
+    }
     const { contents, templateFile } = await renderTemplateFor(app, date, settings, g, options);
     // The template read is async: re-check so a file created meanwhile wins.
-    const raced = app.vault.getAbstractFileByPath(path);
-    if (raced instanceof TFile) {
+    const raced = await findExistingOnDisk(app, settings, date, g);
+    if (raced) {
       return raced;
+    }
+    if (await app.vault.adapter.exists(path)) {
+      // On disk but not in the cache yet: never overwrite, never duplicate.
+      throw new Error(`'${path}' already exists`);
     }
     await ensureFolders(app, path);
     const created = await app.vault.create(path, contents);
@@ -331,6 +347,36 @@ async function createAt(
     new Notice(t("notice.createFailed", { path, error: err?.message ?? String(err) }));
     return null;
   }
+}
+
+function layoutReady(app: App): Promise<void> {
+  if (app.workspace.layoutReady) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => app.workspace.onLayoutReady(() => resolve()));
+}
+
+/**
+ * Last check right before creating: every candidate path straight on disk
+ * (adapter, not only the cache), then a fresh scan of the whole folder
+ * (any year subfolder).
+ */
+async function findExistingOnDisk(
+  app: App,
+  settings: ISettings,
+  date: Moment,
+  g: Granularity,
+): Promise<TFile | null> {
+  for (const path of notePaths(date, settings, g, app.vault.configDir)) {
+    const cached = app.vault.getAbstractFileByPath(path);
+    if (cached instanceof TFile) {
+      return cached;
+    }
+    if (await app.vault.adapter.exists(path)) {
+      throw new Error(`'${path}' exists on disk but is not indexed yet; try again in a moment`);
+    }
+  }
+  return getAllNotes(app, settings, g)[getDateUID(date, g)] ?? null;
 }
 
 function getLeaf(app: App, inNewSplit: boolean): WorkspaceLeaf {

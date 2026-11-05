@@ -50,3 +50,30 @@ export function readExternalPeriodicSettings(app: App): IExternalPeriodicSetting
   }
   return result;
 }
+
+/**
+ * Other plugins that create daily notes by themselves (they do not know about
+ * year folders and create `<folder>/<date>.md`). Names for a warning only.
+ */
+export function otherDailyNoteCreators(app: App): string[] {
+  const out: string[] = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const anyApp = app as any;
+    const core = anyApp.internalPlugins?.getPluginById?.("daily-notes");
+    if (core?.enabled) {
+      out.push(
+        core.instance?.options?.autorun
+          ? "Daily notes (core, open on startup)"
+          : "Daily notes (core)",
+      );
+    }
+    const ps = anyApp.plugins?.getPlugin?.("periodic-notes");
+    if (ps && ps.settings?.daily?.enabled !== false) {
+      out.push("Periodic Notes");
+    }
+  } catch {
+    // diagnostics only
+  }
+  return out;
+}

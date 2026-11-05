@@ -91,8 +91,10 @@ const en = {
     "NF-Calendar: settings migrated to version 2. Note folders and formats are now configured in this plugin.",
 
   // confirm create
+  "notice.duplicateDaily":
+    'NF-Calendar: a second note for the same day appeared: {dup}. Your note is {main} (the calendar opens that one). The extra file was not created by NF-Calendar; probably by: {who}. Turn off its "open daily note on startup" or the plugin itself. If {dup} is empty, delete it.',
   "confirm.title": "New note",
-  "confirm.text": "File {file} does not exist. Would you like to create it?",
+  "confirm.text": "File {file} does not exist.\nWould you like to create it?",
   "confirm.create": "Create",
   "confirm.cancel": "Never mind",
 
@@ -440,8 +442,10 @@ const ru: Record<I18nKey, string> = {
   "notice.migrated":
     "NF-Calendar: настройки перенесены в версию 2. Папки и форматы заметок теперь задаются в этом плагине.",
 
+  "notice.duplicateDaily":
+    "NF-Calendar: появилась вторая заметка за тот же день: {dup}. Ваша заметка: {main} (календарь открывает её). Лишний файл создал не NF-Calendar, вероятно: {who}. Отключите у него «открывать ежедневную заметку при запуске» или сам плагин. Если {dup} пустая, удалите её.",
   "confirm.title": "Новая заметка",
-  "confirm.text": "Файла {file} нет. Создать его?",
+  "confirm.text": "Файла {file} нет.\nСоздать его?",
   "confirm.create": "Создать",
   "confirm.cancel": "Отмена",
 
