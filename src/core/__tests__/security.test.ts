@@ -119,8 +119,8 @@ describe("settings validation (data.json)", () => {
   it("old wordsPerDot is dropped on migration", () => {
     const { settings } = migrateSettings({ settingsVersion: 3, wordsPerDot: 99 });
     expect("wordsPerDot" in settings).toBe(false);
-    expect(settings.dotsMode).toBe("tasks");
-    expect(settings.settingsVersion).toBe(4);
+    expect(settings.dotsMode).toBe("exists");
+    expect(settings.settingsVersion).toBe(5);
   });
 
   it("conditions: unknown types and wrong field types are dropped", () => {
@@ -181,7 +181,7 @@ describe("settings validation (data.json)", () => {
     expect(settings.daily.template).toBe("");
     expect(settings.weekStart).toBe("locale");
     expect(settings.localeOverride).toBe("system-default");
-    expect(settings.upcomingHorizonDays).toBe(366);
+    expect(settings.upcomingHorizonDays).toBe(365);
   });
 });
 

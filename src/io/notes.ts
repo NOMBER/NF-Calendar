@@ -14,6 +14,7 @@ import type { App, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_FORMATS, getDateUID, parseNoteDate } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { t } from "src/core/i18n";
+import { notePathCandidates, periodYear } from "src/core/organize";
 import { buildNotePath, parentFolders, relativeNotePath, sanitizeVaultPath } from "src/core/paths";
 import { applyTemplate, usesCarryover } from "src/core/placeholders";
 import { dayKey } from "src/core/important";
@@ -48,10 +49,32 @@ export function getNotePath(
   g: Granularity,
   configDir?: string,
 ): string | null {
+  return notePaths(date, settings, g, configDir)[0] ?? null;
+}
+
+/**
+ * All paths where the note for a date may live, best first: the expected
+ * one (with `<YYYY>/` if year folders are on), then the other layout.
+ * Single source of truth for "where is / where goes the note of this date".
+ */
+export function notePaths(
+  date: Moment,
+  settings: ISettings,
+  g: Granularity,
+  configDir?: string,
+): string[] {
   const cfg = periodicConfig(settings, g);
   const filename = periodStart(date, g).format(noteFormat(settings, g));
-  const path = buildNotePath(cfg.folder, filename, configDir);
-  return path ? normalizePath(path) : null;
+  if (!buildNotePath(cfg.folder, filename, configDir)) {
+    return [];
+  }
+  return notePathCandidates(
+    cfg.folder,
+    filename,
+    periodYear(date, g),
+    !!cfg.yearFolders,
+    configDir,
+  ).map((p) => normalizePath(p));
 }
 
 export function getDateFromFile(
@@ -97,12 +120,15 @@ export function findNote(
   g: Granularity,
   index?: Record<string, TFile> | null,
 ): TFile | null {
-  const path = getNotePath(date, settings, g, app.vault.configDir);
-  const byPath = path ? app.vault.getAbstractFileByPath(path) : null;
-  if (byPath instanceof TFile) {
-    return byPath;
+  for (const path of notePaths(date, settings, g, app.vault.configDir)) {
+    const byPath = app.vault.getAbstractFileByPath(path);
+    if (byPath instanceof TFile) {
+      return byPath;
+    }
   }
-  return index?.[getDateUID(date, g)] ?? null;
+  // Any other year folder / layout inside the configured folder.
+  const uid = getDateUID(date, g);
+  return (index ?? getAllNotes(app, settings, g))[uid] ?? null;
 }
 
 export function resolveTemplateFile(app: App, templatePath: string): TFile | null {
@@ -285,8 +311,8 @@ async function createAt(
   g: Granularity,
   options: IRenderOptions,
 ): Promise<TFile | null> {
-  const existing = app.vault.getAbstractFileByPath(path);
-  if (existing instanceof TFile) {
+  const existing = findNote(app, settings, date, g);
+  if (existing) {
     return existing;
   }
   try {

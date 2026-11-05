@@ -1,4 +1,5 @@
 import { Notice, PluginSettingTab, Setting } from "obsidian";
+import type { SliderComponent, TextComponent } from "obsidian";
 import type { App } from "obsidian";
 import { get } from "svelte/store";
 import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
@@ -19,7 +20,13 @@ import type { I18nKey } from "src/core/i18n";
 import type { ITemplateRule, RuleCondition, RuleConditionType } from "src/core/rules";
 import { isValidHolidayPattern } from "src/core/holidays";
 import type { HolidayDateOrder } from "src/core/holidays";
-import { MENU_POSITIONS, mergeExternal } from "src/core/settings";
+import {
+  clampHorizon,
+  HORIZON_MAX,
+  HORIZON_MIN,
+  MENU_POSITIONS,
+  mergeExternal,
+} from "src/core/settings";
 import type { IPeriodicConfig, ISettings, Language, MenuPosition } from "src/core/settings";
 import { readExternalPeriodicSettings } from "src/io/external";
 import { holidayStore } from "src/io/holidays";
@@ -147,18 +154,50 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   private addUpcoming(): void {
     this.toggle(t("settings.upcoming"), t("settings.upcomingDesc"), "showUpcoming");
-    new Setting(this.containerEl)
+    const setting = new Setting(this.containerEl)
       .setName(t("settings.horizon"))
-      .setDesc(t("settings.horizonDesc"))
-      .addSlider((s) =>
-        s
-          .setLimits(7, 365, 1)
-          .setValue(this.options.upcomingHorizonDays)
-          .setDynamicTooltip()
-          .onChange(async (v) => {
-            await this.write(() => ({ upcomingHorizonDays: v }));
-          }),
-      );
+      .setDesc(t("settings.horizonDesc"));
+    let slider: SliderComponent | null = null;
+    let input: TextComponent | null = null;
+    const save = async (v: unknown, from: "slider" | "input" | "blur") => {
+      const n = clampHorizon(v);
+      if (from !== "slider") {
+        slider?.setValue(n);
+      }
+      if (from !== "input" || String(n) !== input?.getValue()) {
+        input?.setValue(String(n));
+      }
+      await this.write(() => ({ upcomingHorizonDays: n }));
+    };
+    setting.addSlider((s) => {
+      slider = s;
+      s.setLimits(HORIZON_MIN, HORIZON_MAX, 1)
+        .setValue(this.options.upcomingHorizonDays)
+        .setDynamicTooltip()
+        .onChange((v) => save(v, "slider"));
+    });
+    setting.addText((text) => {
+      input = text;
+      text.inputEl.type = "number";
+      text.inputEl.min = String(HORIZON_MIN);
+      text.inputEl.max = String(HORIZON_MAX);
+      text.inputEl.addClass("cwt-number-input");
+      text.setValue(String(this.options.upcomingHorizonDays));
+      // Clamp on blur / Enter, so typing "2" on the way to "20" is not forced to 7.
+      const commit = () => {
+        if (text.getValue().trim() !== "") {
+          void save(text.getValue(), "blur");
+        } else {
+          text.setValue(String(this.options.upcomingHorizonDays));
+        }
+      };
+      text.inputEl.addEventListener("blur", commit);
+      text.inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          commit();
+        }
+      });
+    });
   }
 
   private firstDayOfWeek(): number {
@@ -341,6 +380,30 @@ export class CalendarSettingsTab extends PluginSettingTab {
       });
       this.validateTemplate(tplSetting, cfg.template, baseDesc);
     });
+
+    if (g === "day") {
+      new Setting(this.containerEl)
+        .setName(t("settings.yearFolders"))
+        .setDesc(t("settings.yearFoldersDesc"))
+        .addToggle((tg) => {
+          tg.setValue(!!cfg.yearFolders);
+          tg.onChange(async (v) => {
+            await this.writePeriodic(g, { yearFolders: v });
+          });
+        });
+      new Setting(this.containerEl)
+        .setName(t("cmd.organize"))
+        .setDesc(t("settings.organizeDesc"))
+        .addButton((b) =>
+          b.setButtonText(t("settings.organizeButton")).onClick(() => {
+            this.plugin.organizeDailyNotes();
+          }),
+        )
+        .addButton((b) => {
+          b.setButtonText(t("cmd.undoOrganize")).onClick(() => void this.plugin.undoLastOrganize());
+          b.setDisabled(!this.options.lastOrganize);
+        });
+    }
   }
 
   private addImport(): void {

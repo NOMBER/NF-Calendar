@@ -5,9 +5,42 @@
 import type { Language } from "./settings";
 
 const en = {
-  "view.title": "Calendar (Weekday Templates)",
+  "view.title": "NF-Calendar",
 
   // commands
+  "cmd.organize": "Organize daily notes by year",
+  "cmd.undoOrganize": "Undo last organize",
+  "settings.yearFolders": "Keep new daily notes in year folders",
+  "settings.yearFoldersDesc":
+    "New notes go to <folder>/<YYYY>/. Existing notes are found in both layouts (flat folder and year folders).",
+  "settings.organizeDesc":
+    "Move daily notes from the folder into <folder>/<YYYY>/ subfolders. Shows a preview first; links are updated by Obsidian; nothing is overwritten.",
+  "settings.organizeButton": "Preview…",
+  "organize.title": "Organize daily notes by year",
+  "organize.summary": "{count} note(s) in “{folder}” will be moved:",
+  "organize.skip.unparsed": "Left in place, name is not a date in the daily format: {count}",
+  "organize.skip.conflict": "Skipped, a file with the target name exists: {count}",
+  "organize.skip.inSubfolder": "Already in a subfolder: {count}",
+  "organize.skip.formatHasFolders": "Skipped, the daily format already contains folders: {count}",
+  "organize.more": "…and {count} more",
+  "organize.backup":
+    "Tip: back up your vault before the first run. Only .md files directly in the folder are moved; other files stay.",
+  "organize.move": "Move",
+  "organize.progress": "Moving… {done} / {total}",
+  "organize.doneTitle": "Organize: done",
+  "organize.done": "Moved: {moved}. Failed: {failed}.",
+  "organize.movedList": "Moved ({count})",
+  "organize.failedList": "Not moved ({count})",
+  "organize.undoHint": "You can move them back with the command “Undo last organize”.",
+  "organize.enable": "Keep new notes in year folders",
+  "organize.enabled": "New daily notes will be created in year folders.",
+  "organize.close": "Close",
+  "organize.busy": "Organizing is already running.",
+  "organize.nothingToUndo": "Nothing to undo.",
+  "organize.undo": "Undo last organize",
+  "organize.undoConfirm":
+    "Move {count} note(s) back. {skipped} cannot be moved back (renamed, deleted or the old name is taken) and stay where they are.",
+  "organize.undone": "Moved back: {moved}. Failed: {failed}.",
   "cmd.openView": "Open calendar view",
   "cmd.openYesterday": "Open yesterday's daily note",
   "cmd.openToday": "Open today's daily note",
@@ -55,7 +88,7 @@ const en = {
   "notice.templateApplied": "Template applied to {file}.",
   "notice.noTemplate": "No template is configured for {date}.",
   "notice.migrated":
-    "Calendar (Weekday Templates): settings migrated to version 2. Note folders and formats are now configured in this plugin.",
+    "NF-Calendar: settings migrated to version 2. Note folders and formats are now configured in this plugin.",
 
   // confirm create
   "confirm.title": "New note",
@@ -327,6 +360,39 @@ export type I18nKey = keyof typeof en;
 const ru: Record<I18nKey, string> = {
   "view.title": "Календарь (шаблоны по дням недели)",
 
+  "cmd.organize": "Разложить ежедневные заметки по годам",
+  "cmd.undoOrganize": "Отменить последнюю раскладку",
+  "settings.yearFolders": "Хранить новые ежедневные заметки в подпапках по годам",
+  "settings.yearFoldersDesc":
+    "Новые заметки создаются в <папка>/<ГГГГ>/. Существующие находятся в обеих структурах (плоская папка и подпапки по годам).",
+  "settings.organizeDesc":
+    "Переместить ежедневные заметки из папки в подпапки <папка>/<ГГГГ>/. Сначала предпросмотр; ссылки обновит Obsidian; ничего не перезаписывается.",
+  "settings.organizeButton": "Предпросмотр…",
+  "organize.title": "Разложить ежедневные заметки по годам",
+  "organize.summary": "Будет перемещено заметок из «{folder}»: {count}",
+  "organize.skip.unparsed": "Остаются на месте, имя не дата в формате ежедневных: {count}",
+  "organize.skip.conflict": "Пропущены, файл с таким именем уже есть: {count}",
+  "organize.skip.inSubfolder": "Уже в подпапке: {count}",
+  "organize.skip.formatHasFolders": "Пропущены, формат ежедневных уже содержит папки: {count}",
+  "organize.more": "…и ещё {count}",
+  "organize.backup":
+    "Совет: перед первой раскладкой сделайте резервную копию хранилища. Перемещаются только .md прямо в папке; остальные файлы не трогаются.",
+  "organize.move": "Переместить",
+  "organize.progress": "Перемещение… {done} / {total}",
+  "organize.doneTitle": "Раскладка завершена",
+  "organize.done": "Перемещено: {moved}. Ошибок: {failed}.",
+  "organize.movedList": "Перемещены ({count})",
+  "organize.failedList": "Не перемещены ({count})",
+  "organize.undoHint": "Вернуть всё обратно можно командой «Отменить последнюю раскладку».",
+  "organize.enable": "Создавать новые заметки в подпапках по годам",
+  "organize.enabled": "Новые ежедневные заметки будут создаваться в подпапках по годам.",
+  "organize.close": "Закрыть",
+  "organize.busy": "Раскладка уже выполняется.",
+  "organize.nothingToUndo": "Нечего отменять.",
+  "organize.undo": "Отменить последнюю раскладку",
+  "organize.undoConfirm":
+    "Вернуть заметок: {count}. Не получится вернуть: {skipped} (переименованы, удалены или старое имя занято) — они останутся на месте.",
+  "organize.undone": "Возвращено: {moved}. Ошибок: {failed}.",
   "cmd.openView": "Открыть календарь",
   "cmd.openYesterday": "Открыть вчерашнюю ежедневную заметку",
   "cmd.openToday": "Открыть сегодняшнюю ежедневную заметку",
@@ -372,7 +438,7 @@ const ru: Record<I18nKey, string> = {
   "notice.templateApplied": "Шаблон применён к {file}.",
   "notice.noTemplate": "Для {date} не настроен ни один шаблон.",
   "notice.migrated":
-    "Calendar (Weekday Templates): настройки перенесены в версию 2. Папки и форматы заметок теперь задаются в этом плагине.",
+    "NF-Calendar: настройки перенесены в версию 2. Папки и форматы заметок теперь задаются в этом плагине.",
 
   "confirm.title": "Новая заметка",
   "confirm.text": "Файла {file} нет. Создать его?",

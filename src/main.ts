@@ -8,6 +8,9 @@ import { adjacentDate, datesForMonthFrom, datesUntilEndOf, missingDates } from "
 import type { Granularity } from "src/core/dates";
 import { setLanguage, t } from "src/core/i18n";
 import { customColorCss, dayKey } from "src/core/important";
+import { planUndo } from "src/core/organize";
+import { buildOrganizePlan, runMoves } from "src/io/organize";
+import { OrganizeModal } from "src/ui/modals/organize";
 import type { IImportantDay } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
@@ -160,6 +163,13 @@ export default class CalendarPlugin extends Plugin {
     cmd("open-yesterday-daily-note", t("cmd.openYesterday"), () => this.openDailyNoteForOffset(-1));
     cmd("open-today-daily-note", t("cmd.openToday"), () => this.openDailyNoteForOffset(0));
     cmd("open-tomorrow-daily-note", t("cmd.openTomorrow"), () => this.openDailyNoteForOffset(1));
+    cmd("organize-daily-notes-by-year", t("cmd.organize"), () => this.organizeDailyNotes());
+    cmd(
+      "undo-last-organize",
+      t("cmd.undoOrganize"),
+      () => this.undoLastOrganize(),
+      () => !!this.options.lastOrganize,
+    );
     cmd("open-previous-daily-note", t("cmd.prevDaily"), () => this.openAdjacentDailyNote(-1));
     cmd("open-next-daily-note", t("cmd.nextDaily"), () => this.openAdjacentDailyNote(1));
     cmd(
@@ -224,6 +234,83 @@ export default class CalendarPlugin extends Plugin {
     } catch (err) {
       console.warn("[Calendar] holidays index failed", err);
     }
+  }
+
+  private organizing = false;
+
+  /** Preview + confirm, then move flat daily notes into `<folder>/<YYYY>/`. */
+  organizeDailyNotes(): void {
+    if (this.organizing) {
+      new Notice(t("organize.busy"));
+      return;
+    }
+    const plan = buildOrganizePlan(this.app, this.options);
+    const folder = this.options.daily.folder || "/";
+    this.show(
+      new OrganizeModal(
+        this.app,
+        plan,
+        folder,
+        async (onProgress) => {
+          this.organizing = true;
+          try {
+            const result = await runMoves(this.app, plan.moves, onProgress);
+            if (result.done.length) {
+              await this.writeOptions(() => ({
+                lastOrganize: { at: new Date().toISOString(), moves: result.done },
+              }));
+            }
+            return result;
+          } finally {
+            this.organizing = false;
+            this.reindexAll();
+          }
+        },
+        !!this.options.daily.yearFolders,
+        async () => {
+          await this.writeOptions((old) => ({ daily: { ...old.daily, yearFolders: true } }));
+          this.reindexAll();
+          new Notice(t("organize.enabled"));
+        },
+      ),
+    );
+  }
+
+  /** Move the files of the last organize run back (only where safe). */
+  async undoLastOrganize(): Promise<void> {
+    const journal = this.options.lastOrganize;
+    if (!journal || this.organizing) {
+      new Notice(t(journal ? "organize.busy" : "organize.nothingToUndo"));
+      return;
+    }
+    const { undo, skipped } = planUndo(
+      journal.moves,
+      (p) => !!this.app.vault.getAbstractFileByPath(p),
+    );
+    this.show(
+      new ConfirmationModal(this.app, {
+        cta: t("organize.undo"),
+        title: t("organize.undo"),
+        text: t("organize.undoConfirm", { count: undo.length, skipped: skipped.length }),
+        onAccept: async () => {
+          this.organizing = true;
+          const notice = new Notice(t("organize.progress", { done: 0, total: undo.length }), 0);
+          try {
+            const result = await runMoves(this.app, undo, (done, total) =>
+              notice.setMessage(t("organize.progress", { done, total })),
+            );
+            await this.writeOptions(() => ({ lastOrganize: null }));
+            new Notice(
+              t("organize.undone", { moved: result.done.length, failed: result.failed.length }),
+            );
+          } finally {
+            notice.hide();
+            this.organizing = false;
+            this.reindexAll();
+          }
+        },
+      }),
+    );
   }
 
   reindexAll(): void {

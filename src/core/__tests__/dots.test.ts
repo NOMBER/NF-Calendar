@@ -11,10 +11,10 @@ const facts = (
 });
 
 describe("dots", () => {
-  it("sanitizes mode with tasks as default", () => {
+  it("sanitizes mode with exists as default", () => {
     expect(sanitizeDotsMode("words")).toBe("words");
-    expect(sanitizeDotsMode("x")).toBe("tasks");
-    expect(sanitizeDotsMode(undefined)).toBe("tasks");
+    expect(sanitizeDotsMode("x")).toBe("exists");
+    expect(sanitizeDotsMode(undefined)).toBe("exists");
   });
 
   it("tasks: filled share of done, max 5, never all filled unless all done", () => {

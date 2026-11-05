@@ -1,4 +1,4 @@
-# Calendar (Weekday Templates)
+# NF-Calendar
 
 **English** · [Русский](README.ru.md) · [More plugins by NomberProjects](https://nomberobsidian.github.io/)
 
@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `calendar-weekday-templates`, version 2.2.0
+- Plugin id: `nf-calendar`, version 2.4.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -138,9 +138,10 @@ similar sequences are not interpreted), and placeholders inside carried-over tex
 
 The plugin is **not yet in the Obsidian community plugin catalog**. Install it manually:
 
-1. Take `dist/calendar-weekday-templates.zip` (or `main.js`, `manifest.json` and `styles.css` from `dist/`).
-2. Unzip it into `<your vault>/.obsidian/plugins/`. You should get a folder `calendar-weekday-templates/` with the three files.
-3. Restart Obsidian, or click "Reload plugins" under Community plugins, then enable **Calendar (Weekday Templates)**.
+0. **Upgrading from 2.3.x or older** (plugin id `calendar-weekday-templates`, named "Calendar (Weekday Templates)"): disable it and delete the folder `<your vault>/.obsidian/plugins/calendar-weekday-templates/` first. Since 2.4.0 the plugin id is `nf-calendar`; old settings are not migrated, so set them again.
+1. Take `dist/nf-calendar.zip` (or `main.js`, `manifest.json` and `styles.css` from `dist/`).
+2. Unzip it into `<your vault>/.obsidian/plugins/`. You should get a folder `nf-calendar/` with the three files.
+3. Restart Obsidian, or click "Reload plugins" under Community plugins, then enable **NF-Calendar**.
 4. It is best to disable the original Calendar. Once this plugin is set up, Daily Notes and Periodic Notes can be disabled too.
 
 ### Upgrading from 1.x
@@ -154,7 +155,7 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 
 - **General:**
   - Language;
-  - what the dots under days mean: done tasks (default; one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), note exists, or no dots;
+  - what the dots under days mean: note exists (default since 2.4.0), done tasks (one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), or no dots;
   - start of the week (locale default or a fixed day);
   - confirm before creating a note by click;
   - template preview on hover;
@@ -186,6 +187,25 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 | Holiday | Holiday from folder | Daily | `Templates/Holiday.md` |
 
 Rules are checked top to bottom, so place more specific rules (a single date) above broader ones (a range).
+
+## Organize daily notes by year
+
+Command **Organize daily notes by year** (also in the ⋯ menu and in Settings → Daily notes) moves daily notes that lie
+directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Daily/2026/2026-10-30.md`.
+
+- **Make a backup of your vault before the first run.**
+- A preview opens first: how many notes per year, and what is skipped and why. Nothing moves until you press **Move**.
+- Only `.md` files directly in the daily folder whose name matches the daily format are moved. Files in subfolders,
+  other file types, unrecognized names and anything in the config folder (`.obsidian`) are never touched.
+- If the target file already exists, the note is skipped. Nothing is overwritten.
+- Files are moved with Obsidian's `fileManager.renameFile`, so links are updated if "Automatically update internal links" is on.
+- **Undo last organize** moves the notes back. The list of moves is kept in `data.json`. A note is skipped if it was moved
+  again or if its old place is taken.
+- Afterwards the plugin offers to turn on **Keep new daily notes in year folders** (setting in the Daily section). With it on, new daily notes
+  go to `Daily/YYYY/`.
+- The plugin finds a note in either layout: the expected path first, then the other layout, then by date in any subfolder. Flat, year and
+  mixed folders all work, so the calendar does not break after organizing.
+- Weekly and monthly notes have no organize command and stay where they are. The year folder setting exists only for daily notes.
 
 ## Templater compatibility
 

@@ -48,7 +48,7 @@ describe("migrateSettings", () => {
     expect(settings.weekdayTemplates.monday).toBe("T/Mon.md");
     expect(settings.weekdayTemplates.friday).toBe("");
     expect(settings).toMatchObject({
-      dotsMode: "tasks",
+      dotsMode: "exists",
       weekStart: "monday",
       localeOverride: "ru",
       useWeekdayTemplates: true,
@@ -146,7 +146,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(4);
+    expect(settings.settingsVersion).toBe(5);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -169,5 +169,38 @@ describe("v3 (2.2.0) migration", () => {
     expect(settings.holidayPattern).toBe("");
     expect(settings.menuPosition).toBe("navRight");
     expect(settings.statsView).toEqual({ mode: "charts", metric: "tasks", kind: "bar" });
+  });
+});
+
+describe("v5 (2.4.0) migration", () => {
+  it("switches the old explicit default tasks → exists once", () => {
+    expect(migrateSettings({ settingsVersion: 4, dotsMode: "tasks" }).settings.dotsMode).toBe(
+      "exists",
+    );
+    expect(migrateSettings({ settingsVersion: 4, dotsMode: "words" }).settings.dotsMode).toBe(
+      "words",
+    );
+    expect(migrateSettings({ settingsVersion: 5, dotsMode: "tasks" }).settings.dotsMode).toBe(
+      "tasks",
+    );
+    expect(migrateSettings(null).settings.dotsMode).toBe("exists");
+  });
+
+  it("keeps yearFolders, clamps horizon, sanitizes journal", () => {
+    const { settings } = migrateSettings({
+      settingsVersion: 5,
+      daily: { enabled: true, folder: "D", format: "YYYY-MM-DD", template: "", yearFolders: true },
+      upcomingHorizonDays: 1000,
+      lastOrganize: {
+        at: "x",
+        moves: [{ from: "D/a.md", to: "D/2026/a.md" }, { from: "../x.md", to: "y.md" }, 5],
+      },
+    });
+    expect(settings.daily.yearFolders).toBe(true);
+    expect(settings.upcomingHorizonDays).toBe(365);
+    expect(settings.lastOrganize?.moves).toEqual([{ from: "D/a.md", to: "D/2026/a.md", year: "" }]);
+    expect(
+      migrateSettings({ upcomingHorizonDays: 2, settingsVersion: 5 }).settings.upcomingHorizonDays,
+    ).toBe(7);
   });
 });

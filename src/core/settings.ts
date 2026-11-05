@@ -9,6 +9,8 @@ import { DEFAULT_FORMATS } from "./dates";
 import type { Granularity } from "./dates";
 import { isValidHolidayPattern } from "./holidays";
 import type { HolidayDateOrder } from "./holidays";
+import type { IMove } from "./organize";
+import { sanitizeVaultPath } from "./paths";
 import { DEFAULT_DOTS_MODE, sanitizeDotsMode } from "./dots";
 import type { DotsMode } from "./dots";
 import { clampPrepDays, sanitizeImportantColor } from "./important";
@@ -16,7 +18,7 @@ import type { ImportantDays } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 /** Where the ⋯ menu button sits. */
 export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar";
@@ -37,6 +39,14 @@ export interface IPeriodicConfig {
   folder: string;
   format: string;
   template: string;
+  /** v5 (2.4.0): new notes go to `folder/<YYYY>/`; lookup works for both layouts. */
+  yearFolders?: boolean;
+}
+
+/** Journal of the last "organize by year" run (for undo). */
+export interface IOrganizeJournal {
+  at: string;
+  moves: IMove[];
 }
 
 export interface ISettings {
@@ -58,6 +68,7 @@ export interface ISettings {
   templateRules: ITemplateRule[];
 
   importantDays: ImportantDays;
+  lastOrganize: IOrganizeJournal | null;
   showUpcoming: boolean;
   upcomingCollapsed: boolean;
   upcomingHorizonDays: number;
@@ -93,6 +104,7 @@ export function makeDefaultSettings(): ISettings {
     weekdayTemplates: { ...EMPTY_WEEKDAY_TEMPLATES },
     templateRules: [],
     importantDays: {},
+    lastOrganize: null,
     showUpcoming: true,
     upcomingCollapsed: false,
     upcomingHorizonDays: 60,
@@ -168,6 +180,7 @@ function sanitizePeriodic(raw: unknown, g: Granularity, defaultEnabled: boolean)
     folder: str(r.folder).trim(),
     format: str(r.format, "", LIMITS.format).trim() || DEFAULT_FORMATS[g],
     template: str(r.template).trim(),
+    ...(r.yearFolders === true ? { yearFolders: true } : {}),
   };
 }
 
@@ -181,6 +194,7 @@ export function mergeExternal(
     return base;
   }
   return {
+    ...base,
     enabled: base.enabled,
     folder: str(ext.folder, base.folder).trim(),
     format: str(ext.format, "", LIMITS.format).trim() || base.format || DEFAULT_FORMATS[g],
@@ -295,7 +309,9 @@ export function migrateSettings(
     settingsVersion: SETTINGS_VERSION,
     language: ["auto", "en", "ru"].includes(r.language) ? r.language : defaults.language,
     // v4 (2.3.0): `wordsPerDot` is dropped; dots meaning is a mode.
-    dotsMode: sanitizeDotsMode(r.dotsMode),
+    // v5 (2.4.0): default is "exists"; v4 stored the old default "tasks"
+    // explicitly, so it is switched once (a choice made in v5+ is kept).
+    dotsMode: version < 5 && r.dotsMode === "tasks" ? "exists" : sanitizeDotsMode(r.dotsMode),
     weekStart: sanitizeWeekStart(r.weekStart),
     shouldConfirmBeforeCreate:
       typeof r.shouldConfirmBeforeCreate === "boolean"
@@ -313,7 +329,7 @@ export function migrateSettings(
     upcomingCollapsed: !!r.upcomingCollapsed,
     upcomingHorizonDays:
       typeof r.upcomingHorizonDays === "number" && r.upcomingHorizonDays > 0
-        ? Math.min(366, Math.max(1, Math.round(r.upcomingHorizonDays)))
+        ? clampHorizon(r.upcomingHorizonDays)
         : defaults.upcomingHorizonDays,
     showTemplatePreview:
       typeof r.showTemplatePreview === "boolean"
@@ -328,8 +344,41 @@ export function migrateSettings(
     })(),
     menuPosition: MENU_POSITIONS.includes(r.menuPosition) ? r.menuPosition : defaults.menuPosition,
     statsView: sanitizeStatsView(r.statsView),
+    lastOrganize: sanitizeJournal(r.lastOrganize),
   };
   return { settings, migratedFrom: version < SETTINGS_VERSION ? version : null };
+}
+
+export const HORIZON_MIN = 7;
+export const HORIZON_MAX = 365;
+export const MAX_JOURNAL_MOVES = 50000;
+
+export function clampHorizon(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) {
+    return 60;
+  }
+  return Math.min(HORIZON_MAX, Math.max(HORIZON_MIN, Math.round(n)));
+}
+
+function sanitizeJournal(raw: unknown): IOrganizeJournal | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+  if (!r || typeof r !== "object" || !Array.isArray(r.moves)) {
+    return null;
+  }
+  const moves: IMove[] = [];
+  for (const m of r.moves.slice(0, MAX_JOURNAL_MOVES)) {
+    if (!m || typeof m.from !== "string" || typeof m.to !== "string") {
+      continue;
+    }
+    const from = sanitizeVaultPath(m.from);
+    const to = sanitizeVaultPath(m.to);
+    if (from && to && from.endsWith(".md") && to.endsWith(".md")) {
+      moves.push({ from, to, year: str(m.year, "", 4) });
+    }
+  }
+  return moves.length ? { at: str(r.at, "", 40), moves } : null;
 }
 
 /** Pick the config of a note type. */

@@ -2,7 +2,7 @@
 
 export const DOTS_MODES = ["tasks", "words", "exists", "none"] as const;
 export type DotsMode = (typeof DOTS_MODES)[number];
-export const DEFAULT_DOTS_MODE: DotsMode = "tasks";
+export const DEFAULT_DOTS_MODE: DotsMode = "exists";
 
 /** Fixed word-count thresholds: one dot per threshold reached (1..5). */
 export const WORD_DOT_THRESHOLDS = [1, 250, 500, 1000, 2000] as const;

@@ -35,6 +35,11 @@ export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): 
     );
   }
   menu.addSeparator();
+  item(t("cmd.organize"), "folder-tree", () => plugin.organizeDailyNotes());
+  if (options.lastOrganize) {
+    item(t("cmd.undoOrganize"), "undo-2", () => plugin.undoLastOrganize());
+  }
+  menu.addSeparator();
   item(t("cmd.missingWeek"), "calendar-plus", () => plugin.createMissingDailyNotes("week"));
   item(t("cmd.missingMonth"), "calendar-plus", () => plugin.createMissingDailyNotes("month"));
   if (month.isAfter(now, "month")) {

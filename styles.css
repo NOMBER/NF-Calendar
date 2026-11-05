@@ -1,4 +1,4 @@
-/* ===== Calendar (Weekday Templates) — all colors come from theme variables ===== */
+/* ===== NF-Calendar — all colors come from theme variables ===== */
 
 /* color mapping: any element with data-cwt-color / data-cwt-important / data-cwt-prepare */
 [data-cwt-color="red"], [data-cwt-important="red"], [data-cwt-prepare="red"] { --cwt-c: var(--color-red, #e93147); --cwt-c-rgb: var(--color-red-rgb, 233, 49, 71); }
@@ -15,6 +15,16 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* 2.4.0: reserve the scrollbar's space all the time, so a long
+     "Upcoming" list that makes the panel scroll does not narrow the grid. */
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  .cwt-view {
+    overflow-y: scroll; /* same effect on engines without scrollbar-gutter */
+  }
 }
 
 /* 2.3.1: .cwt-view is a column flex box inside Obsidian's fixed-height
@@ -76,18 +86,8 @@
   min-width: 0;
 }
 
-.cwt-upcoming[open] {
-  max-height: min(40vh, 22em);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.cwt-upcoming > summary {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--background-secondary, var(--background-primary));
-}
+/* No own scrollbar here (2.4.0): it scrolled inside the panel and made
+   widths jump; the whole view scrolls instead, with a stable gutter. */
 
 .cwt-upcoming > summary {
   cursor: pointer;
@@ -603,3 +603,10 @@
 /* custom colour picker in the important-day modal */
 .cwt-palette .cwt-color-picker { width: 28px; height: 24px; padding: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; }
 .cwt-palette .cwt-color-picker.is-selected { border-color: var(--text-normal); }
+
+/* organize by year */
+.cwt-organize-list { margin: 6px 0; }
+.cwt-organize-list > summary { cursor: pointer; }
+.cwt-organize-row { font-family: var(--font-monospace); font-size: var(--font-ui-smaller); overflow-wrap: anywhere; }
+.cwt-organize-modal ul { margin: 4px 0 8px; }
+.cwt-number-input { width: 5em; }
