@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.11.0
+
+- **Daily note folders setting.** Dropdown “Daily note folders” (flat / by year / by year and month) is next to Organize. After Organize, “Also store new notes this way” is **on by default** so new notes (including at year boundaries, e.g. `2027-01-01` → `2027/01/`) match the layout you just applied. Old `yearFolders` still migrates to `folderLayout`.
+- **Reverse organize.** Organize to flat, year, or year+month (settings buttons + commands, EN/RU). Preview, no overwrite, skip on conflict, undo. Optional removal of now-empty `YYYY` / `YYYY/MM` folders under the daily notes folder (shown in the preview).
+- **Open statistics (Go to date).** No more Modal→Modal timing. “Open statistics” replaces the Go-to-date content **in the same modal** with the statistics panel; **← Back / Назад** restores Go to date (state kept). Standalone Stats modal/command for ⋯ and palette unchanged. Root cause of the unresponsive button: the closed random-note collapse (`grid-template-rows: 0fr`) still hit-tested over the mode row — fixed with `overflow: hidden` + `pointer-events: none` when closed. DOM tests cover click → stats and Back.
+
 ## 2.10.1
 
 ### Fixed

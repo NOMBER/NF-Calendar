@@ -887,12 +887,18 @@
   display: grid;
   grid-template-rows: 0fr;
   margin: 0;
+  overflow: hidden;
+  /* Closed collapse must not steal clicks from the mode row above
+     (Open statistics / Open in calendar). Root cause of "button not
+     clickable": 0fr grid still left a hit-testable overlay without this. */
+  pointer-events: none;
   transition:
     grid-template-rows 0.2s ease,
     margin 0.2s ease;
 }
 
 .cwt-nav-random-collapse.is-open {
+  pointer-events: auto;
   grid-template-rows: 1fr;
   /* keep the box border clear of the year field below */
   margin: 8px 0 12px;
@@ -993,4 +999,22 @@
   .cwt-nav-random-chevron {
     transition: none;
   }
+}
+
+/* ----- 2.11: in-place stats back, organize checkboxes ----- */
+.cwt-nav-back {
+  margin-bottom: 8px;
+}
+.cwt-nav-back::before {
+  content: "← ";
+}
+.cwt-organize-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 8px 0;
+  cursor: pointer;
+}
+.cwt-stats-header {
+  margin-bottom: 4px;
 }

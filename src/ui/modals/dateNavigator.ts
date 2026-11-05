@@ -7,16 +7,12 @@ import { MAX_RANDOM_DAYS as MAX_DAYS, RANDOM_KINDS, scopeFromPrefs } from "src/c
 import type { DateFieldFormat } from "src/core/dateField";
 import { createDateField } from "src/ui/dateField";
 import type { IRandomPrefs, RandomKind, RandomScope } from "src/core/random";
-import {
-  MODAL_HANDOFF_MS,
-  afterModalClose,
-  navigatorMonthAction,
-} from "src/ui/modals/modalHandoff";
+import type { IStatsPanelDeps } from "src/ui/modals/statsPanel";
+import { StatsPanel } from "src/ui/modals/statsPanel";
 
 export interface IDateNavigatorDeps {
   month: Moment;
   goToMonth: (month: Moment) => void;
-  showStats: (month: Moment) => void;
   openDay: (date: Moment) => void;
   hasNote: (date: Moment) => boolean;
   /** Start values of the random-note controls (Settings → Random note). */
@@ -25,6 +21,8 @@ export interface IDateNavigatorDeps {
   dateFormat: DateFieldFormat;
   /** Resolves true when a note was opened. */
   openRandom: (scope: RandomScope, skipEmpty: boolean) => Promise<boolean>;
+  /** Same deps as the standalone Stats modal — embedded in-place. */
+  stats: IStatsPanelDeps;
 }
 
 /** Values of the random-note controls while the window is open. */
@@ -32,20 +30,23 @@ interface IRandomState extends IRandomPrefs {
   month: number;
 }
 
-type Target = "calendar" | "stats";
+type Screen = "goto" | "stats";
 
 /**
- * Quick navigation opened by a click on the "Month Year" title: year picker
- * (arrows, typed year or a 12-year grid), a 12-month grid and a "go to
- * date" field. A Modal so it works the same on mobile.
+ * Quick navigation opened by a click on the "Month Year" title.
+ * "Open statistics" swaps this modal's content to the stats panel (no second
+ * modal); Back restores the Go-to-date UI with state preserved.
  */
 export class DateNavigatorModal extends Modal {
   private year: number;
-  private target: Target = "calendar";
   private yearGrid = false;
   private random: IRandomState;
   /** Random-note box expanded (kept across re-renders of this window). */
   private randomOpen = false;
+  private screen: Screen = "goto";
+  private statsPanel: StatsPanel | null = null;
+  /** Month shown when the stats screen was last opened (Back preserves goto). */
+  private statsMonth: Moment;
 
   constructor(
     app: App,
@@ -54,40 +55,101 @@ export class DateNavigatorModal extends Modal {
     super(app);
     this.year = deps.month.year();
     this.random = { ...deps.randomDefaults, month: deps.month.month() + 1 };
+    this.statsMonth = deps.month.clone().startOf("month");
   }
 
   onOpen(): void {
     this.modalEl.addClass("cwt-nav-modal");
-    this.titleEl.setText(t("navigator.title"));
     this.render();
   }
 
   onClose(): void {
+    this.statsPanel?.destroy();
+    this.statsPanel = null;
     this.contentEl.empty();
   }
 
   private render(): void {
+    if (this.screen === "stats") {
+      this.renderStats();
+      return;
+    }
+    this.renderGoto();
+  }
+
+  /** In-place statistics (replaces Go-to-date content; Back restores it). */
+  private renderStats(): void {
+    this.statsPanel?.destroy();
+    this.statsPanel = null;
+    this.contentEl.empty();
+    this.titleEl.setText(t("stats.title"));
+    this.modalEl.addClass("cwt-stats-modal");
+    this.statsPanel = new StatsPanel(
+      this.app,
+      this.contentEl,
+      {
+        ...this.deps.stats,
+        openDay: (date) => {
+          this.close();
+          this.deps.stats.openDay(date);
+        },
+      },
+      this.statsMonth,
+      {
+        header: (bar) => {
+          const back = bar.createEl("button", {
+            cls: "cwt-nav-back",
+            text: t("navigator.back"),
+            attr: { "aria-label": t("navigator.back") },
+          });
+          back.addEventListener("click", () => {
+            this.statsMonth = this.statsPanel?.getMonth() ?? this.statsMonth;
+            this.statsPanel?.destroy();
+            this.statsPanel = null;
+            this.screen = "goto";
+            this.modalEl.removeClass("cwt-stats-modal");
+            this.render();
+          });
+        },
+      },
+    );
+    void this.statsPanel.render();
+  }
+
+  private renderGoto(): void {
+    this.statsPanel?.destroy();
+    this.statsPanel = null;
     const { contentEl } = this;
     contentEl.empty();
+    this.titleEl.setText(t("navigator.title"));
+    this.modalEl.removeClass("cwt-stats-modal");
 
-    // Mode: what a month click does.
+    // Mode row: Open in calendar (noop / current), Open statistics (swap), Random.
     const modes = contentEl.createDiv("cwt-nav-modes");
-    (["calendar", "stats"] as Target[]).forEach((m) => {
-      const b = modes.createEl("button", {
-        cls: "cwt-nav-mode",
-        text: t(m === "calendar" ? "navigator.toCalendar" : "navigator.toStats"),
-      });
-      b.toggleClass("is-active", this.target === m);
-      b.setAttr("aria-pressed", String(this.target === m));
-      b.addEventListener("click", () => {
-        this.target = m;
-        this.render();
-      });
+    const cal = modes.createEl("button", {
+      cls: "cwt-nav-mode is-active",
+      text: t("navigator.toCalendar"),
+      attr: { "aria-pressed": "true" },
     });
-    // Random note: same row, right of "Open statistics"; its period right below.
+    // Calendar mode is the default goto screen; clicking keeps us here.
+    cal.addEventListener("click", () => {
+      /* already on goto */
+    });
+
+    const statsBtn = modes.createEl("button", {
+      cls: "cwt-nav-mode cwt-nav-open-stats",
+      text: t("navigator.toStats"),
+      attr: { "aria-pressed": "false", type: "button" },
+    });
+    statsBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.openStatsScreen();
+    });
+
     const go = modes.createEl("button", {
       cls: "cwt-nav-random-btn",
-      attr: { "aria-expanded": String(this.randomOpen) },
+      attr: { "aria-expanded": String(this.randomOpen), type: "button" },
     });
     setIcon(go.createSpan({ cls: "cwt-nav-random-icon" }), "dice");
     go.createSpan({ text: t("navigator.random") });
@@ -98,7 +160,7 @@ export class DateNavigatorModal extends Modal {
     const yearRow = contentEl.createDiv("cwt-nav-year");
     const prev = yearRow.createEl("button", {
       cls: "clickable-icon",
-      attr: { "aria-label": t("navigator.prevYear") },
+      attr: { "aria-label": t("navigator.prevYear"), type: "button" },
     });
     setIcon(prev, "chevron-left");
     const input = yearRow.createEl("input", {
@@ -109,12 +171,12 @@ export class DateNavigatorModal extends Modal {
     input.value = String(this.year);
     const gridBtn = yearRow.createEl("button", {
       cls: "clickable-icon",
-      attr: { "aria-label": t("navigator.yearGrid") },
+      attr: { "aria-label": t("navigator.yearGrid"), type: "button" },
     });
     setIcon(gridBtn, "layout-grid");
     const next = yearRow.createEl("button", {
       cls: "clickable-icon",
-      attr: { "aria-label": t("navigator.nextYear") },
+      attr: { "aria-label": t("navigator.nextYear"), type: "button" },
     });
     setIcon(next, "chevron-right");
     const setYear = (y: number) => {
@@ -136,7 +198,11 @@ export class DateNavigatorModal extends Modal {
     if (this.yearGrid) {
       const first = this.year - 5;
       for (let y = first; y < first + 12; y++) {
-        const b = grid.createEl("button", { cls: "cwt-nav-cell", text: String(y) });
+        const b = grid.createEl("button", {
+          cls: "cwt-nav-cell",
+          text: String(y),
+          attr: { type: "button" },
+        });
         b.toggleClass("is-current", y === today.year());
         b.toggleClass("is-active", y === this.year);
         b.addEventListener("click", () => {
@@ -147,29 +213,20 @@ export class DateNavigatorModal extends Modal {
     } else {
       for (let m = 0; m < 12; m++) {
         const month = window.moment({ year: this.year, month: m, day: 1 });
-        const b = grid.createEl("button", { cls: "cwt-nav-cell", text: month.format("MMM") });
+        const b = grid.createEl("button", {
+          cls: "cwt-nav-cell",
+          text: month.format("MMM"),
+          attr: { type: "button" },
+        });
         b.toggleClass("is-current", month.isSame(today, "month"));
         b.toggleClass("is-active", month.isSame(this.deps.month, "month"));
         b.addEventListener("click", () => {
-          const chosen = month.clone();
-          const action = navigatorMonthAction(this.target);
-          if (action === "showStats") {
-            // Modal→Modal: defer past this navigator's teardown and the
-            // originating click's mouseup, or Stats opens and is dismissed.
-            afterModalClose(
-              () => this.close(),
-              () => this.deps.showStats(chosen),
-              MODAL_HANDOFF_MS,
-            );
-          } else {
-            this.close();
-            this.deps.goToMonth(chosen);
-          }
+          this.close();
+          this.deps.goToMonth(month.clone());
         });
       }
     }
 
-    // Go to a specific date.
     const dateRow = contentEl.createDiv("cwt-nav-date");
     const status = contentEl.createDiv("cwt-nav-status setting-item-description");
     const field = createDateField(dateRow, {
@@ -195,7 +252,11 @@ export class DateNavigatorModal extends Modal {
       if (e.key === "Enter") open.click();
     });
     updateStatus();
-    const open = dateRow.createEl("button", { cls: "mod-cta", text: t("navigator.openDay") });
+    const open = dateRow.createEl("button", {
+      cls: "mod-cta",
+      text: t("navigator.openDay"),
+      attr: { type: "button" },
+    });
     open.addEventListener("click", () => {
       const d = parse();
       if (!d) {
@@ -206,17 +267,30 @@ export class DateNavigatorModal extends Modal {
       this.deps.goToMonth(d.clone().startOf("month"));
       this.deps.openDay(d);
     });
-    const todayBtn = dateRow.createEl("button", { text: t("navigator.today") });
+    const todayBtn = dateRow.createEl("button", {
+      text: t("navigator.today"),
+      attr: { type: "button" },
+    });
     todayBtn.addEventListener("click", () => {
       this.close();
       this.deps.goToMonth(window.moment().startOf("month"));
     });
   }
 
-  /** Period for the random note (all / year / month / last N days / range) + skip empty. */
+  /** Switch content to statistics (same modal; no close/reopen). */
+  openStatsScreen(month?: Moment): void {
+    if (month) this.statsMonth = month.clone().startOf("month");
+    else this.statsMonth = window.moment({ year: this.year, month: this.random.month - 1, day: 1 });
+    // Prefer the calendar's displayed month when opening from the title.
+    if (!month) this.statsMonth = this.deps.month.clone().startOf("month");
+    this.screen = "stats";
+    this.render();
+  }
+
+  /** Period for the random note + skip empty. */
   private renderRandomOptions(go: HTMLButtonElement): void {
     const st = this.random;
-    // Collapsible: "Open random note" only expands/collapses; "Open" inside runs it.
+    // Collapsible lives BELOW the mode row (sibling), never overlaid on buttons.
     const collapse = this.contentEl.createDiv("cwt-nav-random-collapse");
     collapse.toggleClass("is-open", this.randomOpen);
     const box = collapse.createDiv("cwt-nav-random");
@@ -228,6 +302,8 @@ export class DateNavigatorModal extends Modal {
       go.toggleClass("is-active", open);
       go.setAttr("aria-expanded", String(open));
       box.setAttr("inert", open ? null : "");
+      // Closed collapse must not intercept clicks on the mode buttons above.
+      collapse.style.pointerEvents = open ? "" : "none";
     };
     setOpen(this.randomOpen);
     go.addEventListener("click", () => setOpen(!this.randomOpen));
@@ -304,7 +380,11 @@ export class DateNavigatorModal extends Modal {
     sync();
 
     const actions = box.createDiv("cwt-nav-random-actions");
-    const run = actions.createEl("button", { cls: "mod-cta", text: t("navigator.randomOpen") });
+    const run = actions.createEl("button", {
+      cls: "mod-cta",
+      text: t("navigator.randomOpen"),
+      attr: { type: "button" },
+    });
     run.addEventListener("click", () => {
       sync();
       if (from.getValue() === null || to.getValue() === null) {

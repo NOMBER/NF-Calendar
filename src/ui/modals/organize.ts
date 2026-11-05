@@ -22,14 +22,38 @@ function list(parent: HTMLElement, summary: string, rows: string[]): void {
   }
 }
 
+function titleKey(layout: DailyFolderLayout): I18nKey {
+  if (layout === "year-month") return "organize.titleYearMonth";
+  if (layout === "flat") return "organize.titleFlat";
+  return "organize.title";
+}
+
+function summaryKey(layout: DailyFolderLayout): I18nKey {
+  if (layout === "year-month") return "organize.summaryYearMonth";
+  if (layout === "flat") return "organize.summaryFlat";
+  return "organize.summary";
+}
+
+function enableKey(layout: DailyFolderLayout): I18nKey {
+  if (layout === "year-month") return "organize.enableYearMonth";
+  if (layout === "flat") return "organize.enableFlat";
+  return "organize.enable";
+}
+
 /** Preview → confirm → progress → report. Nothing moves before "Move". */
 export class OrganizeModal extends Modal {
+  private storeNew = true;
+  private removeEmpty = true;
+
   constructor(
     app: App,
     private plan: IOrganizePlan,
     private folderLabel: string,
-    private targetLayout: "year" | "year-month",
-    private run: (onProgress: (done: number, total: number) => void) => Promise<IRunResult>,
+    private targetLayout: DailyFolderLayout,
+    private run: (
+      onProgress: (done: number, total: number) => void,
+      opts: { removeEmpty: boolean },
+    ) => Promise<IRunResult>,
     private currentLayout: DailyFolderLayout,
     private enableLayout: () => Promise<void>,
   ) {
@@ -38,15 +62,13 @@ export class OrganizeModal extends Modal {
 
   onOpen(): void {
     const { contentEl, plan } = this;
-    this.titleEl.setText(
-      t(this.targetLayout === "year-month" ? "organize.titleYearMonth" : "organize.title"),
-    );
+    this.titleEl.setText(t(titleKey(this.targetLayout)));
     contentEl.addClass("cwt-organize-modal");
     contentEl.createEl("p", {
-      text: t(
-        this.targetLayout === "year-month" ? "organize.summaryYearMonth" : "organize.summary",
-        { count: plan.moves.length, folder: this.folderLabel },
-      ),
+      text: t(summaryKey(this.targetLayout), {
+        count: plan.moves.length,
+        folder: this.folderLabel,
+      }),
     });
     const years = Object.keys(plan.byYear).sort();
     if (years.length) {
@@ -66,13 +88,56 @@ export class OrganizeModal extends Modal {
       const rows = plan.skipped.filter((s) => s.reason === reason).map((s) => s.path);
       list(contentEl, t(`organize.skip.${reason}` as I18nKey, { count: rows.length }), rows);
     }
+    if (plan.emptyFolders.length) {
+      list(
+        contentEl,
+        t("organize.emptyFolders", { count: plan.emptyFolders.length }),
+        plan.emptyFolders,
+      );
+    }
     contentEl.createEl("p", { cls: "setting-item-description", text: t("organize.backup") });
+
+    // Default ON: also switch where NEW notes are stored to match this organize.
+    const storeLabel = contentEl.createEl("label", { cls: "cwt-organize-check" });
+    const storeCb = storeLabel.createEl("input", { type: "checkbox" });
+    storeCb.checked = this.storeNew;
+    storeLabel.appendText(" " + t(enableKey(this.targetLayout)));
+    storeCb.addEventListener("change", () => {
+      this.storeNew = storeCb.checked;
+    });
+
+    if (plan.emptyFolders.length) {
+      const emptyLabel = contentEl.createEl("label", { cls: "cwt-organize-check" });
+      const emptyCb = emptyLabel.createEl("input", { type: "checkbox" });
+      emptyCb.checked = this.removeEmpty;
+      emptyLabel.appendText(" " + t("organize.removeEmpty"));
+      emptyCb.addEventListener("change", () => {
+        this.removeEmpty = emptyCb.checked;
+      });
+    } else {
+      this.removeEmpty = false;
+    }
 
     contentEl.createDiv("modal-button-container", (buttons) => {
       buttons
         .createEl("button", { text: t("batch.cancel") })
         .addEventListener("click", () => this.close());
       if (!plan.moves.length) {
+        // Still allow applying storage layout alone when already organized.
+        if (this.currentLayout !== this.targetLayout) {
+          const en = buttons.createEl("button", {
+            cls: "mod-cta",
+            text: t(enableKey(this.targetLayout)),
+          });
+          en.addEventListener(
+            "click",
+            async () => {
+              await this.enableLayout();
+              this.close();
+            },
+            { once: true },
+          );
+        }
         return;
       }
       const ok = buttons.createEl("button", { cls: "mod-cta", text: t("organize.move") });
@@ -83,9 +148,13 @@ export class OrganizeModal extends Modal {
   private async execute(buttons: HTMLElement): Promise<void> {
     buttons.empty();
     const progress = this.contentEl.createEl("p", { cls: "cwt-organize-progress" });
-    const result = await this.run((done, total) =>
-      progress.setText(t("organize.progress", { done, total })),
+    const result = await this.run(
+      (done, total) => progress.setText(t("organize.progress", { done, total })),
+      { removeEmpty: this.removeEmpty },
     );
+    if (this.storeNew && result.done.length) {
+      await this.enableLayout();
+    }
     this.report(result);
   }
 
@@ -96,6 +165,12 @@ export class OrganizeModal extends Modal {
     contentEl.createEl("p", {
       text: t("organize.done", { moved: result.done.length, failed: result.failed.length }),
     });
+    if (result.removedFolders?.length) {
+      contentEl.createEl("p", {
+        text: t("organize.removedFolders", { count: result.removedFolders.length }),
+      });
+      list(contentEl, t("organize.removedFoldersList"), result.removedFolders);
+    }
     const fmt = (m: IMove) => `${m.from} → ${m.to}`;
     list(contentEl, t("organize.movedList", { count: result.done.length }), result.done.map(fmt));
     list(
@@ -106,24 +181,19 @@ export class OrganizeModal extends Modal {
     if (result.done.length) {
       contentEl.createEl("p", { cls: "setting-item-description", text: t("organize.undoHint") });
     }
+    if (this.storeNew && result.done.length) {
+      const key =
+        this.targetLayout === "flat"
+          ? "organize.enabledFlat"
+          : this.targetLayout === "year-month"
+            ? "organize.enabledYearMonth"
+            : "organize.enabledYear";
+      contentEl.createEl("p", {
+        cls: "setting-item-description",
+        text: t(key),
+      });
+    }
     contentEl.createDiv("modal-button-container", (buttons) => {
-      const layoutMatches = this.currentLayout === this.targetLayout;
-      if (!layoutMatches && result.done.length) {
-        const en = buttons.createEl("button", {
-          cls: "mod-cta",
-          text: t(
-            this.targetLayout === "year-month" ? "organize.enableYearMonth" : "organize.enable",
-          ),
-        });
-        en.addEventListener(
-          "click",
-          async () => {
-            await this.enableLayout();
-            this.close();
-          },
-          { once: true },
-        );
-      }
       buttons
         .createEl("button", { text: t("organize.close") })
         .addEventListener("click", () => this.close());

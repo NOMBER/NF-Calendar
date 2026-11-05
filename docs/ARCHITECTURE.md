@@ -40,6 +40,12 @@ src/
     └── modals/          Модальные окна: confirm, applyTemplate, batchCreate, organize, importantDay, importantList, stats, dateNavigator
 ```
 
+## 2.11.0 notes
+
+- `DailyFolderLayout` (`flat` | `year` | `year-month`): `folderLayout` + deprecated `yearFolders`; `planOrganize` / `newDailyNotePath` / `notePathCandidates` cover all three directions; empty-folder preview via occupancy counts (folder paths, not `relativeNotePath`).
+- Organize modal: target layout + “Also store new notes this way” (default on) + optional empty-folder delete.
+- Go-to-date: in-place `StatsPanel` (shared with `StatsModal`); closed `.cwt-nav-random-collapse` uses `pointer-events: none` so mode buttons stay clickable.
+
 ## Поток данных
 
 1. **Загрузка.** `main.onload` читает `data.json` → `core/settings.migrateSettings` (валидация, лимиты, миграция) →

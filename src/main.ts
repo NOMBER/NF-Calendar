@@ -24,7 +24,8 @@ import {
   removeEventFromDay,
 } from "src/core/important";
 import { planUndo } from "src/core/organize";
-import { buildOrganizePlan, runMoves } from "src/io/organize";
+import type { DailyFolderLayout } from "src/core/organize";
+import { buildOrganizePlan, removeEmptyOrganizeFolders, runMoves } from "src/io/organize";
 import { OrganizeModal } from "src/ui/modals/organize";
 import type { IImportantDay, UpcomingFilter } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
@@ -35,7 +36,7 @@ import {
   periodicConfig,
   shouldOpenOnStartup,
 } from "src/core/settings";
-import type { ISettings } from "src/core/settings";
+import type { ISettings, IStatsView } from "src/core/settings";
 import { otherDailyNoteCreators, readExternalPeriodicSettings } from "src/io/external";
 import { holidaysFor, rebuildHolidays, touchesHolidays } from "src/io/holidays";
 import {
@@ -325,6 +326,7 @@ export default class CalendarPlugin extends Plugin {
     cmd("organize-daily-notes-by-year-month", t("cmd.organizeYearMonth"), () =>
       this.organizeDailyNotes("year-month"),
     );
+    cmd("organize-daily-notes-flat", t("cmd.organizeFlat"), () => this.organizeDailyNotes("flat"));
     cmd(
       "undo-last-organize",
       t("cmd.undoOrganize"),
@@ -435,8 +437,8 @@ export default class CalendarPlugin extends Plugin {
 
   private organizing = false;
 
-  /** Preview + confirm, then move daily notes into year or year/month folders. */
-  organizeDailyNotes(layout: "year" | "year-month" = "year"): void {
+  /** Preview + confirm, then move daily notes into flat / year / year-month layout. */
+  organizeDailyNotes(layout: DailyFolderLayout = "year"): void {
     if (this.organizing) {
       new Notice(t("organize.busy"));
       return;
@@ -449,10 +451,17 @@ export default class CalendarPlugin extends Plugin {
         plan,
         folder,
         layout,
-        async (onProgress) => {
+        async (onProgress, opts) => {
           this.organizing = true;
           try {
             const result = await runMoves(this.app, plan.moves, onProgress);
+            if (opts.removeEmpty && plan.emptyFolders.length) {
+              result.removedFolders = await removeEmptyOrganizeFolders(
+                this.app,
+                plan.emptyFolders,
+                this.options.daily.folder,
+              );
+            }
             if (result.done.length) {
               await this.writeOptions(() => ({
                 lastOrganize: { at: new Date().toISOString(), moves: result.done },
@@ -470,11 +479,17 @@ export default class CalendarPlugin extends Plugin {
             daily: {
               ...old.daily,
               folderLayout: layout,
-              yearFolders: true,
+              yearFolders: layout === "year" || layout === "year-month",
             },
           }));
           this.reindexAll();
-          new Notice(t("organize.enabled"));
+          const key =
+            layout === "flat"
+              ? "organize.enabledFlat"
+              : layout === "year-month"
+                ? "organize.enabledYearMonth"
+                : "organize.enabledYear";
+          new Notice(t(key));
         },
       ),
     );
@@ -921,23 +936,24 @@ export default class CalendarPlugin extends Plugin {
 
   /** Quick jump: year / month grid and a "go to date" field. */
   showDateNavigator(month: Moment, goToMonth: (m: Moment) => void): void {
+    const stats = {
+      findDailyNote: (d: Moment) => this.findDailyNote(d),
+      importantDays: () => this.options.importantDays,
+      openDay: (d: Moment) => void this.openPeriodic(d, "day", false),
+      holidays: (d: Moment) => holidaysFor(d),
+      view: () => this.options.statsView,
+      saveView: (v: IStatsView) => void this.writeOptions(() => ({ statsView: v })),
+    };
     this.show(
       new DateNavigatorModal(this.app, {
         month,
         goToMonth,
-        showStats: (m) => {
-          try {
-            this.showStatistics(m);
-          } catch (err) {
-            console.error("[NF-Calendar] navigator → statistics failed", err);
-            new Notice(t("notice.statsFailed"));
-          }
-        },
         openDay: (d) => void this.openPeriodic(d, "day", false),
         hasNote: (d) => !!this.findDailyNote(d),
         openRandom: (scope, skipEmpty) => this.openRandomDailyNote(scope, skipEmpty),
         randomDefaults: this.options.random,
         dateFormat: this.options.dateFieldFormat,
+        stats,
       }),
     );
   }

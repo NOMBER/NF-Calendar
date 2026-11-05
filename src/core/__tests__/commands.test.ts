@@ -19,6 +19,7 @@ export const KEY_ACTION_COMMAND_IDS = [
   "open-plugin-settings",
   "organize-daily-notes-by-year",
   "organize-daily-notes-by-year-month",
+  "organize-daily-notes-flat",
   "undo-last-organize",
   "show-important-days",
 ] as const;
@@ -41,6 +42,7 @@ describe("registered command ids (hotkey surface)", () => {
       "open-plugin-settings",
       "organize-daily-notes-by-year",
       "organize-daily-notes-by-year-month",
+      "organize-daily-notes-flat",
       "undo-last-organize",
       "show-important-days",
     ]);

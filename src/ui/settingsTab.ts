@@ -649,6 +649,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
             this.plugin.organizeDailyNotes("year-month");
           }),
         )
+        .addButton((b) =>
+          b.setButtonText(t("cmd.organizeFlat")).onClick(() => {
+            this.plugin.organizeDailyNotes("flat");
+          }),
+        )
         .addButton((b) => {
           b.setButtonText(t("cmd.undoOrganize")).onClick(() => void this.plugin.undoLastOrganize());
           b.setDisabled(!this.options.lastOrganize);

@@ -3,7 +3,9 @@ import moment from "moment";
 import { getDateUID, parseNoteDate } from "../dates";
 import {
   isInYearFolder,
+  newDailyNotePath,
   notePathCandidates,
+  periodMonth,
   planOrganize,
   planUndo,
   preferNotePath,
@@ -153,5 +155,73 @@ describe("organize by year-month", () => {
     expect(plan.skipped.filter((s) => s.reason === "already").map((s) => s.path)).toEqual([
       "Daily/2025/12/2025-12-01.md",
     ]);
+  });
+});
+
+describe("reverse organize: year-month → year, any → flat", () => {
+  it("year-month down to year leaves empty month folders", () => {
+    const files = ["Daily/2026/11/2026-11-05.md", "Daily/2027/01/2027-01-01.md"];
+    const plan = planOrganize(moment, files, files, "Daily", "YYYY-MM-DD", "year");
+    expect(plan.moves).toEqual([
+      {
+        from: "Daily/2026/11/2026-11-05.md",
+        to: "Daily/2026/2026-11-05.md",
+        year: "2026",
+        month: "11",
+      },
+      {
+        from: "Daily/2027/01/2027-01-01.md",
+        to: "Daily/2027/2027-01-01.md",
+        year: "2027",
+        month: "01",
+      },
+    ]);
+    expect(plan.emptyFolders).toEqual(
+      expect.arrayContaining(["Daily/2026/11", "Daily/2027/01"]),
+    );
+  });
+
+  it("any structure → flat", () => {
+    const files = [
+      "Daily/2026-11-05.md",
+      "Daily/2026/2026-01-02.md",
+      "Daily/2027/01/2027-01-01.md",
+    ];
+    const plan = planOrganize(moment, files, files, "Daily", "YYYY-MM-DD", "flat");
+    expect(plan.moves.map((m) => m.to).sort()).toEqual([
+      "Daily/2026-01-02.md",
+      "Daily/2027-01-01.md",
+    ]);
+    expect(plan.skipped.filter((s) => s.reason === "already").map((s) => s.path)).toEqual([
+      "Daily/2026-11-05.md",
+    ]);
+    expect(plan.emptyFolders).toEqual(
+      expect.arrayContaining(["Daily/2026", "Daily/2027/01", "Daily/2027"]),
+    );
+  });
+});
+
+describe("newDailyNotePath / year & month boundaries", () => {
+  it("flat / year / year-month for mid-year", () => {
+    const d = moment("2026-11-05");
+    expect(newDailyNotePath("Daily", "2026-11-05.md", d, "flat")).toBe("Daily/2026-11-05.md");
+    expect(newDailyNotePath("Daily", "2026-11-05.md", d, "year")).toBe("Daily/2026/2026-11-05.md");
+    expect(newDailyNotePath("Daily", "2026-11-05.md", d, "year-month")).toBe(
+      "Daily/2026/11/2026-11-05.md",
+    );
+  });
+
+  it("new year lands in year/month folder under year-month layout", () => {
+    const d = moment("2027-01-01");
+    expect(periodMonth(d)).toBe("01");
+    expect(newDailyNotePath("Daily", "2027-01-01.md", d, "year-month")).toBe(
+      "Daily/2027/01/2027-01-01.md",
+    );
+    expect(newDailyNotePath("Daily", "2027-01-01.md", d, "year")).toBe("Daily/2027/2027-01-01.md");
+  });
+
+  it("new month under year-month", () => {
+    const d = moment("2026-12-01");
+    expect(newDailyNotePath("", "2026-12-01.md", d, "year-month")).toBe("2026/12/2026-12-01.md");
   });
 });

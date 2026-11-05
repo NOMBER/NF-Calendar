@@ -1,4 +1,4 @@
-/** Execute "organize daily notes by year" moves (and undo) in the vault. */
+/** Execute organize / reverse-organize moves (and undo) in the vault. */
 import { normalizePath, TFile, TFolder } from "obsidian";
 import type { App } from "obsidian";
 
@@ -32,7 +32,7 @@ export function buildOrganizePlan(
     [...all, ...folders],
     cfg.folder,
     noteFormat(settings, "day"),
-    target === "flat" ? "year" : target,
+    target,
     app.vault.configDir,
   );
 }
@@ -40,6 +40,7 @@ export function buildOrganizePlan(
 export interface IRunResult {
   done: IMove[];
   failed: { move: IMove; error: string }[];
+  removedFolders: string[];
 }
 
 async function ensureFolder(app: App, path: string): Promise<void> {
@@ -60,7 +61,7 @@ export async function runMoves(
   moves: IMove[],
   onProgress: (done: number, total: number) => void,
 ): Promise<IRunResult> {
-  const result: IRunResult = { done: [], failed: [] };
+  const result: IRunResult = { done: [], failed: [], removedFolders: [] };
   const configDir = app.vault.configDir;
   for (let i = 0; i < moves.length; i++) {
     const move = moves[i];
@@ -89,4 +90,39 @@ export async function runMoves(
     }
   }
   return result;
+}
+
+/**
+ * Delete only empty folders from the plan preview. Re-checks emptiness and
+ * that the path is still a folder under the daily notes root.
+ */
+export async function removeEmptyOrganizeFolders(
+  app: App,
+  folders: string[],
+  dailyFolder: string,
+): Promise<string[]> {
+  const removed: string[] = [];
+  const root = normalizePath(dailyFolder || "/");
+  // Deepest first.
+  const ordered = [...folders].sort(
+    (a, b) => b.split("/").length - a.split("/").length || a.localeCompare(b),
+  );
+  for (const raw of ordered) {
+    const path = normalizePath(raw);
+    if (path === root || path === "/" || path === ".") continue;
+    if (root !== "/" && root !== "" && path !== root && !path.startsWith(`${root}/`)) {
+      continue;
+    }
+    if (!isSafeVaultPath(path, app.vault.configDir)) continue;
+    const abs = app.vault.getAbstractFileByPath(path);
+    if (!(abs instanceof TFolder)) continue;
+    if (abs.children.length > 0) continue;
+    try {
+      await app.vault.delete(abs);
+      removed.push(path);
+    } catch {
+      /* leave folder */
+    }
+  }
+  return removed;
 }
