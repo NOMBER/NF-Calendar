@@ -216,6 +216,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
       toggleHolidays: t("settings.showHolidayMarks"),
       toggleImportant: t("settings.showImportantMarks"),
       missingWeek: t("cmd.missingWeek"),
+      missingWeekBack: t("menuItem.missingWeekBack"),
+      missingWeekFull: t("menuItem.missingWeekFull"),
       missingMonth: t("cmd.missingMonth"),
       missingDisplayedMonth: t("menuItem.missingDisplayedMonth"),
       prevDaily: t("cmd.prevDaily"),
@@ -617,12 +619,21 @@ export class CalendarSettingsTab extends PluginSettingTab {
           });
         });
       new Setting(this.containerEl)
-        .setName(t("settings.yearFolders"))
-        .setDesc(t("settings.yearFoldersDesc"))
-        .addToggle((tg) => {
-          tg.setValue(!!cfg.yearFolders);
-          tg.onChange(async (v) => {
-            await this.writePeriodic(g, { yearFolders: v });
+        .setName(t("settings.folderLayout"))
+        .setDesc(t("settings.folderLayoutDesc"))
+        .addDropdown((d) => {
+          (["flat", "year", "year-month"] as const).forEach((v) =>
+            d.addOption(v, t(`settings.folderLayout.${v}` as I18nKey)),
+          );
+          const layout =
+            cfg.folderLayout ?? (cfg.yearFolders ? "year" : "flat");
+          d.setValue(layout);
+          d.onChange(async (v) => {
+            const folderLayout = v as "flat" | "year" | "year-month";
+            await this.writePeriodic(g, {
+              folderLayout,
+              yearFolders: folderLayout !== "flat",
+            });
           });
         });
       new Setting(this.containerEl)
@@ -630,7 +641,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .setDesc(t("settings.organizeDesc"))
         .addButton((b) =>
           b.setButtonText(t("settings.organizeButton")).onClick(() => {
-            this.plugin.organizeDailyNotes();
+            this.plugin.organizeDailyNotes("year");
+          }),
+        )
+        .addButton((b) =>
+          b.setButtonText(t("cmd.organizeYearMonth")).onClick(() => {
+            this.plugin.organizeDailyNotes("year-month");
           }),
         )
         .addButton((b) => {

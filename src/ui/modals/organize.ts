@@ -3,7 +3,7 @@ import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
-import type { IMove, IOrganizePlan, SkipReason } from "src/core/organize";
+import type { DailyFolderLayout, IMove, IOrganizePlan, SkipReason } from "src/core/organize";
 import type { IRunResult } from "src/io/organize";
 
 const SAMPLE = 30;
@@ -28,19 +28,25 @@ export class OrganizeModal extends Modal {
     app: App,
     private plan: IOrganizePlan,
     private folderLabel: string,
+    private targetLayout: "year" | "year-month",
     private run: (onProgress: (done: number, total: number) => void) => Promise<IRunResult>,
-    private yearFoldersOn: boolean,
-    private enableYearFolders: () => Promise<void>,
+    private currentLayout: DailyFolderLayout,
+    private enableLayout: () => Promise<void>,
   ) {
     super(app);
   }
 
   onOpen(): void {
     const { contentEl, plan } = this;
-    this.titleEl.setText(t("organize.title"));
+    this.titleEl.setText(
+      t(this.targetLayout === "year-month" ? "organize.titleYearMonth" : "organize.title"),
+    );
     contentEl.addClass("cwt-organize-modal");
     contentEl.createEl("p", {
-      text: t("organize.summary", { count: plan.moves.length, folder: this.folderLabel }),
+      text: t(
+        this.targetLayout === "year-month" ? "organize.summaryYearMonth" : "organize.summary",
+        { count: plan.moves.length, folder: this.folderLabel },
+      ),
     });
     const years = Object.keys(plan.byYear).sort();
     if (years.length) {
@@ -49,7 +55,13 @@ export class OrganizeModal extends Modal {
         ul.createEl("li", { text: `${y}/ — ${plan.byYear[y]}` });
       }
     }
-    const reasons: SkipReason[] = ["unparsed", "conflict", "inSubfolder", "formatHasFolders"];
+    const reasons: SkipReason[] = [
+      "unparsed",
+      "conflict",
+      "inSubfolder",
+      "formatHasFolders",
+      "already",
+    ];
     for (const reason of reasons) {
       const rows = plan.skipped.filter((s) => s.reason === reason).map((s) => s.path);
       list(contentEl, t(`organize.skip.${reason}` as I18nKey, { count: rows.length }), rows);
@@ -95,12 +107,18 @@ export class OrganizeModal extends Modal {
       contentEl.createEl("p", { cls: "setting-item-description", text: t("organize.undoHint") });
     }
     contentEl.createDiv("modal-button-container", (buttons) => {
-      if (!this.yearFoldersOn && result.done.length) {
-        const en = buttons.createEl("button", { cls: "mod-cta", text: t("organize.enable") });
+      const layoutMatches = this.currentLayout === this.targetLayout;
+      if (!layoutMatches && result.done.length) {
+        const en = buttons.createEl("button", {
+          cls: "mod-cta",
+          text: t(
+            this.targetLayout === "year-month" ? "organize.enableYearMonth" : "organize.enable",
+          ),
+        });
         en.addEventListener(
           "click",
           async () => {
-            await this.enableYearFolders();
+            await this.enableLayout();
             this.close();
           },
           { once: true },

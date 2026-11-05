@@ -4,6 +4,8 @@ import type { App } from "obsidian";
 
 import type { IMove, IOrganizePlan } from "src/core/organize";
 import { planOrganize } from "src/core/organize";
+import type { DailyFolderLayout } from "src/core/organize";
+import { dailyFolderLayout } from "src/core/settings";
 import { isSafeVaultPath } from "src/core/paths";
 import { periodicConfig } from "src/core/settings";
 import type { ISettings } from "src/core/settings";
@@ -12,8 +14,13 @@ import { noteFormat } from "./notes";
 /** Files per batch before yielding to the UI. */
 const BATCH = 25;
 
-export function buildOrganizePlan(app: App, settings: ISettings): IOrganizePlan {
+export function buildOrganizePlan(
+  app: App,
+  settings: ISettings,
+  layout?: DailyFolderLayout,
+): IOrganizePlan {
   const cfg = periodicConfig(settings, "day");
+  const target = layout ?? dailyFolderLayout(cfg);
   const all = app.vault.getFiles().map((f) => f.path);
   const folders = app.vault
     .getAllLoadedFiles()
@@ -25,6 +32,7 @@ export function buildOrganizePlan(app: App, settings: ISettings): IOrganizePlan 
     [...all, ...folders],
     cfg.folder,
     noteFormat(settings, "day"),
+    target === "flat" ? "year" : target,
     app.vault.configDir,
   );
 }
@@ -71,7 +79,7 @@ export async function runMoves(
       }
       await ensureFolder(app, to);
       await app.fileManager.renameFile(src, to);
-      result.done.push({ from, to, year: move.year });
+      result.done.push({ from, to, year: move.year, month: move.month });
     } catch (e) {
       result.failed.push({ move, error: e instanceof Error ? e.message : String(e) });
     }

@@ -11,8 +11,8 @@ import {
 } from "../important";
 
 describe("v2.9.0 settings (version 10)", () => {
-  it("bumps SETTINGS_VERSION to 10", () => {
-    expect(SETTINGS_VERSION).toBe(10);
+  it("bumps SETTINGS_VERSION to 11", () => {
+    expect(SETTINGS_VERSION).toBe(11);
   });
 
   it("migrates single-title important days to events[]", () => {
@@ -23,7 +23,7 @@ describe("v2.9.0 settings (version 10)", () => {
       },
     });
     expect(migratedFrom).toBe(9);
-    expect(settings.settingsVersion).toBe(10);
+    expect(settings.settingsVersion).toBe(11);
     expect(settings.importantDays["2026-11-10"]).toEqual({
       color: "blue",
       prepDays: 2,

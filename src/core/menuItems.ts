@@ -12,6 +12,8 @@ export const MENU_ITEM_IDS = [
   "toggleHolidays",
   "toggleImportant",
   "missingWeek",
+  "missingWeekBack",
+  "missingWeekFull",
   "missingMonth",
   "missingDisplayedMonth",
   "prevDaily",
@@ -39,6 +41,8 @@ export const MENU_ITEM_GROUP: Record<MenuItemId, number> = {
   toggleHolidays: 1,
   toggleImportant: 1,
   missingWeek: 2,
+  missingWeekBack: 2,
+  missingWeekFull: 2,
   missingMonth: 2,
   missingDisplayedMonth: 2,
   prevDaily: 2,
@@ -52,8 +56,17 @@ export const MENU_ITEM_GROUP: Record<MenuItemId, number> = {
 /** Always reachable when nothing else would be shown. */
 export const MENU_FALLBACK_ITEM: MenuItemId = "settings";
 
+/** New items default hidden so existing ⋯ menus are not suddenly crowded. */
+export const MENU_ITEM_DEFAULT_VISIBLE: Partial<Record<MenuItemId, boolean>> = {
+  missingWeekBack: false,
+  missingWeekFull: false,
+};
+
 export function defaultMenuItems(): IMenuItemPref[] {
-  return MENU_ITEM_IDS.map((id) => ({ id, visible: true }));
+  return MENU_ITEM_IDS.map((id) => ({
+    id,
+    visible: MENU_ITEM_DEFAULT_VISIBLE[id] !== false,
+  }));
 }
 
 const isId = (v: unknown): v is MenuItemId =>
@@ -83,7 +96,7 @@ export function sanitizeMenuItems(raw: unknown): IMenuItemPref[] {
         break;
       }
     }
-    out.splice(at, 0, { id, visible: true });
+    out.splice(at, 0, { id, visible: MENU_ITEM_DEFAULT_VISIBLE[id] !== false });
   });
   return out;
 }

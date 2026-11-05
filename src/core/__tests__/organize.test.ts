@@ -37,7 +37,8 @@ describe("organize by year: plan", () => {
     const by = (r: string) => plan.skipped.filter((s) => s.reason === r).map((s) => s.path);
     expect(by("unparsed")).toEqual(["Daily/2026-02-30.md", "Daily/notes.md"]);
     expect(by("conflict")).toEqual(["Daily/2026-04-04.md"]);
-    expect(by("inSubfolder")).toEqual(["Daily/2024/2024-05-05.md"]);
+    expect(by("already")).toEqual(["Daily/2024/2024-05-05.md"]);
+    expect(by("inSubfolder")).toEqual([]);
   });
 
   it("never touches config dir, non-md or other folders", () => {
@@ -71,12 +72,19 @@ describe("organize by year: plan", () => {
 });
 
 describe("path resolution for flat / year / mixed layouts", () => {
-  it("expected path first, the other layout second", () => {
+  it("expected path first, then the other layouts", () => {
     expect(notePathCandidates("Daily", "2026-10-30", "2026", false)).toEqual([
       "Daily/2026-10-30.md",
       "Daily/2026/2026-10-30.md",
+      "Daily/2026/01/2026-10-30.md",
     ]);
     expect(notePathCandidates("Daily", "2026-10-30", "2026", true)).toEqual([
+      "Daily/2026/2026-10-30.md",
+      "Daily/2026-10-30.md",
+      "Daily/2026/01/2026-10-30.md",
+    ]);
+    expect(notePathCandidates("Daily", "2026-10-30", "2026", "year-month", undefined, "10")).toEqual([
+      "Daily/2026/10/2026-10-30.md",
       "Daily/2026/2026-10-30.md",
       "Daily/2026-10-30.md",
     ]);
@@ -126,5 +134,24 @@ describe("duplicates after organize (2.4.1 regression)", () => {
     expect(preferNotePath("D/x/2026-11-05.md", "D/2026/2026-11-05.md", flat)).toBe(
       "D/2026/2026-11-05.md",
     );
+  });
+});
+
+describe("organize by year-month", () => {
+  it("moves flat and year notes into YYYY/MM", () => {
+    const files = [
+      "Daily/2026-11-05.md",
+      "Daily/2026/2026-01-02.md",
+      "Daily/2025/12/2025-12-01.md", // already at year-month
+    ];
+    const existing = [...files];
+    const plan = planOrganize(moment, files, existing, "Daily", "YYYY-MM-DD", "year-month");
+    expect(plan.moves).toEqual([
+      { from: "Daily/2026-11-05.md", to: "Daily/2026/11/2026-11-05.md", year: "2026", month: "11" },
+      { from: "Daily/2026/2026-01-02.md", to: "Daily/2026/01/2026-01-02.md", year: "2026", month: "01" },
+    ]);
+    expect(plan.skipped.filter((s) => s.reason === "already").map((s) => s.path)).toEqual([
+      "Daily/2025/12/2025-12-01.md",
+    ]);
   });
 });

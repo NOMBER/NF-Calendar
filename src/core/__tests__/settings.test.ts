@@ -38,12 +38,14 @@ describe("migrateSettings", () => {
       folder: "Journal",
       format: "DD.MM.YYYY",
       template: "T/Daily.md",
+      folderLayout: "flat",
     });
     expect(settings.weekly).toEqual({
       enabled: true,
       folder: "Weekly",
       format: "gggg-[W]ww",
       template: "T/Week.md",
+      folderLayout: "flat",
     });
     expect(settings.monthly.enabled).toBe(false);
     expect(settings.weekdayTemplates.monday).toBe("T/Mon.md");
@@ -68,6 +70,7 @@ describe("migrateSettings", () => {
       folder: "PN/Weekly",
       format: "gggg-ww",
       template: "",
+      folderLayout: "flat",
     });
   });
 
@@ -95,6 +98,7 @@ describe("migrateSettings", () => {
       folder: "D",
       format: "YYYY-MM-DD",
       template: "",
+      folderLayout: "flat",
     });
     expect(settings.templateRules).toEqual([
       {
@@ -122,6 +126,7 @@ describe("migrateSettings", () => {
       folder: "M",
       format: "YYYY-MM",
       template: "T/M.md",
+      folderLayout: "flat",
     });
   });
 });
@@ -151,7 +156,7 @@ describe("v3 (2.2.0) migration", () => {
       templateRules: rules,
     });
     expect(migratedFrom).toBe(2);
-    expect(settings.settingsVersion).toBe(10);
+    expect(settings.settingsVersion).toBe(11);
     expect(settings.templateRules).toEqual(rules);
     expect(settings.holidaysFolder).toBe("");
     expect(settings.holidayDateOrder).toBe("dayFirst");
@@ -202,6 +207,7 @@ describe("v5 (2.4.0) migration", () => {
       },
     });
     expect(settings.daily.yearFolders).toBe(true);
+    expect(settings.daily.folderLayout).toBe("year");
     expect(settings.upcomingHorizonDays).toBe(365);
     expect(settings.lastOrganize?.moves).toEqual([{ from: "D/a.md", to: "D/2026/a.md", year: "" }]);
     expect(
@@ -248,8 +254,8 @@ describe("2.5.1: grid display switches", () => {
 describe("2.7.0 migration (v8)", () => {
   it("v7 data gets random defaults; hidden menu position accepted", () => {
     const { settings } = migrateSettings({ settingsVersion: 7, menuPosition: "hidden" });
-    expect(SETTINGS_VERSION).toBe(10);
-    expect(settings.settingsVersion).toBe(10);
+    expect(SETTINGS_VERSION).toBe(11);
+    expect(settings.settingsVersion).toBe(11);
     expect(settings.menuPosition).toBe("hidden");
     expect(settings.random).toEqual({ kind: "all", days: 30, from: "", to: "", skipEmpty: false });
     const s2 = migrateSettings({
@@ -259,5 +265,34 @@ describe("2.7.0 migration (v8)", () => {
     expect(s2.random.kind).toBe("range");
     expect(s2.random.skipEmpty).toBe(true);
     expect(makeDefaultSettings().random.kind).toBe("all");
+  });
+});
+
+describe("v11 (2.10.0): folderLayout", () => {
+  it("derives folderLayout from yearFolders and keeps both in sync", () => {
+    const { settings: a } = migrateSettings({
+      settingsVersion: 10,
+      daily: { enabled: true, folder: "D", format: "YYYY-MM-DD", template: "", yearFolders: true },
+    });
+    expect(a.daily.folderLayout).toBe("year");
+    expect(a.daily.yearFolders).toBe(true);
+    expect(a.settingsVersion).toBe(11);
+
+    const { settings: b } = migrateSettings({
+      settingsVersion: 11,
+      daily: {
+        enabled: true,
+        folder: "D",
+        format: "YYYY-MM-DD",
+        template: "",
+        folderLayout: "year-month",
+        yearFolders: false,
+      },
+    });
+    expect(b.daily.folderLayout).toBe("year-month");
+    expect(b.daily.yearFolders).toBe(true);
+
+    const { settings: c } = migrateSettings(null);
+    expect(c.daily.folderLayout).toBe("flat");
   });
 });

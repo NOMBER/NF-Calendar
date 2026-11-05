@@ -111,6 +111,21 @@ export function datesUntilEndOf(from: Moment, unit: "week" | "month"): Moment[] 
   return datesBetween(start, end);
 }
 
+/** Days from the start of the week/month up to `to` (inclusive). */
+export function datesFromStartOf(to: Moment, unit: "week" | "month"): Moment[] {
+  const start = to.clone().startOf(unit).startOf("day");
+  const end = to.clone().startOf("day");
+  return datesBetween(start, end);
+}
+
+/** Every day of the week/month that contains `anchor`. */
+export function datesOfPeriod(anchor: Moment, unit: "week" | "month"): Moment[] {
+  return datesBetween(
+    anchor.clone().startOf(unit).startOf("day"),
+    anchor.clone().endOf(unit).startOf("day"),
+  );
+}
+
 /** Every day between two dates, both inclusive. Empty if `to` < `from`. */
 export function datesBetween(from: Moment, to: Moment): Moment[] {
   const result: Moment[] = [];

@@ -4,6 +4,8 @@ import {
   adjacentDate,
   datesBetween,
   datesForMonthFrom,
+  datesFromStartOf,
+  datesOfPeriod,
   datesUntilEndOf,
   getDateUID,
   getNoteForDate,
@@ -111,5 +113,27 @@ describe("adjacentDate", () => {
     expect(adjacentDate(dates, d("2026-10-20"), -1)).toBeNull();
     expect(adjacentDate(dates, d("2026-11-05"), 1)).toBeNull();
     expect(adjacentDate([], d("2026-11-05"), 1)).toBeNull();
+  });
+});
+
+describe("datesFromStartOf / datesOfPeriod", () => {
+  it("from start of week to anchor (Monday-first)", () => {
+    expect(fmt(datesFromStartOf(d("2026-10-29"), "week"))).toEqual([
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+    ]);
+  });
+  it("whole week (Monday–Sunday)", () => {
+    expect(fmt(datesOfPeriod(d("2026-10-29"), "week"))).toEqual([
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01",
+    ]);
   });
 });

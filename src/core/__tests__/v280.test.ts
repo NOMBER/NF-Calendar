@@ -81,7 +81,7 @@ describe("missing notes range from the open note", () => {
 
 describe("settings v9", () => {
   it("defaults for new fields; values kept", () => {
-    expect(SETTINGS_VERSION).toBe(10);
+    expect(SETTINGS_VERSION).toBe(11);
     const a = migrateSettings({ settingsVersion: 8 });
     expect(a.migratedFrom).toBe(8);
     expect(a.settings.startupTabPosition).toBe("left");

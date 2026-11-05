@@ -9,7 +9,7 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.9.2
+- Plugin id: `nf-calendar`, version 2.10.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
@@ -51,6 +51,7 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
+- **2.10.0.** Create missing daily notes from start of week / for the whole week; organize into year **or** year/month folders (`folder/2026/11/…`); Daily note folders setting (flat / year / year-month). **Every ⋯ and modal action is also a command** (no default hotkeys) — assign them in Obsidian → Settings → Hotkeys. Statistics opens reliably from the menu; Upcoming filter no longer shifts the header when expanded.
 - **2.9.2.** Upcoming filter is a button + Obsidian menu (native `<select>` inside `<summary>` could not open after 2.9.1). Fixed-width disclosure chevron so the title no longer shifts on expand/collapse.
 - **2.9.1.** Collapse chevron restored; filter hidden while collapsed; setting to hide the filter control.
 - **2.9.0.** Several important events on one day (shared colour, separate rows in Upcoming). Right-click /

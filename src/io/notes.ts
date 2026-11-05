@@ -14,7 +14,8 @@ import type { App, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_FORMATS, getDateUID, parseNoteDate } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { t } from "src/core/i18n";
-import { notePathCandidates, periodYear, preferNotePath } from "src/core/organize";
+import { notePathCandidates, periodMonth, periodYear, preferNotePath } from "src/core/organize";
+import { dailyFolderLayout } from "src/core/settings";
 import { buildNotePath, parentFolders, relativeNotePath, sanitizeVaultPath } from "src/core/paths";
 import { applyTemplate, usesCarryover } from "src/core/placeholders";
 import { dayKey } from "src/core/important";
@@ -72,8 +73,9 @@ export function notePaths(
     cfg.folder,
     filename,
     periodYear(date, g),
-    !!cfg.yearFolders,
+    g === "day" ? dailyFolderLayout(cfg) : !!cfg.yearFolders,
     configDir,
+    periodMonth(date),
   ).map((p) => normalizePath(p));
 }
 

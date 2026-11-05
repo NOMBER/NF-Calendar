@@ -71,6 +71,16 @@ export function buildMainMenu(plugin: CalendarPlugin, displayedMonth?: Moment): 
       icon: "calendar-plus",
       fn: () => plugin.createMissingDailyNotes("week"),
     },
+    missingWeekBack: {
+      title: t("cmd.missingWeekBack"),
+      icon: "calendar-minus",
+      fn: () => plugin.createMissingDailyNotes("weekBack"),
+    },
+    missingWeekFull: {
+      title: t("cmd.missingWeekFull"),
+      icon: "calendar-range",
+      fn: () => plugin.createMissingDailyNotes("weekFull"),
+    },
     missingMonth: {
       title: t("cmd.missingMonth"),
       icon: "calendar-plus",

@@ -11,9 +11,14 @@ import { SETTINGS_VERSION, migrateSettings } from "../settings";
 const ids = (l: { id: string }[]) => l.map((p) => p.id);
 
 describe("menu items", () => {
-  it("default: all items, visible, default order", () => {
+  it("default: all items, default order; new week scopes hidden", () => {
     expect(ids(defaultMenuItems())).toEqual([...MENU_ITEM_IDS]);
-    expect(defaultMenuItems().every((p) => p.visible)).toBe(true);
+    const d = defaultMenuItems();
+    expect(d.find((p) => p.id === "missingWeekBack")?.visible).toBe(false);
+    expect(d.find((p) => p.id === "missingWeekFull")?.visible).toBe(false);
+    expect(d.filter((p) => !["missingWeekBack", "missingWeekFull"].includes(p.id)).every((p) => p.visible)).toBe(
+      true,
+    );
     expect(ids(sanitizeMenuItems(undefined))).toEqual([...MENU_ITEM_IDS]);
     expect(ids(sanitizeMenuItems("x"))).toEqual([...MENU_ITEM_IDS]);
   });
@@ -84,8 +89,18 @@ describe("menu items", () => {
     expect(resolveMenuLayout(onlySettings)).toEqual({ entries: ["settings"], fallback: false });
   });
 
+  it("migrating stored menu inserts missingWeekBack/Full hidden", () => {
+    const without = defaultMenuItems().filter(
+      (p) => p.id !== "missingWeekBack" && p.id !== "missingWeekFull",
+    );
+    const s = sanitizeMenuItems(without);
+    expect(s.find((p) => p.id === "missingWeekBack")?.visible).toBe(false);
+    expect(s.find((p) => p.id === "missingWeekFull")?.visible).toBe(false);
+    expect(s).toHaveLength(MENU_ITEM_IDS.length);
+  });
+
   it("settings v6 -> v7 migration adds the default menu; stored menu sanitized", () => {
-    expect(SETTINGS_VERSION).toBe(10);
+    expect(SETTINGS_VERSION).toBe(11);
     const m = migrateSettings({ settingsVersion: 6, showHolidayMarks: false });
     expect(m.migratedFrom).toBe(6);
     expect(m.settings.menuItems).toEqual(defaultMenuItems());

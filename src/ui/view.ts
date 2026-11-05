@@ -243,7 +243,7 @@ export default class CalendarView extends ItemView {
     return gridStart.add(index, "day");
   }
 
-  private displayedMonth(): Moment {
+  displayedMonth(): Moment {
     return this.calendar?.getDisplayedMonth?.() ?? window.moment();
   }
 

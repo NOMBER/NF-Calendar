@@ -9,6 +9,8 @@ import {
   adjacentDate,
   contextDate,
   datesForMonthFrom,
+  datesFromStartOf,
+  datesOfPeriod,
   datesUntilEndOf,
   missingDates,
 } from "src/core/dates";
@@ -27,7 +29,12 @@ import { OrganizeModal } from "src/ui/modals/organize";
 import type { IImportantDay, UpcomingFilter } from "src/core/important";
 import { isEffectivelyEmpty, mergeTemplate } from "src/core/merge";
 import type { MergeMode } from "src/core/merge";
-import { migrateSettings, periodicConfig, shouldOpenOnStartup } from "src/core/settings";
+import {
+  dailyFolderLayout,
+  migrateSettings,
+  periodicConfig,
+  shouldOpenOnStartup,
+} from "src/core/settings";
 import type { ISettings } from "src/core/settings";
 import { otherDailyNoteCreators, readExternalPeriodicSettings } from "src/io/external";
 import { holidaysFor, rebuildHolidays, touchesHolidays } from "src/io/holidays";
@@ -101,7 +108,11 @@ export default class CalendarPlugin extends Plugin {
     this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).forEach((leaf) => leaf.detach());
   }
 
-  /** Open a modal and remember it until it closes. */
+  /**
+   * Open a modal and remember it until it closes.
+   * Deferred one tick so Obsidian can finish closing a Menu first — opening a
+   * Modal synchronously from Menu.onClick often fails silently.
+   */
   private show(modal: Modal): void {
     const onClose = modal.onClose?.bind(modal);
     modal.onClose = () => {
@@ -109,7 +120,15 @@ export default class CalendarPlugin extends Plugin {
       onClose?.();
     };
     this.openModals.add(modal);
-    modal.open();
+    window.setTimeout(() => {
+      try {
+        modal.open();
+      } catch (err) {
+        this.openModals.delete(modal);
+        console.error("[NF-Calendar] failed to open modal", err);
+        new Notice(t("notice.modalFailed"));
+      }
+    }, 0);
   }
 
   async onload(): Promise<void> {
@@ -247,7 +266,7 @@ export default class CalendarPlugin extends Plugin {
    * We never delete it; we tell the user which file to check.
    */
   private checkDuplicateDaily(f: TAbstractFile): void {
-    if (!(f instanceof TFile) || f.extension !== "md" || !this.options.daily.yearFolders) {
+    if (!(f instanceof TFile) || f.extension !== "md" || dailyFolderLayout(this.options.daily) === "flat") {
       return;
     }
     const date = getDateFromFile(f, this.options, "day");
@@ -301,7 +320,10 @@ export default class CalendarPlugin extends Plugin {
     cmd("open-yesterday-daily-note", t("cmd.openYesterday"), () => this.openDailyNoteForOffset(-1));
     cmd("open-today-daily-note", t("cmd.openToday"), () => this.openDailyNoteForOffset(0));
     cmd("open-tomorrow-daily-note", t("cmd.openTomorrow"), () => this.openDailyNoteForOffset(1));
-    cmd("organize-daily-notes-by-year", t("cmd.organize"), () => this.organizeDailyNotes());
+    cmd("organize-daily-notes-by-year", t("cmd.organize"), () => this.organizeDailyNotes("year"));
+    cmd("organize-daily-notes-by-year-month", t("cmd.organizeYearMonth"), () =>
+      this.organizeDailyNotes("year-month"),
+    );
     cmd(
       "undo-last-organize",
       t("cmd.undoOrganize"),
@@ -325,8 +347,23 @@ export default class CalendarPlugin extends Plugin {
     cmd("create-missing-daily-notes-week", t("cmd.missingWeek"), () =>
       this.createMissingDailyNotes("week"),
     );
+    cmd("create-missing-daily-notes-week-back", t("cmd.missingWeekBack"), () =>
+      this.createMissingDailyNotes("weekBack"),
+    );
+    cmd("create-missing-daily-notes-week-full", t("cmd.missingWeekFull"), () =>
+      this.createMissingDailyNotes("weekFull"),
+    );
     cmd("create-missing-daily-notes-month", t("cmd.missingMonth"), () =>
       this.createMissingDailyNotes("month"),
+    );
+    cmd(
+      "create-missing-daily-notes-displayed-month",
+      t("menuItem.missingDisplayedMonth"),
+      () => {
+        const view = this.getView();
+        const month = view ? view.displayedMonth() : window.moment();
+        void this.createMissingDailyNotes(month);
+      },
     );
     cmd(
       "apply-template-to-active-note",
@@ -337,6 +374,20 @@ export default class CalendarPlugin extends Plugin {
     cmd("show-important-days", t("cmd.importantList"), () => this.showImportantDays());
     cmd("open-random-daily-note", t("cmd.randomDaily"), () => this.openRandomFromDefaults());
     cmd("show-statistics", t("cmd.statistics"), () => this.showStatistics());
+    cmd("show-date-navigator", t("cmd.dateNavigator"), () => {
+      const view = this.getView();
+      const month = view ? view.displayedMonth() : window.moment();
+      this.showDateNavigator(month, (m) => {
+        view?.goToMonth(m);
+      });
+    });
+    cmd("open-plugin-settings", t("cmd.settings"), () => this.openSettings());
+    cmd("toggle-holiday-marks", t("cmd.toggleHolidays"), () =>
+      this.writeOptions((o) => ({ showHolidayMarks: !(o.showHolidayMarks !== false) })),
+    );
+    cmd("toggle-important-marks", t("cmd.toggleImportant"), () =>
+      this.writeOptions((o) => ({ showImportantMarks: !(o.showImportantMarks !== false) })),
+    );
     cmd("reveal-active-note", t("cmd.reveal"), () => this.getView()?.revealActiveNote());
   }
 
@@ -383,19 +434,20 @@ export default class CalendarPlugin extends Plugin {
 
   private organizing = false;
 
-  /** Preview + confirm, then move flat daily notes into `<folder>/<YYYY>/`. */
-  organizeDailyNotes(): void {
+  /** Preview + confirm, then move daily notes into year or year/month folders. */
+  organizeDailyNotes(layout: "year" | "year-month" = "year"): void {
     if (this.organizing) {
       new Notice(t("organize.busy"));
       return;
     }
-    const plan = buildOrganizePlan(this.app, this.options);
+    const plan = buildOrganizePlan(this.app, this.options, layout);
     const folder = this.options.daily.folder || "/";
     this.show(
       new OrganizeModal(
         this.app,
         plan,
         folder,
+        layout,
         async (onProgress) => {
           this.organizing = true;
           try {
@@ -411,9 +463,15 @@ export default class CalendarPlugin extends Plugin {
             this.reindexAll();
           }
         },
-        !!this.options.daily.yearFolders,
+        dailyFolderLayout(this.options.daily),
         async () => {
-          await this.writeOptions((old) => ({ daily: { ...old.daily, yearFolders: true } }));
+          await this.writeOptions((old) => ({
+            daily: {
+              ...old.daily,
+              folderLayout: layout,
+              yearFolders: true,
+            },
+          }));
           this.reindexAll();
           new Notice(t("organize.enabled"));
         },
@@ -590,8 +648,16 @@ export default class CalendarPlugin extends Plugin {
     await this.openPeriodic(date, "day", false);
   }
 
-  /** "Create missing daily notes until end of week / month" (or for a displayed month). */
-  async createMissingDailyNotes(scope: "week" | "month" | Moment): Promise<void> {
+  /**
+   * Create missing daily notes for a range relative to the anchor day
+   * (open daily note when the setting is on, else today):
+   * week / month = from anchor to end of period;
+   * weekBack = start of week → anchor; weekFull = whole week;
+   * or a Moment = displayed month (from today / month start).
+   */
+  async createMissingDailyNotes(
+    scope: "week" | "weekBack" | "weekFull" | "month" | Moment,
+  ): Promise<void> {
     if (this.batchRunning) {
       return;
     }
@@ -609,9 +675,15 @@ export default class CalendarPlugin extends Plugin {
       today,
     );
     const dates =
-      scope === "week" || scope === "month"
-        ? datesUntilEndOf(anchor, scope)
-        : datesForMonthFrom(today, scope);
+      scope === "week"
+        ? datesUntilEndOf(anchor, "week")
+        : scope === "weekBack"
+          ? datesFromStartOf(anchor, "week")
+          : scope === "weekFull"
+            ? datesOfPeriod(anchor, "week")
+            : scope === "month"
+              ? datesUntilEndOf(anchor, "month")
+              : datesForMonthFrom(today, scope);
     if (!dates.length) {
       return;
     }
@@ -824,21 +896,26 @@ export default class CalendarPlugin extends Plugin {
   }
 
   showStatistics(month?: Moment): void {
-    dailyNotes.reindex();
-    this.show(
-      new StatsModal(
-        this.app,
-        {
-          findDailyNote: (d) => this.findDailyNote(d),
-          importantDays: () => this.options.importantDays,
-          openDay: (d) => void this.openPeriodic(d, "day", false),
-          holidays: (d) => holidaysFor(d),
-          view: () => this.options.statsView,
-          saveView: (v) => void this.writeOptions(() => ({ statsView: v })),
-        },
-        month,
-      ),
-    );
+    try {
+      dailyNotes.reindex();
+      this.show(
+        new StatsModal(
+          this.app,
+          {
+            findDailyNote: (d) => this.findDailyNote(d),
+            importantDays: () => this.options.importantDays,
+            openDay: (d) => void this.openPeriodic(d, "day", false),
+            holidays: (d) => holidaysFor(d),
+            view: () => this.options.statsView,
+            saveView: (v) => void this.writeOptions(() => ({ statsView: v })),
+          },
+          month,
+        ),
+      );
+    } catch (err) {
+      console.error("[NF-Calendar] showStatistics failed", err);
+      new Notice(t("notice.statsFailed"));
+    }
   }
 
   /** Quick jump: year / month grid and a "go to date" field. */

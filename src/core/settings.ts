@@ -12,7 +12,8 @@ import { DEFAULT_FORMATS } from "./dates";
 import type { Granularity } from "./dates";
 import { isValidHolidayPattern } from "./holidays";
 import type { HolidayDateOrder } from "./holidays";
-import type { IMove } from "./organize";
+import type { DailyFolderLayout, IMove } from "./organize";
+import { sanitizeFolderLayout } from "./organize";
 import { sanitizeVaultPath } from "./paths";
 import { DEFAULT_DOTS_MODE, sanitizeDotsMode } from "./dots";
 import type { DotsMode } from "./dots";
@@ -31,7 +32,7 @@ import type { ImportantDays, IImportantEvent, UpcomingFilter } from "./important
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
 
-export const SETTINGS_VERSION = 10;
+export const SETTINGS_VERSION = 11;
 
 /**
  * Open today's note on startup only when the plugin was loaded as part of
@@ -71,7 +72,13 @@ export interface IPeriodicConfig {
   folder: string;
   format: string;
   template: string;
-  /** v5 (2.4.0): new notes go to `folder/<YYYY>/`; lookup works for both layouts. */
+  /**
+   * Where new daily notes are stored (v11 / 2.10.0).
+   * flat | year (`folder/2026/…`) | year-month (`folder/2026/11/…`).
+   * `yearFolders` is kept as a mirror of layout !== "flat" for older code.
+   */
+  folderLayout?: DailyFolderLayout;
+  /** @deprecated use folderLayout; true means layout "year" when folderLayout absent. */
   yearFolders?: boolean;
 }
 
@@ -140,7 +147,7 @@ export interface ISettings {
 }
 
 export function defaultPeriodic(g: Granularity, enabled: boolean): IPeriodicConfig {
-  return { enabled, folder: "", format: DEFAULT_FORMATS[g], template: "" };
+  return { enabled, folder: "", format: DEFAULT_FORMATS[g], template: "", folderLayout: "flat" };
 }
 
 export function makeDefaultSettings(): ISettings {
@@ -243,12 +250,14 @@ function sanitizeWeekdayTemplates(raw: unknown): IWeekdayTemplates {
 function sanitizePeriodic(raw: unknown, g: Granularity, defaultEnabled: boolean): IPeriodicConfig {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = (raw || {}) as any;
+  const folderLayout = sanitizeFolderLayout(r.folderLayout, r.yearFolders === true);
   return {
     enabled: typeof r.enabled === "boolean" ? r.enabled : defaultEnabled,
     folder: str(r.folder).trim(),
     format: str(r.format, "", LIMITS.format).trim() || DEFAULT_FORMATS[g],
     template: str(r.template).trim(),
-    ...(r.yearFolders === true ? { yearFolders: true } : {}),
+    folderLayout,
+    ...(folderLayout !== "flat" ? { yearFolders: true } : {}),
   };
 }
 
@@ -261,12 +270,17 @@ export function mergeExternal(
   if (!ext) {
     return base;
   }
+  const folderLayout = sanitizeFolderLayout(
+    base.folderLayout ?? (ext as IPeriodicConfig).folderLayout,
+    !!(base.yearFolders ?? (ext as IPeriodicConfig).yearFolders),
+  );
   return {
-    ...base,
     enabled: base.enabled,
     folder: str(ext.folder, base.folder).trim(),
     format: str(ext.format, "", LIMITS.format).trim() || base.format || DEFAULT_FORMATS[g],
     template: str(ext.template, base.template).trim(),
+    folderLayout,
+    ...(folderLayout !== "flat" ? { yearFolders: true } : {}),
   };
 }
 
@@ -418,6 +432,7 @@ export function migrateSettings(
       folder: str(r.weeklyNoteFolder).trim(),
       format: str(r.weeklyNoteFormat, "", LIMITS.format).trim() || DEFAULT_FORMATS.week,
       template: str(r.weeklyNoteTemplate).trim(),
+      folderLayout: "flat" as const,
     };
     if (externalForV1.weekly) {
       weekly = mergeExternal(weekly, externalForV1.weekly, "week");
@@ -524,4 +539,10 @@ function sanitizeJournal(raw: unknown): IOrganizeJournal | null {
 export function periodicConfig(settings: ISettings, g: Granularity): IPeriodicConfig {
   const cfg = g === "day" ? settings.daily : g === "week" ? settings.weekly : settings.monthly;
   return cfg || defaultPeriodic(g, g === "day");
+}
+
+
+/** Effective daily-folder layout (defaults to flat). */
+export function dailyFolderLayout(cfg: IPeriodicConfig): DailyFolderLayout {
+  return sanitizeFolderLayout(cfg.folderLayout, !!cfg.yearFolders);
 }

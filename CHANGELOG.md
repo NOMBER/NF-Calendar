@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.10.0
+
+### Added
+- **Create missing notes — week back / whole week.** New ⋯ menu items and commands: from start of week → anchor, and the full week. Confirmation modal unchanged. New items are hidden in the ⋯ menu by default (enable in Settings → Menu).
+- **Organize by year and month.** Daily notes can live in `folder/YYYY/MM/note.md` (month = `01`…`12`). Setting **Daily note folders**: flat / by year / by year and month. Commands and settings buttons for both organize modes; undo still works. Path lookup finds notes in all three layouts (and mixed vaults).
+- **Commands for every ⋯ / modal action.** All calendar actions are registered with `addCommand` (no default hotkeys) so you can assign hotkeys in Obsidian → Settings → Hotkeys. Includes: statistics, random note, go to date, create missing (week / week-back / week-full / month / displayed month), toggle holiday/important marks, settings, organize by year, organize by year-month, undo organize, important list, etc.
+
+### Fixed
+- **Open Statistics** from the ⋯ menu (and other Menu entry points) could fail silently because a Modal opened synchronously inside `Menu.onClick`. Opening is deferred one tick; failures show a Notice.
+- **Upcoming header** no longer shifts vertically when expanding: the filter is absolutely positioned and compact (~20px), so the title and chevron stay put.
+
 ## 2.9.2
 
 ### Fixed
