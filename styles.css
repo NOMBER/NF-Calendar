@@ -144,7 +144,7 @@
   list-style: none;
 }
 
-/* display:flex hides the native marker — restore a chevron left of the title */
+/* Native marker hidden — we draw a fixed-width chevron span instead */
 .cwt-upcoming > summary::-webkit-details-marker {
   display: none;
 }
@@ -153,38 +153,84 @@
   content: "";
 }
 
-.cwt-upcoming > summary::before {
-  content: "";
+/* Fixed square for the disclosure triangle — rotation stays centred, title does not jump */
+.cwt-upcoming-chevron {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  position: relative;
   display: inline-block;
-  flex: 0 0 auto;
+}
+
+.cwt-upcoming-chevron::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 2px;
   width: 0;
   height: 0;
   border-style: solid;
   border-width: 4px 0 4px 6px;
   border-color: transparent transparent transparent currentColor;
-  margin-inline-end: 2px;
+  transform-origin: 2px 4px;
   transform: rotate(0deg);
   transition: transform 0.1s ease;
 }
 
-.cwt-upcoming[open] > summary::before {
+.cwt-upcoming[open] > summary .cwt-upcoming-chevron::before {
   transform: rotate(90deg);
 }
 
 .cwt-upcoming-summary-label {
   flex: 1 1 auto;
   min-width: 0;
+  /* Title start stays put; filter sits at the end */
 }
 
 .cwt-upcoming-filter {
   flex: 0 0 auto;
-  max-width: 11em;
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 12em;
+  padding: 2px 6px;
   font-size: var(--font-ui-smaller, 12px);
   font-weight: 400;
+  line-height: 1.2;
+  color: var(--text-muted);
+  background-color: var(--background-modifier-hover);
+  border: none;
+  border-radius: var(--radius-s, 4px);
   cursor: pointer;
 }
 
-/* Filter only while the list is expanded */
+.cwt-upcoming-filter:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
+.cwt-upcoming-filter-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9em;
+}
+
+.cwt-upcoming-filter-caret {
+  flex: 0 0 auto;
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.cwt-upcoming-filter-caret svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Hide filter when collapsed without removing layout of the title+chevron */
 .cwt-upcoming:not([open]) .cwt-upcoming-filter {
   display: none;
 }

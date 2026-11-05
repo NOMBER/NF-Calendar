@@ -4,7 +4,11 @@ import {
   sanitizeImportant,
   SETTINGS_VERSION,
 } from "../settings";
-import { sanitizeUpcomingFilter } from "../important";
+import {
+  resolveUpcomingFilter,
+  sanitizeUpcomingFilter,
+  upcomingFilterLabelKey,
+} from "../important";
 
 describe("v2.9.0 settings (version 10)", () => {
   it("bumps SETTINGS_VERSION to 10", () => {
@@ -79,5 +83,27 @@ describe("2.9.1 hideUpcomingFilter", () => {
       migrateSettings({ settingsVersion: 9, hideUpcomingFilter: "yes" as never }).settings
         .hideUpcomingFilter,
     ).toBe(false);
+  });
+});
+
+
+describe("upcoming filter helpers", () => {
+  test("resolveUpcomingFilter forces all when control is hidden", () => {
+    expect(resolveUpcomingFilter("important", true)).toBe("all");
+    expect(resolveUpcomingFilter("holidays", true)).toBe("all");
+    expect(resolveUpcomingFilter("all", true)).toBe("all");
+  });
+
+  test("resolveUpcomingFilter keeps saved value when control is shown", () => {
+    expect(resolveUpcomingFilter("important", false)).toBe("important");
+    expect(resolveUpcomingFilter("holidays", false)).toBe("holidays");
+    expect(resolveUpcomingFilter("all", false)).toBe("all");
+    expect(resolveUpcomingFilter("bogus", false)).toBe("all");
+  });
+
+  test("upcomingFilterLabelKey maps each filter to an i18n key", () => {
+    expect(upcomingFilterLabelKey("all")).toBe("upcoming.filterAll");
+    expect(upcomingFilterLabelKey("holidays")).toBe("upcoming.filterHolidays");
+    expect(upcomingFilterLabelKey("important")).toBe("upcoming.filterImportant");
   });
 });

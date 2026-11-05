@@ -265,3 +265,30 @@ export const UPCOMING_FILTERS: readonly UpcomingFilter[] = ["all", "holidays", "
 export function sanitizeUpcomingFilter(v: unknown): UpcomingFilter {
   return (UPCOMING_FILTERS as readonly unknown[]).includes(v) ? (v as UpcomingFilter) : "all";
 }
+
+/**
+ * Effective filter for the upcoming list. When the control is hidden, always "all"
+ * (saved preference is kept separately).
+ */
+export function resolveUpcomingFilter(
+  saved: unknown,
+  hideControl: boolean,
+): UpcomingFilter {
+  if (hideControl) {
+    return "all";
+  }
+  return sanitizeUpcomingFilter(saved);
+}
+
+/** i18n key for a filter value (button label / menu item). */
+export function upcomingFilterLabelKey(
+  filter: UpcomingFilter,
+): "upcoming.filterAll" | "upcoming.filterHolidays" | "upcoming.filterImportant" {
+  if (filter === "holidays") {
+    return "upcoming.filterHolidays";
+  }
+  if (filter === "important") {
+    return "upcoming.filterImportant";
+  }
+  return "upcoming.filterAll";
+}

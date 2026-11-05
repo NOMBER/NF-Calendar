@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.9.2
+
+### Fixed
+- **Upcoming filter clicks did nothing.** In 2.9.1 the native `<select>` lived inside a clickable `<summary>`; `preventDefault` on pointer events stopped the list from collapsing *and* blocked the browser dropdown. Replaced with a small button that opens an Obsidian menu (All / Holidays / Important days, check on the active one) and a visible chevron so it looks clickable. Filter clicks still do not toggle collapse.
+- **Title “Upcoming important days” shifted** when expanding/collapsing: the disclosure triangle was a zero-size rotated border, so its footprint changed. Now a fixed 12px chevron box keeps the gap and title position stable; the filter stays right-aligned.
+
 ## 2.9.1 — 2026-11-05
 
 **Исправлено**

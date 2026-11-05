@@ -1,12 +1,16 @@
-import { Menu } from "obsidian";
+import { Menu, setIcon } from "obsidian";
 
 import { holidayAge, upcomingHolidays } from "src/core/holidays";
 import { t } from "src/core/i18n";
+
 import {
   holidayDismissKey,
   importantDismissKey,
   isDismissed,
+  resolveUpcomingFilter,
+  upcomingFilterLabelKey,
   upcomingImportantDays,
+  UPCOMING_FILTERS,
 } from "src/core/important";
 import type { UpcomingFilter } from "src/core/important";
 import type { ISettings } from "src/core/settings";
@@ -37,36 +41,54 @@ export function renderUpcoming(
   const details = containerEl.createEl("details", { cls: "cwt-upcoming" });
   details.open = !settings.upcomingCollapsed;
   const summary = details.createEl("summary", { cls: "cwt-upcoming-summary" });
+  // Fixed-width chevron box so rotation does not shift the title.
+  summary.createSpan({ cls: "cwt-upcoming-chevron", attr: { "aria-hidden": "true" } });
   summary.createSpan({ cls: "cwt-upcoming-summary-label", text: t("upcoming.title") });
-  // When the control is hidden, always show everything (saved filter value is kept).
-  const activeFilter: UpcomingFilter = settings.hideUpcomingFilter
-    ? "all"
-    : settings.upcomingFilter || "all";
+  const activeFilter = resolveUpcomingFilter(
+    settings.upcomingFilter,
+    !!settings.hideUpcomingFilter,
+  );
   if (!settings.hideUpcomingFilter) {
-    const filter = summary.createEl("select", {
-      cls: "dropdown cwt-upcoming-filter",
-      attr: { "aria-label": t("upcoming.filterAria") },
+    // Button + Obsidian Menu: a native <select> inside <summary> needed
+    // preventDefault to avoid toggling details, which also blocked the dropdown.
+    const btn = summary.createEl("button", {
+      cls: "cwt-upcoming-filter",
+      attr: {
+        type: "button",
+        "aria-label": t("upcoming.filterAria"),
+        "aria-haspopup": "menu",
+      },
     });
-    const opts: Array<[UpcomingFilter, string]> = [
-      ["all", t("upcoming.filterAll")],
-      ["holidays", t("upcoming.filterHolidays")],
-      ["important", t("upcoming.filterImportant")],
-    ];
-    for (const [value, label] of opts) {
-      filter.createEl("option", { text: label, attr: { value } });
-    }
-    filter.value = settings.upcomingFilter || "all";
-    // Keep the <details> from toggling when using the filter.
-    const stopToggle = (e: Event) => {
+    btn.createSpan({
+      cls: "cwt-upcoming-filter-label",
+      text: t(upcomingFilterLabelKey(sanitizeOrAll(settings.upcomingFilter))),
+    });
+    const caret = btn.createSpan({ cls: "cwt-upcoming-filter-caret" });
+    setIcon(caret, "chevron-down");
+    const openFilterMenu = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      const menu = new Menu();
+      const current = sanitizeOrAll(settings.upcomingFilter);
+      for (const value of UPCOMING_FILTERS) {
+        menu.addItem((item) => {
+          item
+            .setTitle(t(upcomingFilterLabelKey(value)))
+            .setChecked(value === current)
+            .onClick(() => {
+              if (value !== current) {
+                actions.onFilterChange(value);
+              }
+            });
+        });
+      }
+      menu.showAtMouseEvent(e);
     };
-    filter.addEventListener("click", stopToggle);
-    filter.addEventListener("mousedown", stopToggle);
-    filter.addEventListener("pointerdown", stopToggle);
-    filter.addEventListener("change", (e) => {
+    btn.addEventListener("click", openFilterMenu);
+    btn.addEventListener("mousedown", (e) => {
+      // Stop <summary> from toggling <details> without blocking our click handler.
+      e.preventDefault();
       e.stopPropagation();
-      actions.onFilterChange(filter.value as UpcomingFilter);
     });
   }
   details.addEventListener("toggle", () => actions.onToggle(!details.open));
@@ -193,4 +215,9 @@ function bindDismiss(row: HTMLElement, onDismiss: () => void): void {
   row.addEventListener("touchend", clear);
   row.addEventListener("touchmove", clear);
   row.addEventListener("touchcancel", clear);
+}
+
+
+function sanitizeOrAll(v: unknown): UpcomingFilter {
+  return resolveUpcomingFilter(v, false);
 }
