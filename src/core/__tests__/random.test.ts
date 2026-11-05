@@ -96,11 +96,7 @@ describe("random daily note", () => {
   });
 });
 
-import {
-  defaultRandomPrefs,
-  sanitizeRandomPrefs,
-  scopeFromPrefs,
-} from "src/core/random";
+import { defaultRandomPrefs, sanitizeRandomPrefs, scopeFromPrefs } from "src/core/random";
 
 describe("2.7.0 random range and prefs", () => {
   it("range is inclusive and order-insensitive", () => {
