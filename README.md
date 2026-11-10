@@ -13,8 +13,6 @@ kept in [README.original.md](README.original.md).
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
 
-<!-- Screenshots: none yet. Add images of this fork here once available. -->
-
 ## One plugin instead of three
 
 Since 2.0 this plugin replaces **Calendar + the core Daily Notes plugin + Periodic Notes** (weekly / monthly part).
@@ -71,6 +69,10 @@ migration from 1.x.
   no notes in the period a notice says so. File contents are read only with "Skip empty", and only for drawn candidates.
   From 2.12.0 you can add several period rows; the pick is the union (deduped). A dice button next to "Open random note" (and an optional ⋯ menu item) opens immediately with the saved ranges. Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (ranges, skip empty), which
   are also the navigator's starting values.
+
+<p align="center">
+  <img src="images/go-to-date.png" width="560" alt="Go to date dialog with Open in calendar, Open statistics, Open random note, and the dice quick-open button">
+</p>
 - **Holidays folder.** Point the plugin to a folder (e.g. `Meta/Dates`) whose note names start with a date:
   `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, `1000-09-01 Knowledge Day` (the separator
   after the date is optional). Two-part dates are read by the **Day first / Month first** setting; `YYYY-MM-DD` is always
@@ -82,6 +84,10 @@ migration from 1.x.
   - Holidays also appear in **Upcoming**, can drive special rules (the "holiday" condition) and are shown in statistics.
   - The index is cached and rebuilt only when files in that folder are created, deleted or renamed, or the setting changes.
   - Names that do not start with a recognizable date are counted in settings.
+
+<p align="center">
+  <img src="images/holiday-mark.jpg" width="320" alt="Calendar day with a holiday mark and a tooltip showing the holiday note">
+</p>
 - **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar, or
   hidden (2.7.0): everything stays in the command palette, right-click on the month title still opens the menu, settings
   are in Obsidian Settings → Community plugins → NF-Calendar.
@@ -109,6 +115,10 @@ migration from 1.x.
   month) still appear only when they apply. Hidden items stay in the command palette if they are commands (the two
   display switches are not commands, they stay in Settings). Lock-out protection: if nothing would be shown, the menu
   shows "Open plugin settings", so ⋯ always opens something and the settings stay reachable.
+
+<p align="center">
+  <img src="images/overflow-menu.jpg" width="480" alt="Calendar overflow menu with holiday and important-day toggles and common actions">
+</p>
 - **Batch creation of missing notes.**
   - Starts from today and first shows a dialog listing the dates, the chosen templates and the reason for each choice.
   - Existing notes are **always skipped and never changed**. The dialog shows how many will be skipped, and a note that
@@ -124,6 +134,10 @@ migration from 1.x.
   - The day gets a colored outline and the preparation days are softly highlighted.
   - A collapsible **Upcoming important days** list under the calendar opens the note on click. Filter All / Holidays / Important days; right-click (or long-press) a row → Complete / dismiss.
   - Important days are stored in the plugin's `data.json`, so they need no note.
+
+<p align="center">
+  <img src="images/important-days.jpg" width="320" alt="Calendar with colored outlines on important days and the Upcoming important days list">
+</p>
 - **Template preview.** Hover an empty day for about 0.4 s to see:
   - which template would be used and why, and which files are missing;
   - the important day, if any;
@@ -142,6 +156,18 @@ migration from 1.x.
   - **Table / Charts** switch. Charts (pure SVG, theme colors, hover tooltips): words per day, done vs open tasks,
     cumulative words (bars or line), and a donut of days with ✓ / without ✓ / without a note. The chosen view, metric and
     chart type are remembered.
+
+<p align="center">
+  <img src="images/statistics-table.jpg" width="700" alt="Statistics table for October 2026: words and tasks per day, with monthly totals">
+</p>
+<p align="center">
+  <img src="images/statistics-tasks.png" width="360" alt="Statistics charts: tasks done versus open in November 2026">
+  <img src="images/statistics-days-donut.png" width="360" alt="Statistics donut chart of days with all tasks done, not all done, or no note">
+</p>
+<p align="center">
+  <img src="images/statistics-words-per-day.png" width="360" alt="Statistics line chart of words per day in October 2026">
+  <img src="images/statistics-cumulative-words.png" width="360" alt="Statistics line chart of cumulative words in November 2026">
+</p>
 - **Previous / next daily note.** Jumps to the nearest *existing* daily note before or after the open one; gaps are
   ignored and nothing is created. These items appear in the ⋯ menu when a daily note is open.
 - **`{{carryover}}`** (daily notes only) inserts the open tasks of the nearest previous daily note.
@@ -201,6 +227,10 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 
   Default formats are `YYYY-MM-DD`, `gggg-[W]ww` and `YYYY-MM`. A missing template file or an unsafe path is highlighted.
 - **Weekday templates (daily notes):** one template per weekday, listed in your week-start order. Empty = default template.
+
+<p align="center">
+  <img src="images/weekday-templates.jpg" width="650" alt="Weekday templates in settings: a separate template file for each day of the week">
+</p>
 - **Special template rules:** see Features.
 - **Advanced:** override the moment.js locale.
 
@@ -221,6 +251,10 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 
 Rules are checked top to bottom, so place more specific rules (a single date) above broader ones (a range).
 
+<p align="center">
+  <img src="images/special-template-rules.jpg" width="700" alt="Special template rules in settings, with the condition list open">
+</p>
+
 ## Open daily note on startup
 
 Setting in the Daily notes section, **off** by default. When it is on and Obsidian starts, NF-Calendar opens today's note.
@@ -238,6 +272,10 @@ directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Da
 
 - **Make a backup of your vault before the first run.**
 - A preview opens first: how many notes per year, and what is skipped and why. Nothing moves until you press **Move**.
+
+<p align="center">
+  <img src="images/organize-preview.jpg" width="580" alt="Preview dialog before organizing daily notes into year folders">
+</p>
 - Only `.md` files directly in the daily folder whose name matches the daily format are moved. Files in subfolders,
   other file types, unrecognized names and anything in the config folder (`.obsidian`) are never touched.
 - If the target file already exists, the note is skipped. Nothing is overwritten.
