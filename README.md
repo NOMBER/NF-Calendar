@@ -1,6 +1,6 @@
 # NF-Calendar
 
-**English** · [Русский](README.ru.md) · [More plugins by NomberProjects](https://nomberobsidian.github.io/)
+**English** · [Русский](README.ru.md) · [More plugins by Nomber](https://nomberobsidian.github.io/)
 
 A calendar view for [Obsidian](https://obsidian.md) with built-in daily, weekly and monthly notes and
 rule-based templates: per weekday, per date, per date range, "last Friday of the month", even/odd weeks and more.
@@ -12,7 +12,7 @@ kept in [README.original.md](README.original.md).
 - Plugin id: `nf-calendar`, version 1.0.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
-- Source and releases: [github.com/NOMBER/nf-calendar](https://github.com/NOMBER/nf-calendar)
+- Source and releases: [github.com/NOMBER/NF-Calendar](https://github.com/NOMBER/NF-Calendar)
 
 ## One plugin instead of three
 
@@ -196,10 +196,10 @@ similar sequences are not interpreted), and placeholders inside carried-over tex
 
 ## Installation
 
-The plugin is **not yet in the Obsidian community plugin catalog**. Install it from [GitHub Releases](https://github.com/NOMBER/nf-calendar/releases):
+The plugin is **not yet in the Obsidian community plugin catalog**. Install it from [GitHub Releases](https://github.com/NOMBER/NF-Calendar/releases):
 
 0. **Upgrading from an earlier test build** (plugin id `calendar-weekday-templates`, named "Calendar (Weekday Templates)"): disable it and delete the folder `<your vault>/.obsidian/plugins/calendar-weekday-templates/` first. This release uses the id `nf-calendar`; settings from the old id are not migrated, so set them again.
-1. Download `nf-calendar.zip` (or `main.js`, `manifest.json` and `styles.css`) from the [latest release](https://github.com/NOMBER/nf-calendar/releases/latest).
+1. Download `nf-calendar.zip` (or `main.js`, `manifest.json` and `styles.css`) from the [latest release](https://github.com/NOMBER/NF-Calendar/releases/latest).
 2. Unzip it into `<your vault>/.obsidian/plugins/`. You should get a folder `nf-calendar/` with the three files.
 3. Restart Obsidian, or click "Reload plugins" under Community plugins, then enable **NF-Calendar**.
 4. It is best to disable the original Calendar. Once this plugin is set up, Daily Notes and Periodic Notes can be disabled too.
@@ -402,8 +402,8 @@ MIT. See [LICENSE](LICENSE). Original Calendar plugin © 2021 Liam Cain; this fo
 
 If this plugin is useful to you, you can support its development:
 
-[![Donate to NomberProjects](https://img.shields.io/badge/Donate%20to-NomberProjects-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
+[![Donate to Nomber](https://img.shields.io/badge/Donate%20to-Nomber-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
 
-More plugins by NomberProjects: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
+More plugins by Nomber: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
 
 <!-- A styled HTML version of this button (for sites that keep inline styles) is in docs/donate-button.html. -->

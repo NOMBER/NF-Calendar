@@ -2,7 +2,7 @@
   "name": "nf-calendar",
   "version": "1.0.0",
   "description": "Calendar + daily/weekly/monthly notes with weekday and rule-based templates, important days and statistics (fork of liamcain/obsidian-calendar-plugin)",
-  "author": "NomberProjects (fork of Calendar by Liam Cain)",
+  "author": "Nomber (fork of Calendar by Liam Cain)",
   "main": "main.js",
   "license": "MIT",
   "scripts": {
@@ -62,10 +62,10 @@
     "moment": "2.29.4",
     "tslib": "2.6.3"
   },
-  "homepage": "https://github.com/NOMBER/nf-calendar",
+  "homepage": "https://github.com/NOMBER/NF-Calendar",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NOMBER/nf-calendar.git"
+    "url": "https://github.com/NOMBER/NF-Calendar.git"
   },
-  "bugs": "https://github.com/NOMBER/nf-calendar/issues"
+  "bugs": "https://github.com/NOMBER/NF-Calendar/issues"
 }

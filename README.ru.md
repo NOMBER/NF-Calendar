@@ -1,6 +1,6 @@
 # NF-Calendar
 
-[English](README.md) · **Русский** · [Другие плагины NomberProjects](https://nomberobsidian.github.io/)
+[English](README.md) · **Русский** · [Другие плагины Nomber](https://nomberobsidian.github.io/)
 
 Форк плагина [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) от **Liam Cain** (лицензия MIT, см. `LICENSE`).
 Оригинальное описание — в [README.original.md](README.original.md).
@@ -11,14 +11,14 @@
 
 - id: `nf-calendar`, требуется Obsidian 1.4.10+, работает на десктопе и мобильных.
 - Интерфейс на английском и русском (настройка **Language: Auto / English / Русский**).
-- Исходный код и релизы: [github.com/NOMBER/nf-calendar](https://github.com/NOMBER/nf-calendar)
+- Исходный код и релизы: [github.com/NOMBER/NF-Calendar](https://github.com/NOMBER/NF-Calendar)
 
 ## Установка
 
-Плагин **пока не в каталоге** сообщества Obsidian. Ставьте из [релизов на GitHub](https://github.com/NOMBER/nf-calendar/releases):
+Плагин **пока не в каталоге** сообщества Obsidian. Ставьте из [релизов на GitHub](https://github.com/NOMBER/NF-Calendar/releases):
 
 0. **Обновление с более ранней тестовой сборки** (id `calendar-weekday-templates`, «Calendar (Weekday Templates)»): отключите старый плагин и удалите папку `<хранилище>/.obsidian/plugins/calendar-weekday-templates/`. В этом релизе id — `nf-calendar`; настройки со старого id не переносятся, задайте их заново.
-1. Скачайте `nf-calendar.zip` (или `main.js`, `manifest.json`, `styles.css`) со [страницы последнего релиза](https://github.com/NOMBER/nf-calendar/releases/latest).
+1. Скачайте `nf-calendar.zip` (или `main.js`, `manifest.json`, `styles.css`) со [страницы последнего релиза](https://github.com/NOMBER/NF-Calendar/releases/latest).
 2. Распакуйте zip в `<хранилище>/.obsidian/plugins/` — получится папка `nf-calendar/` с тремя файлами.
 3. Перезапустите Obsidian или нажмите «Обновить» в списке сторонних плагинов и включите **NF-Calendar**.
 4. Оригинальный Calendar лучше выключить. Daily Notes и Periodic Notes после настройки тоже можно выключить: они больше не нужны.
@@ -271,8 +271,8 @@ npm run dist    # build + test + dist/ (zip и три файла)
 
 Если плагин полезен, можно поддержать разработку:
 
-[![Donate to NomberProjects](https://img.shields.io/badge/Donate%20to-NomberProjects-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
+[![Donate to Nomber](https://img.shields.io/badge/Donate%20to-Nomber-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
 
-Другие плагины NomberProjects: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
+Другие плагины Nomber: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
 
 <!-- HTML-вариант кнопки со стилями — в docs/donate-button.html. -->
