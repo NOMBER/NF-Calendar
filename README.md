@@ -9,16 +9,17 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 2.12.0
+- Plugin id: `nf-calendar`, version 1.0.0
 - Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
 - Interface in **English and Russian**
+- Source and releases: [github.com/NOMBER/nf-calendar](https://github.com/NOMBER/nf-calendar)
 
 ## One plugin instead of three
 
-Since 2.0 this plugin replaces **Calendar + the core Daily Notes plugin + Periodic Notes** (weekly / monthly part).
+This plugin replaces **Calendar + the core Daily Notes plugin + Periodic Notes** (weekly / monthly part).
 It keeps its own settings for daily, weekly and monthly notes and finds and creates the notes itself. It does not read
 or enable other plugins, except for the explicit **Import from Daily Notes / Periodic Notes** button and a one-time
-migration from 1.x.
+import of older settings from those plugins.
 
 ## Features
 
@@ -49,25 +50,25 @@ migration from 1.x.
   12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
   month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
   (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
-- **2.12.0.** Several period ranges for random daily notes (union, dedupe); dice button + ⋯ item for one-click open with saved settings; Organize button row wraps correctly in settings.
-- **2.11.0.** Daily note folders dropdown next to Organize; Organize offers “Also store new notes this way” (on by default). Reverse organize to year-only or flat; optional cleanup of empty year/month folders. Go to date → Open statistics switches **in the same modal** (Back returns); fixed closed random-collapse overlay stealing clicks.
-- **2.10.0.** Create missing daily notes from start of week / for the whole week; organize into year **or** year/month folders (`folder/2026/11/…`); Daily note folders setting (flat / year / year-month). **Every ⋯ and modal action is also a command** (no default hotkeys) — assign them in Obsidian → Settings → Hotkeys. Statistics opens reliably from the menu; Upcoming filter no longer shifts the header when expanded.
-- **2.9.2.** Upcoming filter is a button + Obsidian menu (native `<select>` inside `<summary>` could not open after 2.9.1). Fixed-width disclosure chevron so the title no longer shifts on expand/collapse.
-- **2.9.1.** Collapse chevron restored; filter hidden while collapsed; setting to hide the filter control.
-- **2.9.0.** Several important events on one day (shared colour, separate rows in Upcoming). Right-click /
+- Several period ranges for random daily notes (union, dedupe); dice button + ⋯ item for one-click open with saved settings; Organize button row wraps correctly in settings.
+- Daily note folders dropdown next to Organize; Organize offers “Also store new notes this way” (on by default). Reverse organize to year-only or flat; optional cleanup of empty year/month folders. Go to date → Open statistics switches **in the same modal** (Back returns); fixed closed random-collapse overlay stealing clicks.
+- Create missing daily notes from start of week / for the whole week; organize into year **or** year/month folders (`folder/2026/11/…`); Daily note folders setting (flat / year / year-month). **Every ⋯ and modal action is also a command** (no default hotkeys) — assign them in Obsidian → Settings → Hotkeys. Statistics opens reliably from the menu; Upcoming filter no longer shifts the header when expanded.
+- Upcoming filter is a button + Obsidian menu. Fixed-width disclosure chevron so the title no longer shifts on expand/collapse.
+- Collapse chevron restored; filter hidden while collapsed; setting to hide the filter control.
+- Several important events on one day (shared colour, separate rows in Upcoming). Right-click /
   long-press an Upcoming row → Complete / dismiss (removes a user mark or hides a holiday for that day).
   Compact All / Holidays / Important filter next to the Upcoming header (optional setting to hide it).
-- **2.8.0.** Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
+- Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
   its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
   date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
   the open note", on by default) and the confirmation shows the range and count.
-- **Random daily note** (2.6.0, reworked in 2.7.0 / 2.12.0). In the date navigator the "Random note" button sits next to "Open
+- **Random daily note**. In the date navigator the "Random note" button sits next to "Open
   statistics"; right below it a labelled box picks the period: all notes, the chosen year, a month of that year, the last
   N days or a date range (from–to, an empty end is open); optional "Skip empty" (a note with only front matter, headings and empty
   list/task markers counts as empty). Only existing daily notes are used (flat folder, year folders and mixed layouts; a
   day with duplicate files counts once). The note opened last is not repeated right away if there is another one. With
   no notes in the period a notice says so. File contents are read only with "Skip empty", and only for drawn candidates.
-  From 2.12.0 you can add several period rows; the pick is the union (deduped). A dice button next to "Open random note" (and an optional ⋯ menu item) opens immediately with the saved ranges. Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (ranges, skip empty), which
+  You can add several period rows; the pick is the union (deduped). A dice button next to "Open random note" (and an optional ⋯ menu item) opens immediately with the saved ranges. Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (ranges, skip empty), which
   are also the navigator's starting values.
 
 <p align="center">
@@ -89,9 +90,9 @@ migration from 1.x.
   <img src="images/holiday-mark.jpg" width="320" alt="Calendar day with a holiday mark and a tooltip showing the holiday note">
 </p>
 - **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar, or
-  hidden (2.7.0): everything stays in the command palette, right-click on the month title still opens the menu, settings
+  hidden: everything stays in the command palette, right-click on the month title still opens the menu, settings
   are in Obsidian Settings → Community plugins → NF-Calendar.
-- **Settings navigation** (2.7.0): a compact sticky bar of section links at the top of the settings tab; changing a
+- **Settings navigation**: a compact sticky bar of section links at the top of the settings tab; changing a
   setting no longer scrolls the tab back to the top.
 - **Commands** (command palette, plus the **⋯ menu** in the calendar header and right-click on the month title):
   - Open calendar view
@@ -109,7 +110,7 @@ migration from 1.x.
   and "Highlight important days in the calendar" (rings and get-ready highlight). They change only the display; rules,
   statistics and the "Upcoming" list are not affected. The same switches are in Settings.
 
-  **Customizing the ⋯ menu** (2.6.0): at the bottom of Settings, section "⋯ menu", lists every item with a "show" toggle
+  **Customizing the ⋯ menu**: at the bottom of Settings, section "⋯ menu", lists every item with a "show" toggle
   and ↑/↓ buttons; "Reset to default" restores all items in the default order. Separators are drawn between item groups
   automatically. Items that only apply sometimes (previous/next, apply template, weekly/monthly note, the shown future
   month) still appear only when they apply. Hidden items stay in the command palette if they are commands (the two
@@ -195,18 +196,18 @@ similar sequences are not interpreted), and placeholders inside carried-over tex
 
 ## Installation
 
-The plugin is **not yet in the Obsidian community plugin catalog**. Install it manually:
+The plugin is **not yet in the Obsidian community plugin catalog**. Install it from [GitHub Releases](https://github.com/NOMBER/nf-calendar/releases):
 
-0. **Upgrading from 2.3.x or older** (plugin id `calendar-weekday-templates`, named "Calendar (Weekday Templates)"): disable it and delete the folder `<your vault>/.obsidian/plugins/calendar-weekday-templates/` first. Since 2.4.0 the plugin id is `nf-calendar`; old settings are not migrated, so set them again.
-1. Take `dist/nf-calendar.zip` (or `main.js`, `manifest.json` and `styles.css` from `dist/`).
+0. **Upgrading from an earlier test build** (plugin id `calendar-weekday-templates`, named "Calendar (Weekday Templates)"): disable it and delete the folder `<your vault>/.obsidian/plugins/calendar-weekday-templates/` first. This release uses the id `nf-calendar`; settings from the old id are not migrated, so set them again.
+1. Download `nf-calendar.zip` (or `main.js`, `manifest.json` and `styles.css`) from the [latest release](https://github.com/NOMBER/nf-calendar/releases/latest).
 2. Unzip it into `<your vault>/.obsidian/plugins/`. You should get a folder `nf-calendar/` with the three files.
 3. Restart Obsidian, or click "Reload plugins" under Community plugins, then enable **NF-Calendar**.
 4. It is best to disable the original Calendar. Once this plugin is set up, Daily Notes and Periodic Notes can be disabled too.
 
-### Upgrading from 1.x
+### Upgrading from an older settings file
 
-2.0 changed the settings format (`settingsVersion: 2`). On the first start after the upgrade the plugin **once** imports
-the folder, format and template from the core Daily Notes and Periodic Notes plugins (if they were configured), plus the 1.x
+On the first start after an upgrade, the plugin **once** imports
+the folder, format and template from the core Daily Notes and Periodic Notes plugins (if they were configured), plus older
 weekday templates. It then saves the new settings and shows a notice. After that it no longer reads other plugins' settings. On a fresh
 install the import only runs when you click **Import from Daily Notes / Periodic Notes**.
 
@@ -214,7 +215,7 @@ install the import only runs when you click **Import from Daily Notes / Periodic
 
 - **General:**
   - Language;
-  - what the dots under days mean: note exists (default since 2.4.0), done tasks (one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), or no dots;
+  - what the dots under days mean: note exists (the default), done tasks (one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), or no dots;
   - start of the week (locale default or a fixed day);
   - confirm before creating a note by click;
   - template preview on hover;
@@ -267,7 +268,7 @@ otherwise both plugins open or create today's note and you may get duplicates, f
 
 ## Organize daily notes by year
 
-Command **Organize daily notes by year** (command palette and Settings → Daily notes; not in the ⋯ menu since 2.5.1) moves daily notes that lie
+Command **Organize daily notes by year** (command palette and Settings → Daily notes; not in the ⋯ menu) moves daily notes that lie
 directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Daily/2026/2026-10-30.md`.
 
 - **Make a backup of your vault before the first run.**

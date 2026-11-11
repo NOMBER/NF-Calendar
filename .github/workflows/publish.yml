@@ -1,10 +1,10 @@
 name: Build plugin
 
 on:
-  push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - "*" # Push events to matching any tag format, i.e. 1.0, 20.15.10
+  # Disabled automatic tag releases (assets were incomplete: no styles.css;
+  # also conflicted with a manually created GitHub Release).
+  # Run from the Actions tab if you want this workflow again.
+  workflow_dispatch:
 
 env:
   PLUGIN_NAME: nf-calendar

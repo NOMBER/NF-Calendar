@@ -2,5 +2,6 @@ node_modules/
 dist/
 data.json
 main.js
+*.zip
 .vscode/
 *.code-workspace

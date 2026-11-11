@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 — first public release
+
+First public release of **NF-Calendar**, a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) by Liam Cain (MIT).
+
+- Calendar view with built-in daily, weekly and monthly notes (own settings; can replace Calendar + Daily Notes + Periodic Notes)
+- Per-weekday and rule-based templates, holidays from a folder, important days and an upcoming list
+- Go to date, random daily note (several period ranges and a dice quick-open with saved settings), month statistics (table and charts)
+- Organize daily notes into flat, year, or year+month folders (preview, undo, optional empty-folder cleanup)
+- English and Russian interface, a customizable ⋯ menu, and a command for every action
+
+### Pre-release development history
+
+The entries below are from private development builds (internal 2.x numbering) and are kept for context.
+
 ## 2.12.0
 
 - **Multi-range random daily note.** Settings → Random note and Go to date → Open random note support several period rows (all / year / month / last N days / custom range) with “+ Add range” and remove. The pick is uniform over the **union** of the ranges (duplicates removed). Skip empty unchanged. Legacy single-range prefs migrate (`settingsVersion` 12).
