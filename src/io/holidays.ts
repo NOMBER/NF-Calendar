@@ -26,12 +26,12 @@ export function holidaysFor(date: Moment): IHoliday[] {
 }
 
 /** Vault folder of the setting, or "" when off or unsafe. */
-export function holidayFolderOf(settings: ISettings): string {
+export function holidayFolderOf(settings: ISettings, configDir: string): string {
   const raw = (settings.holidaysFolder || "").trim();
   if (!raw) {
     return "";
   }
-  const safe = sanitizeVaultPath(raw);
+  const safe = sanitizeVaultPath(raw, configDir);
   return safe ? normalizePath(safe) : "";
 }
 
@@ -40,7 +40,7 @@ export function isInFolder(path: string, folder: string): boolean {
 }
 
 export function rebuildHolidays(app: App, settings: ISettings): void {
-  const folder = holidayFolderOf(settings);
+  const folder = holidayFolderOf(settings, app.vault.configDir);
   if (!folder) {
     holidayStore.set({ folder: "", index: {}, unrecognized: [] });
     return;

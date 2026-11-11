@@ -121,7 +121,7 @@ export function planOrganize(
   folder: string,
   format: string,
   layout: DailyFolderLayout = "year",
-  configDir = ".obsidian",
+  configDir = "",
 ): IOrganizePlan {
   const plan: IOrganizePlan = { moves: [], skipped: [], byYear: {}, layout, emptyFolders: [] };
   const existingList = [...existing];

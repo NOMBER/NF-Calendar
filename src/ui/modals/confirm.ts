@@ -2,6 +2,7 @@ import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
+import { launch } from "src/ui/launch";
 
 export interface IConfirmationDialogParams {
   cta: string;
@@ -29,9 +30,9 @@ export class ConfirmationModal extends Modal {
         .createEl("button", { cls: warning ? "mod-warning" : "mod-cta", text: cta })
         .addEventListener(
           "click",
-          async () => {
+          () => {
             this.close();
-            await onAccept();
+            launch(() => onAccept());
           },
           { once: true },
         );

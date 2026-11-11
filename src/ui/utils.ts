@@ -12,8 +12,8 @@ export function partition(
   arr: string[],
   predicate: (elem: string) => boolean,
 ): [string[], string[]] {
-  const pass = [];
-  const fail = [];
+  const pass: string[] = [];
+  const fail: string[] = [];
 
   arr.forEach((elem) => {
     if (predicate(elem)) {

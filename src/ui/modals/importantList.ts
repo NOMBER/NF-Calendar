@@ -4,6 +4,7 @@ import type { App } from "obsidian";
 import { t } from "src/core/i18n";
 import { allImportantEvents, daysBetween } from "src/core/important";
 import type { ImportantDays } from "src/core/important";
+import { applyColorVar } from "src/ui/colors";
 
 /** List of all important events with "open note" and "edit" actions. */
 export class ImportantListModal extends Modal {
@@ -37,7 +38,8 @@ export class ImportantListModal extends Modal {
       if (left < 0) {
         row.addClass("is-past");
       }
-      row.createSpan({ cls: "cwt-marker", attr: { "data-cwt-color": day.color } });
+      const marker = row.createSpan({ cls: "cwt-marker", attr: { "data-cwt-color": day.color } });
+      applyColorVar(marker, day.color);
       const main = row.createDiv("cwt-upcoming-main");
       main.createDiv({
         cls: "cwt-upcoming-title",

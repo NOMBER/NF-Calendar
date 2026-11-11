@@ -31,6 +31,7 @@ import {
 import type { ImportantDays, IImportantEvent, UpcomingFilter } from "./important";
 import { EMPTY_WEEKDAY_TEMPLATES, WEEKDAY_KEYS, newRuleId, sanitizeCondition } from "./rules";
 import type { ITemplateRule, IWeekdayTemplates } from "./rules";
+import { isOneOf, isRecord } from "./unknown";
 
 export const SETTINGS_VERSION = 12;
 
@@ -75,11 +76,10 @@ export interface IPeriodicConfig {
   /**
    * Where new daily notes are stored (v11 / 2.10.0).
    * flat | year (`folder/2026/…`) | year-month (`folder/2026/11/…`).
-   * `yearFolders` is kept as a mirror of layout !== "flat" for older code.
+   * Older data may still have a `yearFolders` flag; sanitizers read it from
+   * raw unknown input and convert it to `folderLayout`.
    */
   folderLayout?: DailyFolderLayout;
-  /** @deprecated use folderLayout; true means layout "year" when folderLayout absent. */
-  yearFolders?: boolean;
 }
 
 /** Journal of the last "organize by year" run (for undo). */
@@ -155,7 +155,7 @@ export function makeDefaultSettings(): ISettings {
     settingsVersion: SETTINGS_VERSION,
     language: "auto",
     dotsMode: DEFAULT_DOTS_MODE,
-    weekStart: "locale" as IWeekStartOption,
+    weekStart: "locale",
     shouldConfirmBeforeCreate: true,
     openDailyOnStartup: false,
     startupTabPosition: "left",
@@ -189,7 +189,7 @@ export function makeDefaultSettings(): ISettings {
   };
 }
 
-export const defaultSettings: ISettings = Object.freeze(makeDefaultSettings()) as ISettings;
+export const defaultSettings: ISettings = makeDefaultSettings();
 
 /** Settings of other plugins, read only on explicit import (or v1 migration). */
 export interface IExternalPeriodicSettings {
@@ -222,34 +222,31 @@ function str(v: unknown, fallback = "", max: number = LIMITS.path): string {
   if (typeof v !== "string") {
     return fallback;
   }
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- strip C0 controls and DEL from persisted strings
   return v.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, max);
 }
 
 export function sanitizeWeekStart(v: unknown): IWeekStartOption {
-  return (WEEK_START_OPTIONS as readonly unknown[]).includes(v)
-    ? (v as IWeekStartOption)
-    : ("locale" as IWeekStartOption);
+  return isOneOf(v, WEEK_START_OPTIONS) ? v : "locale";
 }
 
 /** Only well-formed moment locale ids reach `moment.locale()`. */
 export function sanitizeLocale(v: unknown): ILocaleOverride {
-  return typeof v === "string" && LOCALE_ID.test(v) ? (v as ILocaleOverride) : "system-default";
+  return typeof v === "string" && LOCALE_ID.test(v) ? (v) : "system-default";
 }
 
 function sanitizeWeekdayTemplates(raw: unknown): IWeekdayTemplates {
   const out: IWeekdayTemplates = { ...EMPTY_WEEKDAY_TEMPLATES };
-  if (raw && typeof raw === "object") {
+  if (isRecord(raw)) {
     for (const key of WEEKDAY_KEYS) {
-      out[key] = str((raw as Record<string, unknown>)[key]).trim();
+      out[key] = str(raw[key]).trim();
     }
   }
   return out;
 }
 
 function sanitizePeriodic(raw: unknown, g: Granularity, defaultEnabled: boolean): IPeriodicConfig {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = (raw || {}) as any;
+  const r = isRecord(raw) ? raw : {};
   const folderLayout = sanitizeFolderLayout(r.folderLayout, r.yearFolders === true);
   return {
     enabled: typeof r.enabled === "boolean" ? r.enabled : defaultEnabled,
@@ -257,7 +254,6 @@ function sanitizePeriodic(raw: unknown, g: Granularity, defaultEnabled: boolean)
     format: str(r.format, "", LIMITS.format).trim() || DEFAULT_FORMATS[g],
     template: str(r.template).trim(),
     folderLayout,
-    ...(folderLayout !== "flat" ? { yearFolders: true } : {}),
   };
 }
 
@@ -270,9 +266,10 @@ export function mergeExternal(
   if (!ext) {
     return base;
   }
+  const extRaw = ext as { folderLayout?: unknown; yearFolders?: unknown };
   const folderLayout = sanitizeFolderLayout(
-    base.folderLayout ?? (ext as IPeriodicConfig).folderLayout,
-    !!(base.yearFolders ?? (ext as IPeriodicConfig).yearFolders),
+    base.folderLayout ?? extRaw.folderLayout,
+    extRaw.yearFolders === true,
   );
   return {
     enabled: base.enabled,
@@ -280,7 +277,6 @@ export function mergeExternal(
     format: str(ext.format, "", LIMITS.format).trim() || base.format || DEFAULT_FORMATS[g],
     template: str(ext.template, base.template).trim(),
     folderLayout,
-    ...(folderLayout !== "flat" ? { yearFolders: true } : {}),
   };
 }
 
@@ -289,20 +285,24 @@ export function sanitizeRules(raw: unknown): ITemplateRule[] {
     return [];
   }
   const rules: ITemplateRule[] = [];
-  for (const r of raw.slice(0, LIMITS.rules)) {
-    const condition = r && typeof r === "object" ? sanitizeCondition(r.condition) : null;
+  for (const item of raw.slice(0, LIMITS.rules)) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const condition = sanitizeCondition(item.condition);
     if (!condition) {
       continue;
     }
-    const appliesTo = Array.isArray(r.appliesTo)
-      ? GRANULARITY_LIST.filter((g) => r.appliesTo.includes(g))
+    const appliesRaw = item.appliesTo;
+    const appliesTo = Array.isArray(appliesRaw)
+      ? GRANULARITY_LIST.filter((g) => appliesRaw.includes(g))
       : [];
     rules.push({
-      id: str(r.id, "", 64) || newRuleId(),
-      name: str(r.name, "", LIMITS.text),
-      enabled: r.enabled !== false,
+      id: str(item.id, "", 64) || newRuleId(),
+      name: str(item.name, "", LIMITS.text),
+      enabled: item.enabled !== false,
       condition,
-      template: str(r.template).trim(),
+      template: str(item.template).trim(),
       appliesTo: appliesTo.length ? appliesTo : ["day"],
     });
   }
@@ -311,26 +311,24 @@ export function sanitizeRules(raw: unknown): ITemplateRule[] {
 
 export function sanitizeImportant(raw: unknown): ImportantDays {
   const out: ImportantDays = {};
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return out;
   }
   let count = 0;
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") {
+  for (const [k, v] of Object.entries(raw)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !isRecord(v)) {
       continue;
     }
     if (++count > LIMITS.importantDays) {
       break;
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const d = v as any;
-    const events = sanitizeImportantEvents(d, k);
+    const events = sanitizeImportantEvents(v, k);
     if (!events.length) {
       continue;
     }
     out[k] = {
-      color: sanitizeImportantColor(d.color),
-      prepDays: clampPrepDays(Number(d.prepDays ?? 0)),
+      color: sanitizeImportantColor(v.color),
+      prepDays: clampPrepDays(Number(v.prepDays ?? 0)),
       events,
     };
   }
@@ -343,14 +341,12 @@ function sanitizeImportantEvents(d: Record<string, unknown>, date: string): IImp
   const events: IImportantEvent[] = [];
   if (rawList) {
     for (const item of rawList) {
-      if (!item || typeof item !== "object") {
+      if (!isRecord(item)) {
         continue;
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const e = item as any;
       events.push({
-        id: sanitizeEventId(e.id, date, events.length),
-        title: str(e.title, "", LIMITS.text),
+        id: sanitizeEventId(item.id, date, events.length),
+        title: str(item.title, "", LIMITS.text),
       });
       if (events.length >= LIMITS.importantEventsPerDay) {
         break;
@@ -390,12 +386,11 @@ export function sanitizeDismissedUpcoming(raw: unknown): string[] {
 }
 
 function sanitizeStatsView(raw: unknown): IStatsView {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = (raw && typeof raw === "object" ? raw : {}) as any;
+  const r = isRecord(raw) ? raw : {};
   return {
     mode: r.mode === "charts" ? "charts" : "table",
-    metric: CHART_METRICS.includes(r.metric) ? r.metric : "words",
-    kind: CHART_KINDS.includes(r.kind) ? r.kind : "bar",
+    metric: isOneOf(r.metric, CHART_METRICS) ? r.metric : "words",
+    kind: isOneOf(r.kind, CHART_KINDS) ? r.kind : "bar",
   };
 }
 
@@ -412,13 +407,13 @@ function sanitizeStatsView(raw: unknown): IStatsView {
 export function migrateSettings(
   raw: unknown,
   externalForV1: IExternalPeriodicSettings = {},
+  configDir = "",
 ): { settings: ISettings; migratedFrom: number | null } {
   const defaults = makeDefaultSettings();
-  if (!raw || typeof raw !== "object") {
+  if (!isRecord(raw)) {
     return { settings: defaults, migratedFrom: null };
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = raw as any;
+  const r = raw;
   const version = typeof r.settingsVersion === "number" ? r.settingsVersion : 1;
 
   let daily: IPeriodicConfig;
@@ -446,7 +441,7 @@ export function migrateSettings(
 
   const settings: ISettings = {
     settingsVersion: SETTINGS_VERSION,
-    language: ["auto", "en", "ru"].includes(r.language) ? r.language : defaults.language,
+    language: isOneOf(r.language, ["auto", "en", "ru"] as const) ? r.language : defaults.language,
     // v4 (2.3.0): `wordsPerDot` is dropped; dots meaning is a mode.
     // v5 (2.4.0): default is "exists"; v4 stored the old default "tasks"
     // explicitly, so it is switched once (a choice made in v5+ is kept).
@@ -488,7 +483,7 @@ export function migrateSettings(
       const p = str(r.holidayPattern, "", 24).trim();
       return isValidHolidayPattern(p) ? p : "";
     })(),
-    menuPosition: MENU_POSITIONS.includes(r.menuPosition) ? r.menuPosition : defaults.menuPosition,
+    menuPosition: isOneOf(r.menuPosition, MENU_POSITIONS) ? r.menuPosition : defaults.menuPosition,
     // v7 (2.6.0): new field; older data gets the full default menu.
     menuItems: sanitizeMenuItems(r.menuItems),
     // v8 (2.7.0): new field; menuPosition gains "hidden".
@@ -498,7 +493,7 @@ export function migrateSettings(
     dateFieldFormat: sanitizeDateFieldFormat(r.dateFieldFormat),
     missingFromOpenNote: r.missingFromOpenNote !== false,
     statsView: sanitizeStatsView(r.statsView),
-    lastOrganize: sanitizeJournal(r.lastOrganize),
+    lastOrganize: sanitizeJournal(r.lastOrganize, configDir),
   };
   return { settings, migratedFrom: version < SETTINGS_VERSION ? version : null };
 }
@@ -515,24 +510,22 @@ export function clampHorizon(v: unknown): number {
   return Math.min(HORIZON_MAX, Math.max(HORIZON_MIN, Math.round(n)));
 }
 
-function sanitizeJournal(raw: unknown): IOrganizeJournal | null {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = raw as any;
-  if (!r || typeof r !== "object" || !Array.isArray(r.moves)) {
+function sanitizeJournal(raw: unknown, configDir: string): IOrganizeJournal | null {
+  if (!isRecord(raw) || !Array.isArray(raw.moves)) {
     return null;
   }
   const moves: IMove[] = [];
-  for (const m of r.moves.slice(0, MAX_JOURNAL_MOVES)) {
-    if (!m || typeof m.from !== "string" || typeof m.to !== "string") {
+  for (const item of raw.moves.slice(0, MAX_JOURNAL_MOVES)) {
+    if (!isRecord(item) || typeof item.from !== "string" || typeof item.to !== "string") {
       continue;
     }
-    const from = sanitizeVaultPath(m.from);
-    const to = sanitizeVaultPath(m.to);
+    const from = sanitizeVaultPath(item.from, configDir);
+    const to = sanitizeVaultPath(item.to, configDir);
     if (from && to && from.endsWith(".md") && to.endsWith(".md")) {
-      moves.push({ from, to, year: str(m.year, "", 4) });
+      moves.push({ from, to, year: str(item.year, "", 4) });
     }
   }
-  return moves.length ? { at: str(r.at, "", 40), moves } : null;
+  return moves.length ? { at: str(raw.at, "", 40), moves } : null;
 }
 
 /** Pick the config of a note type. */
@@ -544,5 +537,5 @@ export function periodicConfig(settings: ISettings, g: Granularity): IPeriodicCo
 
 /** Effective daily-folder layout (defaults to flat). */
 export function dailyFolderLayout(cfg: IPeriodicConfig): DailyFolderLayout {
-  return sanitizeFolderLayout(cfg.folderLayout, !!cfg.yearFolders);
+  return sanitizeFolderLayout(cfg.folderLayout);
 }

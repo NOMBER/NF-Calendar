@@ -5,6 +5,7 @@ import { t } from "src/core/i18n";
 import type { MergeMode } from "src/core/merge";
 
 import { ConfirmationModal } from "./confirm";
+import { launch } from "src/ui/launch";
 
 /**
  * Ask how to apply a template to a non-empty note. "Skip" (also Esc)
@@ -30,8 +31,8 @@ export class ApplyTemplateModal extends Modal {
         b.addEventListener("click", fn);
         return b;
       };
-      add(t("apply.append"), "mod-cta", () => this.choose("append"));
-      add(t("apply.prepend"), "", () => this.choose("prepend"));
+      add(t("apply.append"), "mod-cta", () => launch(() => this.choose("append")));
+      add(t("apply.prepend"), "", () => launch(() => this.choose("prepend")));
       add(t("apply.replace"), "mod-warning", () => {
         this.close();
         new ConfirmationModal(this.app, {

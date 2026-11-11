@@ -28,6 +28,40 @@ const DATE_CALC = /{{\s*(date|time)\s*(?:([+-]\d{1,6})([yqmwdhs])\s*)?(?::([^}]*
 const WEEKDAY = /{{\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*:([^}]*)}}/gi;
 const CARRYOVER = /{{\s*carryover\s*}}/gi;
 
+const CALC_UNITS = ["y", "q", "m", "w", "d", "h", "s"] as const;
+type CalcUnit = (typeof CALC_UNITS)[number];
+function isCalcUnit(v: string): v is CalcUnit {
+  return (CALC_UNITS as readonly string[]).includes(v);
+}
+
+/** Keep the original unit letters: moment treats "m" as minutes and "q" as quarter. */
+function addCalcUnit(date: Moment, amount: number, unit: CalcUnit): void {
+  switch (unit) {
+    case "y":
+      date.add(amount, "y");
+      break;
+    case "q":
+      date.add(amount, "quarter");
+      break;
+    case "m":
+      date.add(amount, "m");
+      break;
+    case "w":
+      date.add(amount, "w");
+      break;
+    case "d":
+      date.add(amount, "d");
+      break;
+    case "h":
+      date.add(amount, "h");
+      break;
+    case "s":
+      date.add(amount, "s");
+      break;
+  }
+}
+
+
 /**
  * @param contents raw template text
  * @param noteDate date of the note (first day of the period for week/month)
@@ -56,9 +90,8 @@ export function applyTemplate(
         minute: current.get("minute"),
         second: current.get("second"),
       });
-      if (delta) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        value.add(parseInt(delta, 10), unit as any);
+      if (delta && isCalcUnit(unit)) {
+        addCalcUnit(value, parseInt(delta, 10), unit);
       }
       const fmt = momentFormat?.trim();
       return value.format(fmt || format);

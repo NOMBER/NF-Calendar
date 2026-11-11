@@ -13,6 +13,7 @@
 import type { Moment } from "moment";
 
 import type { Granularity } from "./dates";
+import { isRecord } from "./unknown";
 
 /** Index matches moment's `date.day()` (0 = Sunday ... 6 = Saturday). */
 export const WEEKDAY_KEYS = [
@@ -28,7 +29,7 @@ export const WEEKDAY_KEYS = [
 export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 export type IWeekdayTemplates = Record<WeekdayKey, string>;
 
-export const EMPTY_WEEKDAY_TEMPLATES: IWeekdayTemplates = Object.freeze({
+export const EMPTY_WEEKDAY_TEMPLATES: IWeekdayTemplates = {
   sunday: "",
   monday: "",
   tuesday: "",
@@ -36,7 +37,7 @@ export const EMPTY_WEEKDAY_TEMPLATES: IWeekdayTemplates = Object.freeze({
   thursday: "",
   friday: "",
   saturday: "",
-}) as IWeekdayTemplates;
+};
 
 export type RuleCondition =
   | { type: "annual"; monthDay: string } // MM-DD, every year
@@ -153,11 +154,10 @@ const inRange = (n: number, min: number, max: number) =>
  * Half filled-in values are kept so the user can finish editing them.
  */
 export function sanitizeCondition(raw: unknown): RuleCondition | null {
-  if (!raw || typeof raw !== "object") {
+  if (!isRecord(raw)) {
     return null;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = raw as any;
+  const r = raw;
   const text = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "");
   const int = (v: unknown, fallback: number) =>
     typeof v === "number" && Number.isInteger(v) ? v : fallback;

@@ -9,8 +9,8 @@ This is a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugi
 the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar view goes to him; the original README is
 kept in [README.original.md](README.original.md).
 
-- Plugin id: `nf-calendar`, version 1.0.0
-- Requires Obsidian **1.4.10+**, works on desktop and mobile
+- Plugin id: `nf-calendar`, version 1.0.1
+- Requires Obsidian **1.8.7+**, works on desktop and mobile
 - Interface in **English and Russian**
 - Source and releases: [github.com/NOMBER/NF-Calendar](https://github.com/NOMBER/NF-Calendar)
 

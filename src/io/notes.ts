@@ -10,6 +10,7 @@
 import type { Moment } from "moment";
 import { Notice, TFile, TFolder, normalizePath } from "obsidian";
 import type { App, WorkspaceLeaf } from "obsidian";
+import { errorMessage } from "src/core/unknown";
 
 import { DEFAULT_FORMATS, getDateUID, parseNoteDate } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
@@ -73,7 +74,7 @@ export function notePaths(
     cfg.folder,
     filename,
     periodYear(date, g),
-    g === "day" ? dailyFolderLayout(cfg) : !!cfg.yearFolders,
+    dailyFolderLayout(cfg),
     configDir,
     periodMonth(date),
   ).map((p) => normalizePath(p));
@@ -269,15 +270,14 @@ async function ensureFolders(app: App, path: string): Promise<void> {
 
 function copyFolds(app: App, from: TFile | null, to: TFile): void {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const foldManager = (app as any).foldManager;
+    const foldManager = app.foldManager;
     if (from && foldManager?.load && foldManager?.save) {
       const info = foldManager.load(from);
       if (info) {
         foldManager.save(to, info);
       }
     }
-  } catch (_err) {
+  } catch {
     // cosmetic only
   }
 }
@@ -306,7 +306,7 @@ export function createNote(
     return Promise.resolve(null);
   }
   const pending = inFlight.get(path);
-  if (pending) {
+  if (pending !== undefined) {
     return pending;
   }
   const job = createAt(app, path, date, settings, g, options).finally(() => inFlight.delete(path));
@@ -346,7 +346,7 @@ async function createAt(
     return created;
   } catch (err) {
     console.error(`[Calendar] Failed to create note '${path}'`, err);
-    new Notice(t("notice.createFailed", { path, error: err?.message ?? String(err) }));
+    new Notice(t("notice.createFailed", { path, error: errorMessage(err) }));
     return null;
   }
 }
@@ -386,8 +386,8 @@ function getLeaf(app: App, inNewSplit: boolean): WorkspaceLeaf {
 }
 
 export async function openFile(app: App, file: TFile, inNewSplit: boolean): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mode = (app.vault as any).getConfig?.("defaultViewMode");
+  const mode = app.vault.getConfig?.("defaultViewMode");
   const leaf = getLeaf(app, inNewSplit);
-  await leaf.openFile(file, { active: true, ...(mode ? { state: { mode } } : {}) });
+  const state = typeof mode === "string" && mode ? { mode } : undefined;
+  await leaf.openFile(file, { active: true, ...(state ? { state } : {}) });
 }

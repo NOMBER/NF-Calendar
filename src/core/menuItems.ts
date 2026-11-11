@@ -1,3 +1,4 @@
+import { isRecord } from "./unknown";
 /**
  * The calendar's ⋯ menu: which items are shown and in what order.
  * Stored as an ordered list of `{ id, visible }`. Pure logic, no Obsidian.
@@ -82,11 +83,13 @@ const isId = (v: unknown): v is MenuItemId =>
  */
 export function sanitizeMenuItems(raw: unknown): IMenuItemPref[] {
   if (!Array.isArray(raw)) return defaultMenuItems();
+  const list: unknown[] = raw;
   const out: IMenuItemPref[] = [];
-  for (const e of raw) {
-    const id = e && typeof e === "object" ? (e as { id?: unknown }).id : e;
+  for (const e of list) {
+    const rec = isRecord(e) ? e : null;
+    const id = rec ? rec.id : e;
     if (!isId(id) || out.some((p) => p.id === id)) continue;
-    const vis = e && typeof e === "object" ? (e as { visible?: unknown }).visible : true;
+    const vis = rec ? rec.visible : true;
     out.push({ id, visible: vis !== false });
   }
   MENU_ITEM_IDS.forEach((id, idx) => {

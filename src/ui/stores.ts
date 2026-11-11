@@ -1,4 +1,4 @@
-import type { TFile } from "obsidian";
+import type { App, TFile } from "obsidian";
 import { get, writable } from "svelte/store";
 
 import { getDateUID } from "src/core/dates";
@@ -9,20 +9,28 @@ import { getAllNotes, getDateFromFile } from "src/io/notes";
 
 export const settings = writable<ISettings>(defaultSettings);
 
+let pluginApp: App | null = null;
+
+/** Remember the App instance so stores do not use the `window.app` global. */
+export function bindApp(app: App): void {
+  pluginApp = app;
+}
+
+export function getPluginApp(): App {
+  if (!pluginApp) {
+    throw new Error("NF-Calendar: App has not been bound yet");
+  }
+  return pluginApp;
+}
+
 function createNotesStore(granularity: Granularity) {
-  let hasError = false;
   const store = writable<Record<string, TFile>>({});
   return {
     reindex: () => {
       try {
-        store.set(getAllNotes(window.app, get(settings), granularity));
-        hasError = false;
-      } catch (err) {
-        if (!hasError) {
-          console.log(`[Calendar] Failed to index ${granularity} notes`, err);
-        }
+        store.set(getAllNotes(getPluginApp(), get(settings), granularity));
+      } catch {
         store.set({});
-        hasError = true;
       }
     },
     ...store,

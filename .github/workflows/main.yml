@@ -20,3 +20,16 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+  # Same checks the community directory scanner uses (advisory unless strict).
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: obsidianmd/obsidian-workflows@v1
+        with:
+          type: plugin
+          lint: true
+          scanner-lint: true

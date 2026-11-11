@@ -58,8 +58,9 @@ export function createDateField(
     opts.onChange?.(v);
   });
 
-  // Native picker only as a popup; its own text never shows.
-  const picker = wrap.createEl("input", {
+  // Native picker only as a popup; wrap it so we do not fight Obsidian input styles.
+  const pickerWrap = wrap.createSpan("cwt-date-picker-native-wrap");
+  const picker = pickerWrap.createEl("input", {
     type: "date",
     cls: "cwt-date-picker-native",
     attr: { tabindex: "-1", "aria-hidden": "true" },
@@ -69,7 +70,6 @@ export function createDateField(
     attr: { type: "button", "aria-label": t("dateField.pick") },
   });
   setIcon(btn, "calendar");
-  wrap.appendChild(picker); // native picker last, never between field and icon
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     picker.value = getValue() || "";

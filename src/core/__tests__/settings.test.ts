@@ -196,7 +196,7 @@ describe("v5 (2.4.0) migration", () => {
     expect(migrateSettings(null).settings.dotsMode).toBe("exists");
   });
 
-  it("keeps yearFolders, clamps horizon, sanitizes journal", () => {
+  it("derives folderLayout from yearFolders, clamps horizon, sanitizes journal", () => {
     const { settings } = migrateSettings({
       settingsVersion: 5,
       daily: { enabled: true, folder: "D", format: "YYYY-MM-DD", template: "", yearFolders: true },
@@ -206,7 +206,7 @@ describe("v5 (2.4.0) migration", () => {
         moves: [{ from: "D/a.md", to: "D/2026/a.md" }, { from: "../x.md", to: "y.md" }, 5],
       },
     });
-    expect(settings.daily.yearFolders).toBe(true);
+    expect(settings.daily.folderLayout).toBe("year");
     expect(settings.daily.folderLayout).toBe("year");
     expect(settings.upcomingHorizonDays).toBe(365);
     expect(settings.lastOrganize?.moves).toEqual([{ from: "D/a.md", to: "D/2026/a.md", year: "" }]);
@@ -273,13 +273,13 @@ describe("2.7.0 migration (v8)", () => {
 });
 
 describe("v11 (2.10.0): folderLayout", () => {
-  it("derives folderLayout from yearFolders and keeps both in sync", () => {
+  it("derives folderLayout from yearFolders; folderLayout wins when both are present", () => {
     const { settings: a } = migrateSettings({
       settingsVersion: 10,
       daily: { enabled: true, folder: "D", format: "YYYY-MM-DD", template: "", yearFolders: true },
     });
     expect(a.daily.folderLayout).toBe("year");
-    expect(a.daily.yearFolders).toBe(true);
+    expect("yearFolders" in a.daily).toBe(false);
     expect(a.settingsVersion).toBe(12);
 
     const { settings: b } = migrateSettings({
@@ -294,7 +294,7 @@ describe("v11 (2.10.0): folderLayout", () => {
       },
     });
     expect(b.daily.folderLayout).toBe("year-month");
-    expect(b.daily.yearFolders).toBe(true);
+    expect("yearFolders" in b.daily).toBe(false);
 
     const { settings: c } = migrateSettings(null);
     expect(c.daily.folderLayout).toBe("flat");

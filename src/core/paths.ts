@@ -3,7 +3,7 @@
  * `sanitizeVaultPath`, so notes can only be created inside the vault.
  */
 
-// eslint-disable-next-line no-control-regex
+// eslint-disable-next-line no-control-regex -- match C0 controls and DEL in user-supplied paths
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/;
 const WINDOWS_DRIVE = /^[a-zA-Z]:/;
 
@@ -14,9 +14,9 @@ export const MAX_PATH_LENGTH = 512;
  * Normalise a vault-relative path ("a/b/c.md"). A leading "/" means the vault
  * root, as in Obsidian. Returns null if the path could leave the vault or
  * touch the config folder: "..", drive letters, "~", control characters,
- * `configDir` (".obsidian") as first segment, or an over-long path.
+ * the vault `configDir` as first segment, or an over-long path.
  */
-export function sanitizeVaultPath(path: string, configDir = ".obsidian"): string | null {
+export function sanitizeVaultPath(path: string, configDir = ""): string | null {
   if (typeof path !== "string") {
     return null;
   }

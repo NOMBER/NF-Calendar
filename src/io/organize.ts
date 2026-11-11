@@ -118,7 +118,7 @@ export async function removeEmptyOrganizeFolders(
     if (!(abs instanceof TFolder)) continue;
     if (abs.children.length > 0) continue;
     try {
-      await app.vault.delete(abs);
+      await app.fileManager.trashFile(abs);
       removed.push(path);
     } catch {
       /* leave folder */

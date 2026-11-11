@@ -7,10 +7,10 @@
 import type { App } from "obsidian";
 
 import type { IExternalPeriodicSettings, IPeriodicConfig } from "src/core/settings";
+import { isRecord } from "src/core/unknown";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pick(raw: any): Partial<IPeriodicConfig> | null {
-  if (!raw || typeof raw !== "object") {
+function pick(raw: unknown): Partial<IPeriodicConfig> | null {
+  if (!isRecord(raw)) {
     return null;
   }
   return {
@@ -20,33 +20,38 @@ function pick(raw: any): Partial<IPeriodicConfig> | null {
   };
 }
 
+function periodicSettings(plugin: unknown): unknown {
+  return plugin && typeof plugin === "object" && "settings" in plugin
+    ? (plugin as { settings?: unknown }).settings
+    : undefined;
+}
+
 export function readExternalPeriodicSettings(app: App): IExternalPeriodicSettings {
   const result: IExternalPeriodicSettings = {};
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyApp = app as any;
-    // Periodic Notes (community, 0.x settings shape: {daily, weekly, monthly})
-    const periodic = anyApp.plugins?.getPlugin?.("periodic-notes");
-    const ps = periodic?.settings;
-    if (ps?.daily?.enabled) {
-      result.daily = pick(ps.daily);
-    }
-    if (ps?.weekly?.enabled) {
-      result.weekly = pick(ps.weekly);
-    }
-    if (ps?.monthly?.enabled) {
-      result.monthly = pick(ps.monthly);
+    const periodic = app.plugins?.getPlugin?.("periodic-notes");
+    const ps = periodicSettings(periodic);
+    if (isRecord(ps)) {
+      if (isRecord(ps.daily) && ps.daily.enabled) {
+        result.daily = pick(ps.daily);
+      }
+      if (isRecord(ps.weekly) && ps.weekly.enabled) {
+        result.weekly = pick(ps.weekly);
+      }
+      if (isRecord(ps.monthly) && ps.monthly.enabled) {
+        result.monthly = pick(ps.monthly);
+      }
     }
     // Core Daily Notes plugin (only if Periodic Notes doesn't handle daily)
     if (!result.daily) {
-      const core = anyApp.internalPlugins?.getPluginById?.("daily-notes");
+      const core = app.internalPlugins?.getPluginById?.("daily-notes");
       const opts = core?.instance?.options;
       if (opts) {
         result.daily = pick(opts);
       }
     }
   } catch (err) {
-    console.warn("[Calendar] could not read Daily Notes / Periodic Notes settings", err);
+    console.warn("[NF-Calendar] could not read Daily Notes / Periodic Notes settings", err);
   }
   return result;
 }
@@ -58,18 +63,15 @@ export function readExternalPeriodicSettings(app: App): IExternalPeriodicSetting
 export function otherDailyNoteCreators(app: App): string[] {
   const out: string[] = [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const anyApp = app as any;
-    const core = anyApp.internalPlugins?.getPluginById?.("daily-notes");
+    const core = app.internalPlugins?.getPluginById?.("daily-notes");
     if (core?.enabled) {
-      out.push(
-        core.instance?.options?.autorun
-          ? "Daily notes (core, open on startup)"
-          : "Daily notes (core)",
-      );
+      const opts = core.instance?.options;
+      const autorun = isRecord(opts) && opts.autorun === true;
+      out.push(autorun ? "Daily notes (core, open on startup)" : "Daily notes (core)");
     }
-    const ps = anyApp.plugins?.getPlugin?.("periodic-notes");
-    if (ps && ps.settings?.daily?.enabled !== false) {
+    const psPlugin = app.plugins?.getPlugin?.("periodic-notes");
+    const ps = periodicSettings(psPlugin);
+    if (psPlugin && !(isRecord(ps) && isRecord(ps.daily) && ps.daily.enabled === false)) {
       out.push("Periodic Notes");
     }
   } catch {

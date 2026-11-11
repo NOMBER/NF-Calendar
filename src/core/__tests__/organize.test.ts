@@ -25,7 +25,7 @@ describe("organize by year: plan", () => {
   ];
   const existing = [...files, "Daily/2026/2026-04-04.md", "Daily/2024"];
 
-  const plan = planOrganize(moment, files, existing, "Daily", "YYYY-MM-DD");
+  const plan = planOrganize(moment, files, existing, "Daily", "YYYY-MM-DD", "year", ".obsidian");
 
   it("moves only recognized md files directly in the folder", () => {
     expect(plan.moves).toEqual([

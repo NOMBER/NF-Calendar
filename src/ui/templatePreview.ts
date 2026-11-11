@@ -8,6 +8,8 @@ import type { ISettings } from "src/core/settings";
 import { holidayAge } from "src/core/holidays";
 import { holidaysFor } from "src/io/holidays";
 import { chooseTemplateFor, resolveTemplateFile } from "src/io/notes";
+import { setColorAttr } from "./colors";
+import { isHtmlElement } from "./dom";
 import { describeCandidate } from "./labels";
 
 export const PREVIEW_DELAY_MS = 400;
@@ -28,12 +30,12 @@ export class TemplatePreview {
     private app: App,
     private getSettings: () => ISettings,
   ) {
-    this.hide = this.hide.bind(this);
   }
 
   schedule(date: Moment, targetEl: EventTarget, holidaysOnly = false): void {
-    const dayEl =
-      ((targetEl as HTMLElement)?.closest?.(".day") as HTMLElement) || (targetEl as HTMLElement);
+    const fromTarget = isHtmlElement(targetEl) ? targetEl : null;
+    const closest = fromTarget?.closest?.(".day");
+    const dayEl = isHtmlElement(closest) ? closest : fromTarget;
     if (!dayEl) {
       return;
     }
@@ -52,7 +54,7 @@ export class TemplatePreview {
     }, PREVIEW_DELAY_MS);
   }
 
-  hide(): void {
+  hide = (): void => {
     if (this.timer !== null) {
       window.clearTimeout(this.timer);
       this.timer = null;
@@ -89,28 +91,30 @@ export class TemplatePreview {
       return; // pointer moved on while reading
     }
 
-    const el = document.body.createDiv("cwt-template-preview");
+    const el = activeDocument.body.createDiv("cwt-template-preview");
     el.createDiv({
       cls: "cwt-preview-title",
       text: t("preview.title", { date: date.format("dddd, LL") }),
     });
     const marks = getDayMarks(window.moment, date, settings.importantDays);
     if (marks.important) {
-      el.createDiv({
+      const markEl = el.createDiv({
         cls: "cwt-preview-important",
         text: t("preview.important", {
           title: dayTitle(marks.important) || t("important.untitled"),
         }),
-      }).setAttr("data-cwt-color", marks.important.color);
+      });
+      setColorAttr(markEl, "data-cwt-color", marks.important.color);
     } else if (marks.preparingFor.length) {
       const p = marks.preparingFor[0];
-      el.createDiv({
+      const markEl = el.createDiv({
         cls: "cwt-preview-important",
         text: t("preview.prepare", {
           title: dayTitle(p.day) || t("important.untitled"),
           days: p.daysLeft,
         }),
-      }).setAttr("data-cwt-color", p.day.color);
+      });
+      setColorAttr(markEl, "data-cwt-color", p.day.color);
     }
     const holidays = holidaysFor(date);
     if (holidays.length) {

@@ -1,3 +1,5 @@
+import { isOneOf, isRecord } from "./unknown";
+
 /**
  * "Open a random daily note": pure selection over existing days.
  * Days are "YYYY-MM-DD" keys. Prefs may hold several ranges; the pick draws
@@ -173,17 +175,15 @@ export function isDayKey(v: unknown): v is string {
 
 function sanitizeRange(raw: unknown): IRandomRange {
   const d = defaultRandomRange();
-  if (!raw || typeof raw !== "object") return d;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = raw as any;
-  const days = Math.floor(Number(r.days));
-  const month = Math.floor(Number(r.month));
-  const year = Math.floor(Number(r.year));
+  if (!isRecord(raw)) return d;
+  const days = Math.floor(Number(raw.days));
+  const month = Math.floor(Number(raw.month));
+  const year = Math.floor(Number(raw.year));
   return {
-    kind: RANDOM_KINDS.includes(r.kind) ? r.kind : d.kind,
+    kind: isOneOf(raw.kind, RANDOM_KINDS) ? raw.kind : d.kind,
     days: days >= 1 && days <= MAX_RANDOM_DAYS ? days : d.days,
-    from: isDayKey(r.from) ? r.from : "",
-    to: isDayKey(r.to) ? r.to : "",
+    from: isDayKey(raw.from) ? raw.from : "",
+    to: isDayKey(raw.to) ? raw.to : "",
     month: month >= 1 && month <= 12 ? month : d.month,
     year: year >= 1000 && year <= 9999 ? year : 0,
   };
@@ -195,20 +195,18 @@ function sanitizeRange(raw: unknown): IRandomRange {
  */
 export function sanitizeRandomPrefs(raw: unknown): IRandomPrefs {
   const d = defaultRandomPrefs();
-  if (!raw || typeof raw !== "object") return d;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const r = raw as any;
+  if (!isRecord(raw)) return d;
   let ranges: IRandomRange[];
-  if (Array.isArray(r.ranges) && r.ranges.length) {
-    ranges = r.ranges.slice(0, MAX_RANDOM_RANGES).map(sanitizeRange);
-  } else if (r.kind || r.from || r.to || r.days) {
+  if (Array.isArray(raw.ranges) && raw.ranges.length) {
+    ranges = raw.ranges.slice(0, MAX_RANDOM_RANGES).map(sanitizeRange);
+  } else if (raw.kind || raw.from || raw.to || raw.days) {
     // v11 and earlier: one flat range object.
-    ranges = [sanitizeRange(r)];
+    ranges = [sanitizeRange(raw)];
   } else {
     ranges = [defaultRandomRange()];
   }
   if (!ranges.length) ranges = [defaultRandomRange()];
-  return { ranges, skipEmpty: r.skipEmpty === true };
+  return { ranges, skipEmpty: raw.skipEmpty === true };
 }
 
 /**

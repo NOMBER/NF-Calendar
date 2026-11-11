@@ -6,21 +6,27 @@ import { get } from "svelte/store";
 
 import { partition } from "src/ui/utils";
 
-import { dailyNotes, weeklyNotes } from "src/ui/stores";
+import { dailyNotes, getPluginApp, weeklyNotes } from "src/ui/stores";
 
 function getNoteTags(note: TFile | null): string[] {
   if (!note) {
     return [];
   }
 
-  const { metadataCache } = window.app;
+  const { metadataCache } = getPluginApp();
   const frontmatter = metadataCache.getFileCache(note)?.frontmatter;
 
-  const tags = [];
+  const tags: string[] = [];
 
   if (frontmatter) {
-    const frontmatterTags = parseFrontMatterTags(frontmatter) || [];
-    tags.push(...frontmatterTags);
+    const frontmatterTags = parseFrontMatterTags(frontmatter);
+    if (Array.isArray(frontmatterTags)) {
+      for (const tag of frontmatterTags) {
+        if (typeof tag === "string") {
+          tags.push(tag);
+        }
+      }
+    }
   }
 
   // strip the '#' at the beginning

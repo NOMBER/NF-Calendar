@@ -20,6 +20,7 @@ import type { ISettings } from "src/core/settings";
 import { holidayStore } from "src/io/holidays";
 import { relativeLabel } from "src/ui/modals/importantList";
 import { get } from "svelte/store";
+import { applyColorVar } from "./colors";
 
 export interface IUpcomingActions {
   onOpenDay: (date: string) => void;
@@ -127,7 +128,8 @@ export function renderUpcoming(
       order: n,
       render: () => {
         const row = details.createDiv("cwt-upcoming-item");
-        row.createSpan({ cls: "cwt-marker", attr: { "data-cwt-color": item.day.color } });
+        const marker = row.createSpan({ cls: "cwt-marker", attr: { "data-cwt-color": item.day.color } });
+        applyColorVar(marker, item.day.color);
         const main = row.createDiv("cwt-upcoming-main");
         main.createDiv({
           cls: "cwt-upcoming-title",

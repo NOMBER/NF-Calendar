@@ -6,8 +6,12 @@ import type { Moment } from "moment";
 
 export type Granularity = "day" | "week" | "month";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type MomentFactory = (...args: any[]) => Moment;
+/** Subset of moment.js's constructor used by this plugin (and in tests). */
+export type MomentFactory = (
+  inp?: string | number | Date | Moment,
+  format?: string,
+  strict?: boolean,
+) => Moment;
 
 export const DEFAULT_FORMATS: Record<Granularity, string> = {
   day: "YYYY-MM-DD",

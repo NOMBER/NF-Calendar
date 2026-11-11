@@ -33,7 +33,7 @@ describe("sanitizeVaultPath", () => {
     ["Daily/\nx", null],
     ["a".repeat(513), null],
   ])("rejects %j", (input, expected) => {
-    expect(sanitizeVaultPath(input)).toBe(expected);
+    expect(sanitizeVaultPath(input, ".obsidian")).toBe(expected);
   });
 
   it.each([
@@ -69,7 +69,7 @@ describe("buildNotePath", () => {
     expect(buildNotePath("Daily", "../../x")).toBeNull();
     // a format like "[../]YYYY" renders to "../2026"
     expect(buildNotePath("Daily", moment("2026-10-30").format("[../]YYYY"))).toBeNull();
-    expect(buildNotePath(".obsidian", "x")).toBeNull();
+    expect(buildNotePath(".obsidian", "x", ".obsidian")).toBeNull();
   });
 
   it("rejects an empty file name", () => {

@@ -13,7 +13,7 @@ function svgEl<K extends keyof SVGElementTagNameMap>(
   attrs: Record<string, string | number>,
   parent?: Element,
 ): SVGElementTagNameMap[K] {
-  const el = document.createElementNS(NS, tag);
+  const el = activeDocument.createElementNS(NS, tag);
   for (const [k, v] of Object.entries(attrs)) {
     el.setAttribute(k, String(v));
   }

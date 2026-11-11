@@ -2,6 +2,7 @@ import { Modal } from "obsidian";
 import type { App } from "obsidian";
 
 import { t } from "src/core/i18n";
+import { launch } from "src/ui/launch";
 
 export interface IBatchItem {
   dateLabel: string;
@@ -47,10 +48,10 @@ export class BatchCreateModal extends Modal {
       const ok = buttons.createEl("button", { cls: "mod-cta", text: t("batch.create") });
       ok.addEventListener(
         "click",
-        async () => {
+        () => {
           ok.disabled = true; // one run per dialog, even on double click
           this.close();
-          await onConfirm();
+          launch(() => onConfirm());
         },
         { once: true },
       );

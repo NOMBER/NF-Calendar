@@ -12,6 +12,7 @@ import { getDateFromFile, noteFormat } from "src/io/notes";
 import type CalendarPlugin from "src/main";
 
 import Calendar from "./Calendar.svelte";
+import { isHtmlElement } from "./dom";
 import { showMainMenu, showDayMenu, showHolidayMenu, showWeekMenu } from "./menus";
 import {
   customTagsSource,
@@ -21,11 +22,19 @@ import {
   dotsSource,
 } from "./sources";
 import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "./stores";
+import { applyColorVarsIn } from "./colors";
 import { TemplatePreview } from "./templatePreview";
 import { renderUpcoming } from "./upcoming";
 
+interface CalendarHandle {
+  tick: () => void;
+  getDisplayedMonth: () => Moment;
+  $destroy: () => void;
+  $set: (props: Record<string, unknown>) => void;
+}
+
 export default class CalendarView extends ItemView {
-  private calendar: Calendar;
+  private calendar: CalendarHandle;
   private settings: ISettings;
   private toolbarEl: HTMLElement;
   private calendarEl: HTMLElement;
@@ -38,18 +47,6 @@ export default class CalendarView extends ItemView {
     private plugin: CalendarPlugin,
   ) {
     super(leaf);
-
-    this.onClickDay = this.onClickDay.bind(this);
-    this.onClickWeek = this.onClickWeek.bind(this);
-    this.onFileCreated = this.onFileCreated.bind(this);
-    this.onFileDeleted = this.onFileDeleted.bind(this);
-    this.onFileModified = this.onFileModified.bind(this);
-    this.onFileRenamed = this.onFileRenamed.bind(this);
-    this.onFileOpen = this.onFileOpen.bind(this);
-    this.onHoverDay = this.onHoverDay.bind(this);
-    this.onHoverWeek = this.onHoverWeek.bind(this);
-    this.onContextMenuDay = this.onContextMenuDay.bind(this);
-    this.onContextMenuWeek = this.onContextMenuWeek.bind(this);
 
     this.preview = new TemplatePreview(this.app, () => this.settings);
 
@@ -136,13 +133,15 @@ export default class CalendarView extends ItemView {
         onContextMenuWeek: this.onContextMenuWeek,
         sources,
       },
-    });
+    }) as unknown as CalendarHandle;
     this.placeMenuButton();
+    applyColorVarsIn(this.containerEl);
     // Put the button back if the calendar ever re-creates its header.
     const observer = new MutationObserver(() => {
       if (!this.menuButton.isConnected) {
         this.placeMenuButton();
       }
+      applyColorVarsIn(this.containerEl);
     });
     observer.observe(calendarEl, { childList: true, subtree: true });
     this.register(() => observer.disconnect());
@@ -152,7 +151,7 @@ export default class CalendarView extends ItemView {
       calendarEl,
       "click",
       (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
+        const target = isHtmlElement(e.target) ? e.target : null;
         if (target?.closest?.(".nav .title")) {
           // Title click opens the quick navigator (instead of "jump to today";
           // the Today button still does that).
@@ -162,7 +161,8 @@ export default class CalendarView extends ItemView {
           this.plugin.showDateNavigator(this.displayedMonth(), (m) => this.goToMonth(m));
           return;
         }
-        const dayEl = target?.closest?.(".day.cwt-holiday") as HTMLElement | null;
+        const found = target?.closest?.(".day.cwt-holiday");
+        const dayEl = isHtmlElement(found) ? found : null;
         if (dayEl && isOnHolidayMark(dayEl, e)) {
           const date = this.dateOfDayEl(dayEl);
           if (date) {
@@ -204,7 +204,7 @@ export default class CalendarView extends ItemView {
     let placed = false;
     // "hidden": the button stays in the (hidden) toolbar so the observer
     // below does not keep re-adding it; right click on the title still works.
-    btn.toggleClass("cwt-hidden", pos === "hidden");
+    btn.hidden = pos === "hidden";
     if (pos === "hidden") {
       this.toolbarEl.append(btn);
       this.toolbarEl.toggleClass("is-empty", true);
@@ -272,16 +272,16 @@ export default class CalendarView extends ItemView {
     });
   }
 
-  private async onClickDay(date: Moment, inNewSplit: boolean): Promise<void> {
+  private onClickDay = async (date: Moment, inNewSplit: boolean): Promise<void> => {
     this.preview.hide();
     await this.plugin.openPeriodic(date, "day", inNewSplit);
   }
 
-  private async onClickWeek(date: Moment, inNewSplit: boolean): Promise<void> {
+  private onClickWeek = async (date: Moment, inNewSplit: boolean): Promise<void> => {
     await this.plugin.openPeriodic(date, "week", inNewSplit);
   }
 
-  onHoverDay(date: Moment, targetEl: EventTarget, isMetaPressed: boolean): void {
+  onHoverDay = (date: Moment, targetEl: EventTarget, isMetaPressed: boolean): void => {
     const note = this.plugin.findDailyNote(date);
     if (isMetaPressed) {
       this.preview.hide();
@@ -303,7 +303,7 @@ export default class CalendarView extends ItemView {
     }
   }
 
-  onHoverWeek(date: Moment, targetEl: EventTarget, isMetaPressed: boolean): void {
+  onHoverWeek = (date: Moment, targetEl: EventTarget, isMetaPressed: boolean): void => {
     if (!isMetaPressed) {
       return;
     }
@@ -317,12 +317,12 @@ export default class CalendarView extends ItemView {
     );
   }
 
-  private onContextMenuDay(date: Moment, event: MouseEvent): void {
+  private onContextMenuDay = (date: Moment, event: MouseEvent): void => {
     this.preview.hide();
     showDayMenu(this.plugin, date, event);
   }
 
-  private onContextMenuWeek(date: Moment, event: MouseEvent): void {
+  private onContextMenuWeek = (date: Moment, event: MouseEvent): void => {
     const note = getWeeklyNote(date, get(weeklyNotes));
     if (!note) {
       return;
@@ -331,7 +331,7 @@ export default class CalendarView extends ItemView {
   }
 
   private isPeriodicFile(file: TFile): boolean {
-    if (!this.settings || !(file as TFile).extension) {
+    if (!this.settings || !file.extension) {
       return false;
     }
     return (
@@ -347,14 +347,14 @@ export default class CalendarView extends ItemView {
     monthlyNotes.reindex();
   }
 
-  private onFileDeleted(file: TFile): void {
+  private onFileDeleted = (file: TFile): void => {
     if (this.isPeriodicFile(file)) {
       this.reindex();
       this.updateActiveFile();
     }
   }
 
-  private onFileRenamed(file: TFile, oldPath: string): void {
+  private onFileRenamed = (file: TFile, oldPath: string): void => {
     const wasNote =
       Object.values(get(dailyNotes)).some((f) => f === file || f.path === oldPath) ||
       Object.values(get(weeklyNotes)).some((f) => f === file || f.path === oldPath);
@@ -364,20 +364,20 @@ export default class CalendarView extends ItemView {
     }
   }
 
-  private onFileModified(file: TFile): void {
+  private onFileModified = (file: TFile): void => {
     if (this.calendar && this.isPeriodicFile(file)) {
       this.calendar.tick();
     }
   }
 
-  private onFileCreated(file: TFile): void {
+  private onFileCreated = (file: TFile): void => {
     if (this.app.workspace.layoutReady && this.calendar && this.isPeriodicFile(file)) {
       this.reindex();
       this.calendar.tick();
     }
   }
 
-  public onFileOpen(_file: TFile): void {
+  public onFileOpen = (_file: TFile): void => {
     if (this.app.workspace.layoutReady) {
       this.updateActiveFile();
     }

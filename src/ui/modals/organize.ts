@@ -5,6 +5,7 @@ import { t } from "src/core/i18n";
 import type { I18nKey } from "src/core/i18n";
 import type { DailyFolderLayout, IMove, IOrganizePlan, SkipReason } from "src/core/organize";
 import type { IRunResult } from "src/io/organize";
+import { launch } from "src/ui/launch";
 
 const SAMPLE = 30;
 
@@ -131,9 +132,11 @@ export class OrganizeModal extends Modal {
           });
           en.addEventListener(
             "click",
-            async () => {
-              await this.enableLayout();
-              this.close();
+            () => {
+              launch(async () => {
+                await this.enableLayout();
+                this.close();
+              });
             },
             { once: true },
           );
@@ -141,7 +144,7 @@ export class OrganizeModal extends Modal {
         return;
       }
       const ok = buttons.createEl("button", { cls: "mod-cta", text: t("organize.move") });
-      ok.addEventListener("click", () => void this.execute(buttons), { once: true });
+      ok.addEventListener("click", () => launch(() => this.execute(buttons)), { once: true });
     });
   }
 

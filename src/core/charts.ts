@@ -31,7 +31,7 @@ export function niceScale(maxValue: number, tickCount = 4): { max: number; ticks
   }
   const rough = maxValue / tickCount;
   const pow = Math.pow(10, Math.floor(Math.log10(rough)));
-  const step = [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= rough) as number;
+  const step = [1, 2, 5, 10].map((m) => m * pow).find((s) => s >= rough) ?? 10 * pow;
   const max = Math.ceil(maxValue / step) * step;
   const ticks: number[] = [];
   for (let v = 0; v <= max + step / 2; v += step) {

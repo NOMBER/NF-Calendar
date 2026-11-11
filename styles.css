@@ -55,15 +55,19 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  /* 2.4.0: reserve the scrollbar's space all the time, so a long
-     "Upcoming" list that makes the panel scroll does not narrow the grid. */
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
+}
+
+/* Reserve scrollbar space so a long "Upcoming" list does not narrow the grid.
+   Guarded: css-scrollbar is only partially supported on older Obsidian/Electron. */
+@supports (scrollbar-gutter: stable) {
+  .cwt-view {
+    scrollbar-gutter: stable;
+  }
 }
 
 @supports not (scrollbar-gutter: stable) {
   .cwt-view {
-    overflow-y: scroll; /* same effect on engines without scrollbar-gutter */
+    overflow-y: scroll;
   }
 }
 
@@ -832,10 +836,6 @@
 }
 
 /* ----- 2.7: random note box, hidden ⋯ button, settings quick nav ----- */
-.cwt-hidden {
-  display: none !important;
-}
-
 .cwt-nav-random {
   flex-direction: column;
   align-items: stretch;
@@ -973,21 +973,17 @@
   border-color: var(--text-error);
 }
 
-/* Obsidian styles input[type="date"] (higher specificity than one class):
-   keep the native picker out of the layout completely. */
-.cwt-date-field input[type="date"].cwt-date-picker-native {
-  position: absolute !important;
+/* Hide the native date input in a zero-size box so we do not override
+   Obsidian's input[type="date"] rules with !important. */
+.cwt-date-field .cwt-date-picker-native-wrap {
+  position: absolute;
   left: 0;
   bottom: 0;
-  width: 0 !important;
-  height: 0 !important;
-  min-width: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
+  width: 0;
+  height: 0;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  overflow: hidden;
 }
 
 .cwt-nav-random-row > span:not(.cwt-date-field) {

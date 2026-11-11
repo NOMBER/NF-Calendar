@@ -954,25 +954,16 @@ export const DICTIONARIES: Record<"en" | "ru", Record<I18nKey, string>> = { en, 
 
 let current: "en" | "ru" = "en";
 
-/** Obsidian stores its UI language in localStorage under "language". */
-function detectObsidianLanguage(): string {
-  try {
-    return (typeof window !== "undefined" && window.localStorage?.getItem("language")) || "";
-  } catch (_e) {
-    return "";
-  }
-}
-
-export function resolveLanguage(setting: Language, detected?: string): "en" | "ru" {
+export function resolveLanguage(setting: Language, detected = ""): "en" | "ru" {
   if (setting === "en" || setting === "ru") {
     return setting;
   }
-  const lang = (detected ?? detectObsidianLanguage()).toLowerCase();
-  return lang.startsWith("ru") ? "ru" : "en";
+  return detected.toLowerCase().startsWith("ru") ? "ru" : "en";
 }
 
-export function setLanguage(setting: Language): void {
-  current = resolveLanguage(setting);
+/** `detected` is Obsidian's getLanguage() result when the setting is "auto". */
+export function setLanguage(setting: Language, detected = ""): void {
+  current = resolveLanguage(setting, detected);
 }
 
 export function getLanguage(): "en" | "ru" {
@@ -984,7 +975,7 @@ export function t(key: I18nKey, vars?: Record<string, string | number>): string 
   if (!vars) {
     return template;
   }
-  return template.replace(/\{(\w+)\}/g, (m, name) =>
+  return template.replace(/\{(\w+)\}/g, (m: string, name: string) =>
     vars[name] !== undefined ? String(vars[name]) : m,
   );
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+Code quality fixes for the Obsidian community review.
+
+Minimum Obsidian version is now 1.8.7 (this release uses `getLanguage()`). Version 1.0.0 remains available for 1.4.10 and later.
+
 ## 1.0.0 — first public release
 
 First public release of **NF-Calendar**, a fork of [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) by Liam Cain (MIT).

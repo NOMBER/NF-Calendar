@@ -252,8 +252,7 @@ function addFileItems(app: App, menu: Menu, note: TFile): void {
       .setTitle(t("menu.delete"))
       .setIcon("trash")
       .onClick(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (app as any).fileManager.promptForFileDeletion(note);
+        app.fileManager.promptForFileDeletion(note);
       }),
   );
   app.workspace.trigger("file-menu", menu, note, "calendar-context-menu", null);

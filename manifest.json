@@ -2,10 +2,10 @@
   "id": "nf-calendar",
   "name": "NF-Calendar",
   "description": "Calendar view with built-in daily, weekly and monthly notes, per-weekday and rule-based templates, important days, holidays, year folders, and statistics. Based on Calendar by Liam Cain.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Nomber",
   "authorUrl": "https://nomberobsidian.github.io/",
   "fundingUrl": "https://donatre.github.io/",
   "isDesktopOnly": false,
-  "minAppVersion": "1.4.10"
+  "minAppVersion": "1.8.7"
 }

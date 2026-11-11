@@ -5,6 +5,7 @@ import type { DateFieldFormat } from "../core/dateField";
 import { STARTUP_TAB_POSITIONS } from "../core/tabs";
 import type { StartupTabPosition } from "../core/tabs";
 import { preserveView } from "./preserveView";
+import { launch } from "./launch";
 import {
   MAX_RANDOM_DAYS,
   MAX_RANDOM_RANGES,
@@ -24,9 +25,10 @@ import { Notice, PluginSettingTab, Setting } from "obsidian";
 import type { SliderComponent, TextComponent } from "obsidian";
 import type { App } from "obsidian";
 import { get } from "svelte/store";
-import type { ILocaleOverride, IWeekStartOption } from "obsidian-calendar-ui";
+import type { IWeekStartOption } from "obsidian-calendar-ui";
 
 import type { Granularity } from "src/core/dates";
+import { dailyFolderLayout , sanitizeLocale } from "src/core/settings";
 import {
   defaultCondition,
   EMPTY_WEEKDAY_TEMPLATES,
@@ -161,9 +163,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
   private addRandom(): void {
     const r = this.options.random;
     const save = (next: IRandomPrefs, rerender = false) =>
-      this.write(() => ({ random: next })).then(() => {
-        if (rerender) this.redraw();
-      });
+      launch(() =>
+        this.write(() => ({ random: next })).then(() => {
+          if (rerender) this.redraw();
+        }),
+      );
     const ranges = r.ranges?.length ? r.ranges.map((x) => ({ ...x })) : [defaultRandomRange()];
 
     new Setting(this.containerEl).setName(t("settings.randomKind")).setDesc(t("settings.randomKindDesc"));
@@ -316,7 +320,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     new Setting(this.containerEl)
       .setDesc(t("settings.menuSectionDesc"))
       .addButton((b) =>
-        b.setButtonText(t("settings.menuReset")).onClick(() => void save(defaultMenuItems())),
+        b.setButtonText(t("settings.menuReset")).onClick(() => launch(() => save(defaultMenuItems()))),
       );
     if (this.options.menuPosition === "hidden") {
       new Setting(this.containerEl).setDesc(t("settings.menuHiddenHint"));
@@ -331,15 +335,15 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .addExtraButton((b) => {
           b.setIcon("arrow-up").setTooltip(t("settings.menuUp"));
           b.setDisabled(idx === 0);
-          b.onClick(() => void save(moveMenuItem(list, p.id, -1)));
+          b.onClick(() => launch(() => save(moveMenuItem(list, p.id, -1))));
         })
         .addExtraButton((b) => {
           b.setIcon("arrow-down").setTooltip(t("settings.menuDown"));
           b.setDisabled(idx === list.length - 1);
-          b.onClick(() => void save(moveMenuItem(list, p.id, 1)));
+          b.onClick(() => launch(() => save(moveMenuItem(list, p.id, 1))));
         })
         .addToggle((tg) =>
-          tg.setValue(p.visible).onChange((v) => void save(setMenuItemVisible(list, p.id, v))),
+          tg.setValue(p.visible).onChange((v) => launch(() => save(setMenuItemVisible(list, p.id, v)))),
         );
     });
   }
@@ -355,10 +359,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.addOption("en", "English");
         d.addOption("ru", "Русский");
         d.setValue(this.options.language);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ language: v as Language }));
           this.plugin.getView()?.refresh();
           this.redraw();
+        });
         });
       });
   }
@@ -372,9 +378,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
           d.addOption(mode, t(`dots.${mode}` as I18nKey));
         }
         d.setValue(sanitizeDotsMode(this.options.dotsMode));
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ dotsMode: sanitizeDotsMode(v) }));
           this.plugin.getView()?.refresh();
+        });
         });
       });
   }
@@ -390,9 +398,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.addOption("locale", t("settings.localeDefault", { day: names[localeDow] }));
         names.forEach((day, i) => d.addOption(WEEK_START_KEYS[i], day));
         d.setValue(this.options.weekStart);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ weekStart: v as IWeekStartOption }));
           this.redraw(); // weekday order below depends on it
+        });
         });
       });
   }
@@ -437,7 +447,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       s.setLimits(HORIZON_MIN, HORIZON_MAX, 1)
         .setValue(this.options.upcomingHorizonDays)
         .setDynamicTooltip()
-        .onChange((v) => save(v, "slider"));
+        .onChange((v) => launch(() => save(v, "slider")));
     });
     setting.addText((text) => {
       input = text;
@@ -467,7 +477,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
     const weekStart = this.options.weekStart;
     const firstDay =
       weekStart && weekStart !== "locale"
-        ? WEEK_START_KEYS.indexOf(weekStart as (typeof WEEK_START_KEYS)[number])
+        ? WEEK_START_KEYS.indexOf(weekStart)
         : (window._bundledLocaleWeekSpec?.dow ?? window.moment.localeData().firstDayOfWeek());
     return firstDay < 0 ? 1 : firstDay;
   }
@@ -479,9 +489,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .addDropdown((d) => {
         DATE_FIELD_FORMATS.forEach((f) => d.addOption(f, dateFieldPlaceholder(f, getLanguage())));
         d.setValue(this.options.dateFieldFormat);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ dateFieldFormat: v as DateFieldFormat }));
           this.redraw();
+        });
         });
       });
   }
@@ -493,9 +505,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .addDropdown((d) => {
         MENU_POSITIONS.forEach((p) => d.addOption(p, t(`menuPos.${p}` as I18nKey)));
         d.setValue(this.options.menuPosition);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ menuPosition: v as MenuPosition }));
           this.redraw();
+        });
         });
       });
     if (this.options.menuPosition === "hidden") {
@@ -532,9 +546,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
       text.setPlaceholder("Meta/Dates");
       text.setValue(this.options.holidaysFolder);
       text.inputEl.addEventListener("blur", () => this.display());
-      text.onChange(async (v) => {
+      text.onChange((v) => {
+          launch(async () => {
         await this.write(() => ({ holidaysFolder: v.trim() }));
       });
+        });
     });
     new Setting(this.containerEl)
       .setName(t("settings.holidayOrder"))
@@ -543,9 +559,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.addOption("dayFirst", t("settings.dayFirst"));
         d.addOption("monthFirst", t("settings.monthFirst"));
         d.setValue(this.options.holidayDateOrder);
-        d.onChange(async (v) => {
+        d.onChange((v) => {
+          launch(async () => {
           await this.write(() => ({ holidayDateOrder: v as HolidayDateOrder }));
           this.redraw();
+        });
         });
       });
     const pattern = new Setting(this.containerEl)
@@ -554,7 +572,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
     pattern.addText((text) => {
       text.setPlaceholder("DD.MM");
       text.setValue(this.options.holidayPattern);
-      text.onChange(async (v) => {
+      text.onChange((v) => {
+          launch(async () => {
         const value = v.trim();
         const ok = !value || isValidHolidayPattern(value);
         pattern.descEl.toggleClass("cwt-template-missing", !ok);
@@ -563,6 +582,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
           await this.write(() => ({ holidayPattern: value }));
         }
       });
+        });
     });
   }
 
@@ -586,11 +606,17 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setDesc(desc)
       .addToggle((tg) => {
         tg.setValue(!!this.options[key]);
-        tg.onChange(async (v) => {
-          await this.write(() => ({ [key]: v }) as Partial<ISettings>);
+        tg.onChange((v) => {
+          launch(async () => {
+          await this.write(() => {
+            const next: Partial<ISettings> = {};
+            next[key] = v;
+            return next;
+          });
           if (rerender) {
             this.redraw();
           }
+        });
         });
       });
   }
@@ -603,7 +629,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
 
   private async writePeriodic(g: Granularity, patch: Partial<IPeriodicConfig>): Promise<void> {
     const key = this.configKey(g);
-    await this.write((old) => ({ [key]: { ...old[key], ...patch } }) as Partial<ISettings>);
+    await this.write((old) => {
+      const next: Partial<ISettings> = {};
+      next[key] = { ...old[key], ...patch };
+      return next;
+    });
     this.plugin.reindexAll();
   }
 
@@ -617,9 +647,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setDesc(t(`settings.${key}EnabledDesc` as I18nKey))
       .addToggle((tg) => {
         tg.setValue(cfg.enabled);
-        tg.onChange(async (v) => {
+        tg.onChange((v) => {
+          launch(async () => {
           await this.writePeriodic(g, { enabled: v });
           this.redraw();
+        });
         });
       });
     if (!cfg.enabled) {
@@ -637,10 +669,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
     folderSetting.addText((text) => {
       text.setPlaceholder("/");
       text.setValue(cfg.folder);
-      text.onChange(async (v) => {
+      text.onChange((v) => {
+          launch(async () => {
         await this.writePeriodic(g, { folder: v.trim() });
         checkPath();
       });
+        });
     });
     checkPath();
 
@@ -652,13 +686,15 @@ export class CalendarSettingsTab extends PluginSettingTab {
     updateSample(cfg.format);
     formatSetting.addText((text) => {
       text.setValue(cfg.format);
-      text.onChange(async (v) => {
+      text.onChange((v) => {
+          launch(async () => {
         updateSample(v.trim());
         if (v.trim()) {
           await this.writePeriodic(g, { format: v.trim() });
           checkPath();
         }
       });
+        });
     });
 
     const tplSetting = new Setting(this.containerEl).setName(t("settings.template"));
@@ -668,10 +704,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
       new FileSuggest(this.app, search.inputEl);
       search.setPlaceholder("Templates/…");
       search.setValue(cfg.template);
-      search.onChange(async (v) => {
+      search.onChange((v) => {
+          launch(async () => {
         await this.writePeriodic(g, { template: v.trim() });
         this.validateTemplate(tplSetting, v, baseDesc);
       });
+        });
       this.validateTemplate(tplSetting, cfg.template, baseDesc);
     });
 
@@ -692,9 +730,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .addDropdown((d) => {
           STARTUP_TAB_POSITIONS.forEach((p) => d.addOption(p, t(`startupTab.${p}` as I18nKey)));
           d.setValue(this.options.startupTabPosition);
-          d.onChange(async (v) => {
+          d.onChange((v) => {
+          launch(async () => {
             await this.write(() => ({ startupTabPosition: v as StartupTabPosition }));
           });
+        });
         });
       new Setting(this.containerEl)
         .setName(t("settings.folderLayout"))
@@ -703,15 +743,11 @@ export class CalendarSettingsTab extends PluginSettingTab {
           (["flat", "year", "year-month"] as const).forEach((v) =>
             d.addOption(v, t(`settings.folderLayout.${v}` as I18nKey)),
           );
-          const layout =
-            cfg.folderLayout ?? (cfg.yearFolders ? "year" : "flat");
-          d.setValue(layout);
-          d.onChange(async (v) => {
-            const folderLayout = v as "flat" | "year" | "year-month";
-            await this.writePeriodic(g, {
-              folderLayout,
-              yearFolders: folderLayout !== "flat",
-            });
+          d.setValue(dailyFolderLayout(cfg));
+          d.onChange((v) => {
+            if (v === "flat" || v === "year" || v === "year-month") {
+              launch(() => this.writePeriodic(g, { folderLayout: v }));
+            }
           });
         });
       new Setting(this.containerEl)
@@ -725,10 +761,10 @@ export class CalendarSettingsTab extends PluginSettingTab {
         b.addEventListener("click", onClick);
         return b;
       };
-      mk(t("settings.organizeButton"), () => this.plugin.organizeDailyNotes("year"));
-      mk(t("cmd.organizeYearMonth"), () => this.plugin.organizeDailyNotes("year-month"));
-      mk(t("cmd.organizeFlat"), () => this.plugin.organizeDailyNotes("flat"));
-      mk(t("cmd.undoOrganize"), () => void this.plugin.undoLastOrganize(), !this.options.lastOrganize);
+      mk(t("settings.organizeButton"), () => launch(() => this.plugin.organizeDailyNotes("year")));
+      mk(t("cmd.organizeYearMonth"), () => launch(() => this.plugin.organizeDailyNotes("year-month")));
+      mk(t("cmd.organizeFlat"), () => launch(() => this.plugin.organizeDailyNotes("flat")));
+      mk(t("cmd.undoOrganize"), () => launch(() => this.plugin.undoLastOrganize()), !this.options.lastOrganize);
     }
   }
 
@@ -737,7 +773,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setName(t("settings.import"))
       .setDesc(t("settings.importDesc"))
       .addButton((b) =>
-        b.setButtonText(t("settings.importButton")).onClick(async () => {
+        b.setButtonText(t("settings.importButton")).onClick(() => {
+          launch(async () => {
           const ext = readExternalPeriodicSettings(this.app);
           const found: string[] = [];
           await this.write((old) => {
@@ -763,6 +800,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
           );
           this.plugin.reindexAll();
           this.redraw();
+        });
         }),
       );
   }
@@ -792,7 +830,8 @@ export class CalendarSettingsTab extends PluginSettingTab {
         new FileSuggest(this.app, search.inputEl);
         search.setPlaceholder(`Templates/${name}`);
         search.setValue(this.options.weekdayTemplates?.[day] || "");
-        search.onChange(async (v) => {
+        search.onChange((v) => {
+          launch(async () => {
           await this.write((old) => ({
             weekdayTemplates: {
               ...EMPTY_WEEKDAY_TEMPLATES,
@@ -801,6 +840,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
             },
           }));
           this.validateTemplate(setting, v, desc);
+        });
         });
         this.validateTemplate(setting, search.getValue(), desc);
       });
@@ -845,19 +885,21 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .setButtonText(t("settings.addRule"))
         .setCta()
         .onClick(() =>
-          this.writeRules(
-            (rs) => [
-              ...rs,
-              {
-                id: newRuleId(),
-                name: "",
-                enabled: true,
-                condition: defaultCondition("annual"),
-                template: "",
-                appliesTo: ["day"],
-              },
-            ],
-            true,
+          launch(() =>
+            this.writeRules(
+              (rs) => [
+                ...rs,
+                {
+                  id: newRuleId(),
+                  name: "",
+                  enabled: true,
+                  condition: defaultCondition("annual"),
+                  template: "",
+                  appliesTo: ["day"],
+                },
+              ],
+              true,
+            ),
           ),
         ),
     );
@@ -874,28 +916,28 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .addText((text) => {
         text.setPlaceholder(t("settings.ruleName"));
         text.setValue(rule.name);
-        text.onChange((v) => this.updateRule(rule.id, { name: v }));
+        text.onChange((v) => launch(() => this.updateRule(rule.id, { name: v })));
       })
       .addToggle((tg) => {
         tg.setTooltip(t("settings.ruleEnabled"));
         tg.setValue(rule.enabled);
-        tg.onChange((v) => this.updateRule(rule.id, { enabled: v }, true));
+        tg.onChange((v) => launch(() => this.updateRule(rule.id, { enabled: v }, true)));
       })
       .addExtraButton((b) => {
         b.setIcon("arrow-up")
           .setTooltip(t("settings.ruleUp"))
           .setDisabled(index === 0);
-        b.onClick(() => this.writeRules((rs) => move(rs, index, index - 1), true));
+        b.onClick(() => launch(() => this.writeRules((rs) => move(rs, index, index - 1), true)));
       })
       .addExtraButton((b) => {
         b.setIcon("arrow-down")
           .setTooltip(t("settings.ruleDown"))
           .setDisabled(index === count - 1);
-        b.onClick(() => this.writeRules((rs) => move(rs, index, index + 1), true));
+        b.onClick(() => launch(() => this.writeRules((rs) => move(rs, index, index + 1), true)));
       })
       .addExtraButton((b) => {
         b.setIcon("trash").setTooltip(t("settings.ruleDelete"));
-        b.onClick(() => this.writeRules((rs) => rs.filter((r) => r.id !== rule.id), true));
+        b.onClick(() => launch(() => this.writeRules((rs) => rs.filter((r) => r.id !== rule.id), true)));
       });
 
     const cond = new Setting(box).setName(t("settings.ruleCondition"));
@@ -915,7 +957,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       }
       d.setValue(rule.condition.type);
       d.onChange((v) =>
-        this.updateRule(rule.id, { condition: defaultCondition(v as RuleConditionType) }, true),
+        launch(() =>
+          this.updateRule(rule.id, { condition: defaultCondition(v as RuleConditionType) }, true),
+        ),
       );
     });
     this.renderConditionParams(cond, rule);
@@ -931,7 +975,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         const next = (["day", "week", "month"] as Granularity[]).filter((x) =>
           x === g ? cb.checked : current.includes(x),
         );
-        void this.updateRule(rule.id, { appliesTo: next.length ? next : ["day"] }, true);
+        launch(() => this.updateRule(rule.id, { appliesTo: next.length ? next : ["day"] }, true));
       });
     });
 
@@ -940,10 +984,12 @@ export class CalendarSettingsTab extends PluginSettingTab {
       new FileSuggest(this.app, search.inputEl);
       search.setPlaceholder("Templates/…");
       search.setValue(rule.template);
-      search.onChange(async (v) => {
+      search.onChange((v) => {
+          launch(async () => {
         await this.updateRule(rule.id, { template: v.trim() });
         this.validateTemplate(tpl, v, "");
       });
+        });
       this.validateTemplate(tpl, rule.template, "");
     });
   }
@@ -951,7 +997,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
   private renderConditionParams(setting: Setting, rule: ITemplateRule): void {
     const c = rule.condition;
     const set = (condition: RuleCondition, rerender = false) =>
-      this.updateRule(rule.id, { condition }, rerender);
+      launch(() => this.updateRule(rule.id, { condition }, rerender));
     const dateInput = (value: string, onChange: (v: string) => void, label?: string) => {
       if (label) {
         setting.controlEl.createSpan({ cls: "cwt-cond-label", text: label });
@@ -1111,8 +1157,10 @@ export class CalendarSettingsTab extends PluginSettingTab {
         d.addOption("system-default", t("settings.localeSystem", { locale: sysLocale }));
         window.moment.locales().forEach((l) => d.addOption(l, l));
         d.setValue(this.options.localeOverride);
-        d.onChange(async (v) => {
-          await this.write(() => ({ localeOverride: v as ILocaleOverride }));
+        d.onChange((v) => {
+          launch(async () => {
+          await this.write(() => ({ localeOverride: sanitizeLocale(v) }));
+        });
         });
       });
   }

@@ -13,7 +13,8 @@ import {
   newEventId,
   sanitizeImportantColor,
 } from "src/core/important";
-import type { IImportantDay, IImportantEvent, ImportantColor } from "src/core/important";
+import type { IImportantDay, IImportantEvent } from "src/core/important";
+import { launch } from "src/ui/launch";
 
 /** "Mark as important…" dialog: shared colour/prep + one or more events. */
 export class ImportantDayModal extends Modal {
@@ -88,7 +89,7 @@ export class ImportantDayModal extends Modal {
         sw.addClass("is-selected");
       }
       sw.addEventListener("click", () => {
-        this.value.color = color as ImportantColor;
+        this.value.color = color;
         swatches.forEach((s) => s.removeClass("is-selected"));
         picker.removeClass("is-selected");
         sw.addClass("is-selected");
@@ -131,9 +132,11 @@ export class ImportantDayModal extends Modal {
           cls: "mod-warning",
           text: t("important.remove"),
         });
-        rm.addEventListener("click", async () => {
+        rm.addEventListener("click", () => {
           this.close();
-          await this.onRemove?.();
+          if (this.onRemove) {
+            launch(() => this.onRemove?.());
+          }
         });
       }
       buttons
@@ -141,7 +144,7 @@ export class ImportantDayModal extends Modal {
         .addEventListener("click", () => this.close());
       buttons
         .createEl("button", { cls: "mod-cta", text: t("important.save") })
-        .addEventListener("click", async () => {
+        .addEventListener("click", () => {
           const events = this.value.events
             .map((e) => ({ id: e.id, title: e.title.trim() }))
             .filter((e) => e.title.length > 0 || this.value.events.length === 1);
@@ -154,7 +157,7 @@ export class ImportantDayModal extends Modal {
               : [{ id: newEventId(), title: "" }],
           };
           this.close();
-          await this.onSave(saved);
+          launch(() => this.onSave(saved));
         });
     });
   }

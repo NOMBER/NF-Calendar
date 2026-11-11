@@ -21,11 +21,10 @@ describe("modalHandoff helpers (kept for compatibility)", () => {
     const calls: string[] = [];
     const scheduled: { ms: number }[] = [];
     const realSetTimeout = window.setTimeout.bind(window);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).setTimeout = (fn: () => void, ms: number) => {
-      scheduled.push({ ms });
-      return realSetTimeout(fn, ms);
-    };
+    window.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+      scheduled.push({ ms: ms ?? 0 });
+      return realSetTimeout(fn, ms, ...args);
+    }) as typeof setTimeout;
     afterModalClose(
       () => calls.push("close"),
       () => calls.push("showStats"),

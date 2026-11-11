@@ -6,8 +6,8 @@
 
 Это форк плагина [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) от **Liam Cain** (лицензия MIT, см. [LICENSE](LICENSE)). Вся заслуга исходного календаря — его; оригинальное описание сохранено в [README.original.md](README.original.md).
 
-- id: `nf-calendar`, версия 1.0.0
-- Требуется Obsidian **1.4.10+**, работает на десктопе и на мобильных
+- id: `nf-calendar`, версия 1.0.1
+- Требуется Obsidian **1.8.7+**, работает на десктопе и на мобильных
 - Интерфейс на **английском и русском**
 - Исходный код и релизы: [github.com/NOMBER/NF-Calendar](https://github.com/NOMBER/NF-Calendar)
 

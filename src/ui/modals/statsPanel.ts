@@ -18,6 +18,7 @@ import { currentStreak, isAllTasksDone, summarizeMonth } from "src/core/stats";
 import type { IDayStats } from "src/core/stats";
 import { cachedTaskCount, computeNoteStats } from "src/io/noteStats";
 import { renderDonut, renderSeriesChart } from "src/ui/charts";
+import { applyColorVar } from "src/ui/colors";
 
 export interface IStatsPanelDeps {
   findDailyNote: (date: Moment) => TFile | null;
@@ -127,13 +128,14 @@ export class StatsPanel {
       dayCell.createSpan({ text: date.format("dd D") });
       const marks = getDayMarks(window.moment, date, important);
       if (marks.important) {
-        dayCell.createSpan({
+        const marker = dayCell.createSpan({
           cls: "cwt-marker",
           attr: {
             "data-cwt-color": marks.important.color,
             "aria-label": dayTitle(marks.important) || t("important.untitled"),
           },
         });
+        applyColorVar(marker, marks.important.color);
         const title = dayTitle(marks.important);
         if (title) {
           dayCell.createSpan({ cls: "cwt-stats-important-title", text: title });

@@ -44,9 +44,8 @@ export function hexToRgb(hex: string): [number, number, number] | null {
 }
 
 /**
- * CSS rules for the custom colours in use, same variables as the presets
- * (`--cwt-c`, `--cwt-c-rgb`). Only validated hex values get in, so the
- * text is safe to put into a <style> element via textContent.
+ * CSS text for custom colours (validated hex only). Kept for tests;
+ * the plugin applies the same variables with element.style.setProperty.
  */
 export function customColorCss(days: ImportantDays): string {
   const seen = new Set<string>();
@@ -59,10 +58,14 @@ export function customColorCss(days: ImportantDays): string {
   return [...seen]
     .sort()
     .map((c) => {
-      const rgb = hexToRgb(c) as [number, number, number];
+      const rgb = hexToRgb(c);
+      if (!rgb) {
+        return "";
+      }
       const sel = ["color", "important", "prepare"].map((a) => `[data-cwt-${a}="${c}"]`).join(", ");
       return `${sel} { --cwt-c: ${c}; --cwt-c-rgb: ${rgb.join(", ")}; }`;
     })
+    .filter(Boolean)
     .join("\n");
 }
 

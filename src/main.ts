@@ -1,6 +1,6 @@
 import { startupInsertIndex } from "src/core/tabs";
 import type { Moment, WeekSpec } from "moment";
-import { Notice, Platform, Plugin, TFile } from "obsidian";
+import { FileView, Notice, Platform, Plugin, TFile, getLanguage as getObsidianLanguage } from "obsidian";
 import type { App, Modal, TAbstractFile, WorkspaceLeaf } from "obsidian";
 import { get } from "svelte/store";
 
@@ -16,8 +16,9 @@ import {
 } from "src/core/dates";
 import type { Granularity } from "src/core/dates";
 import { setLanguage, t } from "src/core/i18n";
+import { isRecord } from "src/core/unknown";
+import { applyColorVarsIn } from "src/ui/colors";
 import {
-  customColorCss,
   dayKey,
   holidayDismissKey,
   importantDismissKey,
@@ -67,7 +68,7 @@ import { ImportantDayModal } from "src/ui/modals/importantDay";
 import { ImportantListModal } from "src/ui/modals/importantList";
 import { StatsModal } from "src/ui/modals/stats";
 import { CalendarSettingsTab } from "src/ui/settingsTab";
-import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes } from "src/ui/stores";
+import { activeFile, dailyNotes, monthlyNotes, settings, weeklyNotes, bindApp } from "src/ui/stores";
 import CalendarView from "src/ui/view";
 
 declare global {
@@ -85,28 +86,17 @@ export default class CalendarPlugin extends Plugin {
   private openModals = new Set<Modal>();
   private batchRunning = false;
 
-  /** <style> with rules for custom important-day colours (validated hex only). */
-  private colorStyleEl: HTMLStyleElement | null = null;
-
-  private applyCustomColors(value: ISettings): void {
-    if (typeof document === "undefined" || !document.head) {
-      return;
+  private applyCustomColors(): void {
+    const root = typeof activeDocument === "undefined" ? null : activeDocument;
+    applyColorVarsIn(root);
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR)) {
+      applyColorVarsIn(leaf.view.containerEl);
     }
-    const css = customColorCss(value.importantDays);
-    if (!this.colorStyleEl) {
-      this.colorStyleEl = document.createElement("style");
-      this.colorStyleEl.setAttribute("data-cwt", "custom-colors");
-      document.head.appendChild(this.colorStyleEl);
-    }
-    this.colorStyleEl.textContent = css;
   }
 
   onunload(): void {
-    this.colorStyleEl?.remove();
-    this.colorStyleEl = null;
     this.openModals.forEach((m) => m.close());
     this.openModals.clear();
-    this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).forEach((leaf) => leaf.detach());
   }
 
   /**
@@ -116,10 +106,12 @@ export default class CalendarPlugin extends Plugin {
    * Menu.onClick / Modal button handlers often fails or is dismissed silently.
    */
   private show(modal: Modal, delayMs = 0): void {
-    const onClose = modal.onClose?.bind(modal);
+    // Stash the previous closer so we can invoke it with the modal as `this`.
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- previous closer is called with .call(modal)
+    const previousClose = modal.onClose;
     modal.onClose = () => {
       this.openModals.delete(modal);
-      onClose?.();
+      previousClose?.call(modal);
     };
     this.openModals.add(modal);
     window.setTimeout(() => {
@@ -134,17 +126,18 @@ export default class CalendarPlugin extends Plugin {
   }
 
   async onload(): Promise<void> {
+    bindApp(this.app);
     this.register(
       settings.subscribe((value) => {
         this.options = value;
-        setLanguage(value.language);
-        this.applyCustomColors(value);
+        setLanguage(value.language, getObsidianLanguage());
+        this.applyCustomColors();
       }),
     );
 
-    const raw = await this.loadData();
-    const isV1 = !!raw && typeof raw === "object" && typeof raw.settingsVersion !== "number";
-    settings.set(migrateSettings(raw).settings);
+    const raw: unknown = await this.loadData();
+    const isV1 = isRecord(raw) && typeof raw.settingsVersion !== "number";
+    settings.set(migrateSettings(raw, {}, this.app.vault.configDir).settings);
     if (!isV1) {
       await this.saveData(this.options);
     }
@@ -159,7 +152,7 @@ export default class CalendarPlugin extends Plugin {
       if (isV1) {
         // v1.0.0 read folder/format/template from Daily Notes / Periodic
         // Notes. Copy them once so nothing changes for the user.
-        const migrated = migrateSettings(raw, readExternalPeriodicSettings(this.app));
+        const migrated = migrateSettings(raw, readExternalPeriodicSettings(this.app), this.app.vault.configDir);
         settings.set(migrated.settings);
         await this.saveData(this.options);
         new Notice(t("notice.migrated"), 8000);
@@ -205,8 +198,7 @@ export default class CalendarPlugin extends Plugin {
       const path = file.path;
       const leaf = this.app.workspace
         .getLeavesOfType("markdown")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .find((l) => (l.view as any)?.file?.path === path);
+        .find((l) => l.view instanceof FileView && l.view.file?.path === path);
       if (leaf) {
         this.app.workspace.setActiveLeaf(leaf, { focus: true });
       } else {
@@ -230,10 +222,10 @@ export default class CalendarPlugin extends Plugin {
       try {
         const ws = this.app.workspace;
         const ref = ws.getMostRecentLeaf(ws.rootSplit) ?? ws.getMostRecentLeaf();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parent = ref?.parent as any;
-        const children: WorkspaceLeaf[] | undefined = parent?.children;
-        if (parent && Array.isArray(children) && children.length > 0) {
+        const parent = ref?.parent;
+        const rawChildren = parent && "children" in parent ? (parent as { children?: unknown }).children : undefined;
+        const children = Array.isArray(rawChildren) ? (rawChildren as WorkspaceLeaf[]) : undefined;
+        if (parent && children && children.length > 0) {
           const pinned = children.map((l) => {
             try {
               return !!l.getViewState?.().pinned;
@@ -245,9 +237,9 @@ export default class CalendarPlugin extends Plugin {
           const refEmpty = ref?.view?.getViewType?.() === "empty";
           if (!refEmpty) {
             const leaf = ws.createLeafInParent(parent, startupInsertIndex(pinned));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mode = (this.app.vault as any).getConfig?.("defaultViewMode");
-            await leaf.openFile(file, { active: true, ...(mode ? { state: { mode } } : {}) });
+            const mode = this.app.vault.getConfig?.("defaultViewMode");
+            const state = typeof mode === "string" && mode ? { mode } : undefined;
+            await leaf.openFile(file, { active: true, ...(state ? { state } : {}) });
             ws.setActiveLeaf(leaf, { focus: true });
             return;
           }
@@ -396,14 +388,19 @@ export default class CalendarPlugin extends Plugin {
 
   getView(): CalendarView | null {
     const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR)[0];
-    return (leaf?.view as CalendarView) ?? null;
+    return leaf?.view instanceof CalendarView ? leaf.view : null;
   }
 
   initLeaf(): void {
     if (this.app.workspace.getLeavesOfType(VIEW_TYPE_CALENDAR).length) {
       return;
     }
-    this.app.workspace.getRightLeaf(false)?.setViewState({ type: VIEW_TYPE_CALENDAR });
+    const leaf = this.app.workspace.getRightLeaf(false);
+    if (leaf) {
+      void leaf.setViewState({ type: VIEW_TYPE_CALENDAR }).catch((err: unknown) => {
+        console.error("[NF-Calendar] failed to open calendar view", err);
+      });
+    }
   }
 
   async writeOptions(changeOpts: (settings: ISettings) => Partial<ISettings>): Promise<void> {
@@ -479,7 +476,6 @@ export default class CalendarPlugin extends Plugin {
             daily: {
               ...old.daily,
               folderLayout: layout,
-              yearFolders: layout === "year" || layout === "year-month",
             },
           }));
           this.reindexAll();
@@ -540,8 +536,7 @@ export default class CalendarPlugin extends Plugin {
   }
 
   openSettings(): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const setting = (this.app as any).setting;
+    const setting = this.app.setting;
     setting?.open?.();
     setting?.openTabById?.(this.manifest.id);
   }
@@ -644,7 +639,10 @@ export default class CalendarPlugin extends Plugin {
       ? await pickRandomNonEmptyDay(
           byDay.keys(),
           scope,
-          async (k) => isBlankDailyNote(await this.app.vault.cachedRead(byDay.get(k) as TFile)),
+          async (k) => {
+            const note = byDay.get(k);
+            return !note || isBlankDailyNote(await this.app.vault.cachedRead(note));
+          },
           opts,
         )
       : pickRandomDay(byDay.keys(), scope, opts);
