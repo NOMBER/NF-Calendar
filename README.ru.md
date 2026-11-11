@@ -1,6 +1,6 @@
 # NF-Calendar
 
-[English](README.md) · **Русский** · [Другие плагины Nomber](https://nomberobsidian.github.io/)
+[English](README.md) · **Русский** · [Другие плагины от Nomber'a](https://nomberobsidian.github.io/)
 
 Форк плагина [Calendar](https://github.com/liamcain/obsidian-calendar-plugin) от **Liam Cain** (лицензия MIT, см. `LICENSE`).
 Оригинальное описание — в [README.original.md](README.original.md).
