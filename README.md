@@ -10,189 +10,207 @@ the MIT license (see [LICENSE](LICENSE)). All credit for the original calendar v
 kept in [README.original.md](README.original.md).
 
 - Plugin id: `nf-calendar`, version 1.0.0
-- Requires Obsidian **1.4.10+**, works on desktop and mobile (`isDesktopOnly: false`)
+- Requires Obsidian **1.4.10+**, works on desktop and mobile
 - Interface in **English and Russian**
 - Source and releases: [github.com/NOMBER/NF-Calendar](https://github.com/NOMBER/NF-Calendar)
 
 ## One plugin instead of three
 
 This plugin replaces **Calendar + the core Daily Notes plugin + Periodic Notes** (weekly / monthly part).
-It keeps its own settings for daily, weekly and monthly notes and finds and creates the notes itself. It does not read
-or enable other plugins, except for the explicit **Import from Daily Notes / Periodic Notes** button and a one-time
-import of older settings from those plugins.
+It keeps its own settings for daily, weekly and monthly notes and finds and creates the notes itself.
 
-## Features
+It does not read or enable other plugins, except for the **Import from Daily Notes / Periodic Notes** button and a one-time import of older settings from those plugins.
 
-- **Calendar view.** Comes from the original plugin: word-count dots, task indicators, week numbers.
-  - Click a day to open or create its daily note; Ctrl/Cmd+click opens it in a new pane.
-  - Click a week number to open the weekly note.
-- **Daily, weekly and monthly notes.** Each type has its own folder, file name format (moment.js) and default template,
-  and can be turned on or off.
-- **Template selection.** For a daily note the plugin takes:
-  1. the first enabled **special rule** that matches the date (top to bottom);
-  2. otherwise the **weekday template** (one per weekday);
-  3. otherwise the **default template**.
+## Calendar
 
-  Weekly and monthly notes check rules (if the rule is enabled for that note type) against the first day of the period, then
-  use the type's default template. If a template file is missing, the plugin shows a notice and moves on to the next candidate.
-  Templates are picked by the **note's date**, not by today.
-- **Special rules.** Rules are ordered and can be renamed, enabled or disabled, moved up or down and deleted. Each has a
-  condition, the note types it applies to (daily / weekly / monthly) and a template file. Conditions are picked from a
-  compact grouped list:
-  - **Dates:** every year on a day + month (the main type: birthdays, holidays); a date range (vacation); a one-off date
-    `YYYY-MM-DD` (kept for old rules);
-  - **Month:** a range of days of the month (`1–7`, or `25–5` wrapping over the month end); the last N days of the month;
-    the first / last day of the month; the first / last day of a quarter;
-  - **Weekdays & cycles:** several weekdays in one rule (with Mon–Fri / Sat–Sun presets); the N-th weekday of the month
-    (1st–5th or **last**); week N of the month (or the last week); even or odd ISO week; every N days from a chosen date;
-  - **Marks:** a holiday from the holidays folder falls on the day; the day is marked important.
-- **Quick date navigator.** Click the month title (e.g. "Nov 2026"): a dialog with a year switcher (‹ › , typed year or a
-  12-year grid), a 12-month grid and an exact-day field. A switch chooses whether a month click opens the calendar on that
-  month or that month's statistics. The day field shows whether the note exists and opens or creates it. Works on mobile
-  (it is a regular modal with finger-sized buttons). Right-click on the title still opens the main menu.
-- Several period ranges for random daily notes (union, dedupe); dice button + ⋯ item for one-click open with saved settings; Organize button row wraps correctly in settings.
-- Daily note folders dropdown next to Organize; Organize offers “Also store new notes this way” (on by default). Reverse organize to year-only or flat; optional cleanup of empty year/month folders. Go to date → Open statistics switches **in the same modal** (Back returns); fixed closed random-collapse overlay stealing clicks.
-- Create missing daily notes from start of week / for the whole week; organize into year **or** year/month folders (`folder/2026/11/…`); Daily note folders setting (flat / year / year-month). **Every ⋯ and modal action is also a command** (no default hotkeys) — assign them in Obsidian → Settings → Hotkeys. Statistics opens reliably from the menu; Upcoming filter no longer shifts the header when expanded.
-- Upcoming filter is a button + Obsidian menu. Fixed-width disclosure chevron so the title no longer shifts on expand/collapse.
-- Collapse chevron restored; filter hidden while collapsed; setting to hide the filter control.
-- Several important events on one day (shared colour, separate rows in Upcoming). Right-click /
-  long-press an Upcoming row → Complete / dismiss (removes a user mark or hides a holiday for that day).
-  Compact All / Holidays / Important filter next to the Upcoming header (optional setting to hide it).
-- Startup tab position (left after pinned tabs / right); collapsible random-note box in "Go to date" with
-  its own "Open" button; "Date field format" (DD.MM.YYYY, YYYY.MM.DD, MM.DD.YYYY with `.`, `-` or `/`) for every typed
-  date; "Create missing daily notes until end of week/month" works from the open daily note (toggle "Create relative to
-  the open note", on by default) and the confirmation shows the range and count.
-- **Random daily note**. In the date navigator the "Random note" button sits next to "Open
-  statistics"; right below it a labelled box picks the period: all notes, the chosen year, a month of that year, the last
-  N days or a date range (from–to, an empty end is open); optional "Skip empty" (a note with only front matter, headings and empty
-  list/task markers counts as empty). Only existing daily notes are used (flat folder, year folders and mixed layouts; a
-  day with duplicate files counts once). The note opened last is not repeated right away if there is another one. With
-  no notes in the period a notice says so. File contents are read only with "Skip empty", and only for drawn candidates.
-  You can add several period rows; the pick is the union (deduped). A dice button next to "Open random note" (and an optional ⋯ menu item) opens immediately with the saved ranges. Command palette: "Open random daily note" uses the defaults from Settings → "Random note" (ranges, skip empty), which
-  are also the navigator's starting values.
+Click a day to open or create its daily note (Ctrl/Cmd+click opens it in a new pane). Click a week number to open the weekly note.
+
+- Dots under days can mean: the note exists (the default), done tasks, word count, or nothing
+- Hover an empty day to preview which template would be used, and the first lines of that file
+- Language: Auto / English / Русский (Auto follows Obsidian)
+
+## Go to date
+
+Click the month title (for example "Nov 2026") to switch year, pick a month, or type a specific day. Works on mobile too. Right-click the title still opens the main menu.
+
+- A switch chooses whether a month click opens the calendar or that month's statistics
+- The day field shows whether the note already exists, then opens or creates it
+- Date fields can use DD.MM.YYYY, YYYY.MM.DD, or MM.DD.YYYY (with `.`, `-`, or `/`)
+
+## Random daily note
+
+Opens a random existing daily note. In the Go to date dialog, **Open random note** expands the period options; the dice button opens one immediately with your saved settings.
+
+- Periods: all notes, a year, a month, the last N days, or a date range — you can add several, and the pick uses all of them
+- Optional **Skip empty** (a note with only headings and empty list items counts as empty)
+- The command palette item and an optional ⋯ menu item use the same saved settings
 
 <p align="center">
   <img src="images/go-to-date.png" width="560" alt="Go to date dialog with Open in calendar, Open statistics, Open random note, and the dice quick-open button">
 </p>
-- **Holidays folder.** Point the plugin to a folder (e.g. `Meta/Dates`) whose note names start with a date:
-  `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, `1000-09-01 Knowledge Day` (the separator
-  after the date is optional). Two-part dates are read by the **Day first / Month first** setting; `YYYY-MM-DD` is always
-  unambiguous; an optional custom pattern (`DD_MM`, `YYYY.MM.DD`, …) is also supported. Holidays match every year by day
-  and month.
-  - The calendar shows 🎉 on those days; hovering shows the holiday names (and age when the note has a real year ≥ 1900,
-    so placeholder years like `1000` show no age); clicking the 🎉 corner or the day's context menu lists the holiday
-    notes and opens them.
-  - Holidays also appear in **Upcoming**, can drive special rules (the "holiday" condition) and are shown in statistics.
-  - The index is cached and rebuilt only when files in that folder are created, deleted or renamed, or the setting changes.
-  - Names that do not start with a recognizable date are counted in settings.
+
+## Templates
+
+For a daily note the plugin uses, in order: the first matching special rule, then the weekday template, then the default template. Weekly and monthly notes use rules (if enabled for that type) against the first day of the period, then that type's default template.
+
+- Templates are chosen by the **note's date**, not by today
+- One weekday template per day of the week; leave a day empty to use the default
+- If a template file is missing, you get a notice and the next candidate is used
 
 <p align="center">
-  <img src="images/holiday-mark.jpg" width="320" alt="Calendar day with a holiday mark and a tooltip showing the holiday note">
+  <img src="images/weekday-templates.jpg" width="650" alt="Weekday templates in settings: a separate template file for each day of the week">
 </p>
-- **⋯ menu position.** Setting: right or left of "‹ Today ›", before the month title, or a separate row above the calendar, or
-  hidden: everything stays in the command palette, right-click on the month title still opens the menu, settings
-  are in Obsidian Settings → Community plugins → NF-Calendar.
-- **Settings navigation**: a compact sticky bar of section links at the top of the settings tab; changing a
-  setting no longer scrolls the tab back to the top.
-- **Commands** (command palette, plus the **⋯ menu** in the calendar header and right-click on the month title):
-  - Open calendar view
-  - Open yesterday's / today's / tomorrow's daily note
-  - Open previous / next daily note
-  - Open this week's note / this month's note
-  - Create missing daily notes until end of week / until end of month
-  - Apply weekday/event template to the current daily note
-  - Show important days
-  - Show statistics
-  - Reveal active note in calendar
 
-  The ⋯ menu also has "Open plugin settings" and, for a future month shown in the calendar, "Create missing daily notes for
-  &lt;month&gt;". Two checkable items switch grid marks on/off: "Show holidays in the calendar" (🎉 from the holidays folder)
-  and "Highlight important days in the calendar" (rings and get-ready highlight). They change only the display; rules,
-  statistics and the "Upcoming" list are not affected. The same switches are in Settings.
+### Placeholders
 
-  **Customizing the ⋯ menu**: at the bottom of Settings, section "⋯ menu", lists every item with a "show" toggle
-  and ↑/↓ buttons; "Reset to default" restores all items in the default order. Separators are drawn between item groups
-  automatically. Items that only apply sometimes (previous/next, apply template, weekly/monthly note, the shown future
-  month) still appear only when they apply. Hidden items stay in the command palette if they are commands (the two
-  display switches are not commands, they stay in Settings). Lock-out protection: if nothing would be shown, the menu
-  shows "Open plugin settings", so ⋯ always opens something and the settings stay reachable.
-
-<p align="center">
-  <img src="images/overflow-menu.jpg" width="480" alt="Calendar overflow menu with holiday and important-day toggles and common actions">
-</p>
-- **Batch creation of missing notes.**
-  - Starts from today and first shows a dialog listing the dates, the chosen templates and the reason for each choice.
-  - Existing notes are **always skipped and never changed**. The dialog shows how many will be skipped, and a note that
-    appears while the batch runs (sync, a click) is skipped too.
-  - Notes are created one by one, and a second run is ignored while one is in progress. A summary notice follows.
-- **Apply a template to an existing note.** Available from the command, the ⋯ menu and the day's context menu.
-  - The template is chosen by the same rules, using the date of the selected day or of the open note's file name.
-  - An empty note is filled at once.
-  - For a non-empty note you choose: **Append to end**, **Insert at beginning** (after the note's frontmatter),
-    **Replace content** (asks for confirmation) or **Skip (leave unchanged)**. Skip is the default button, and Esc does the same.
-- **Important days.**
-  - Right-click a day → "Mark as important…": one or more event titles, a shared color from a theme-aware palette or any custom colour from the colour picker, and "prepare N days before" (0–30). Add further events via "Add another event…".
-  - The day gets a colored outline and the preparation days are softly highlighted.
-  - A collapsible **Upcoming important days** list under the calendar opens the note on click. Filter All / Holidays / Important days; right-click (or long-press) a row → Complete / dismiss.
-  - Important days are stored in the plugin's `data.json`, so they need no note.
-
-<p align="center">
-  <img src="images/important-days.jpg" width="320" alt="Calendar with colored outlines on important days and the Upcoming important days list">
-</p>
-- **Template preview.** Hover an empty day for about 0.4 s to see:
-  - which template would be used and why, and which files are missing;
-  - the important day, if any;
-  - the first ~10 lines of the template, without placeholder substitution.
-
-  It can be turned off in settings.
-- **Monthly statistics.** A month view with arrows.
-  - **Per day:** words, done and open tasks (`- [x]` / `- [ ]`) and the important-day mark; click a row to open the note.
-  - **✓** next to a day means the note has at least one task and all of its tasks are done.
-  - **Summary:** total words, average per day and per note, days with notes, tasks done / total, **days with ✓** and the
-    **current ✓ streak** (consecutive all-done days).
-  - **Streak:** in the current month it counts up to today (an unfinished today does not break it); in a past month it counts up to
-    the month's last day; in a future month it is not shown. It can reach back into earlier months, up to 366 days, using
-    `metadataCache`.
-  - Notes are read one by one, so the UI is not blocked.
-  - **Table / Charts** switch. Charts (pure SVG, theme colors, hover tooltips): words per day, done vs open tasks,
-    cumulative words (bars or line), and a donut of days with ✓ / without ✓ / without a note. The chosen view, metric and
-    chart type are remembered.
-
-<p align="center">
-  <img src="images/statistics-table.jpg" width="700" alt="Statistics table for October 2026: words and tasks per day, with monthly totals">
-</p>
-<p align="center">
-  <img src="images/statistics-tasks.png" width="360" alt="Statistics charts: tasks done versus open in November 2026">
-  <img src="images/statistics-days-donut.png" width="360" alt="Statistics donut chart of days with all tasks done, not all done, or no note">
-</p>
-<p align="center">
-  <img src="images/statistics-words-per-day.png" width="360" alt="Statistics line chart of words per day in October 2026">
-  <img src="images/statistics-cumulative-words.png" width="360" alt="Statistics line chart of cumulative words in November 2026">
-</p>
-- **Previous / next daily note.** Jumps to the nearest *existing* daily note before or after the open one; gaps are
-  ignored and nothing is created. These items appear in the ⋯ menu when a daily note is open.
-- **`{{carryover}}`** (daily notes only) inserts the open tasks of the nearest previous daily note.
-  - Looks back up to 31 days and takes at most 200 tasks.
-  - Indentation is kept, tasks inside code blocks are skipped and the previous note is not modified.
-  - Left empty during batch creation, so the same tasks are not copied into every future note.
-- **i18n.** English and Russian, set with **Language: Auto / English / Русский** (Auto follows Obsidian's language).
-
-### Template placeholders
-
-All placeholders are computed relative to the **note's date** (the first day of the period for weekly and monthly notes):
+All placeholders use the **note's date** (the first day of the period for weekly and monthly notes):
 
 | Placeholder | Result |
 | --- | --- |
-| `{{title}}`, `{{date}}` | the note's file name (formatted with the note type's format) |
+| `{{title}}`, `{{date}}` | the note's file name (with that note type's format) |
 | `{{time}}` | current time, `HH:mm` |
 | `{{date:FMT}}`, `{{time:FMT}}` | the note date with a moment.js format, e.g. `{{date:dddd, D MMMM}}` |
 | `{{date+1d:FMT}}`, `{{date-2w}}` | date arithmetic; units `y q m w d h s` |
 | `{{yesterday}}`, `{{tomorrow}}` | previous / next day in the note format |
-| `{{monday:FMT}}` … `{{sunday:FMT}}` | that weekday of the note's week (locale aware) |
-| `{{carryover}}` | open tasks from the previous daily note (see above) |
+| `{{monday:FMT}}` … `{{sunday:FMT}}` | that weekday of the note's week |
+| `{{carryover}}` | open tasks from the previous daily note |
 
-Anything else, including Templater's `<% … %>`, is left untouched. Substituted values are inserted literally (`$&` and
-similar sequences are not interpreted), and placeholders inside carried-over text are not expanded.
+`{{carryover}}` (daily notes only) looks back up to 31 days and takes at most 200 tasks. The previous note is not changed. During batch creation it stays empty, so the same tasks are not copied into every future note. Templater's `<% … %>` is left unchanged.
+
+## Special rules
+
+Rules are checked top to bottom. Each has a condition, the note types it applies to (daily / weekly / monthly), and a template file. You can rename, enable, reorder, or delete them. Put more specific rules above broader ones.
+
+- **Dates:** every year on a day and month (birthdays, holidays), a date range, or a one-off `YYYY-MM-DD`
+- **Month:** a range of days (`1–7`, or `25–5` wrapping over the month end), the last N days, first or last day of the month or quarter
+- **Weekdays and cycles:** several weekdays, the N-th weekday of the month (or the last), week N, even or odd ISO week, every N days from a chosen date
+- **Marks:** a holiday from the holidays folder, or a day marked important
+
+<p align="center">
+  <img src="images/special-template-rules.jpg" width="700" alt="Special template rules in settings, with the condition list open">
+</p>
+
+<details>
+<summary>Rule examples</summary>
+
+| Rule | Condition | Applies to | Template |
+| --- | --- | --- | --- |
+| Mom's birthday | Every year on `05-14` | Daily | `Templates/Birthday.md` |
+| Vacation | Date range `2026-07-01` → `2026-07-14` | Daily | `Templates/Vacation.md` |
+| Monthly review | N-th weekday: last Friday | Daily | `Templates/Review.md` |
+| Sprint planning | Even ISO week | Weekly | `Templates/Sprint.md` |
+| Workout | Weekdays Mon, Wed, Fri | Daily | `Templates/Gym.md` |
+| Holiday | Holiday from folder | Daily | `Templates/Holiday.md` |
+
+</details>
+
+## Holidays folder
+
+Point the plugin to a folder (for example `Meta/Dates`) whose note names start with a date. Holidays match every year by day and month.
+
+Supported prefixes include `13.03 Birthday`, `03-13 …`, `13/03 …`, `1999-03-13 - Natalia's birthday`, and `1000-09-01 Knowledge Day` (the separator after the date is optional). Two-part dates follow the **Day first / Month first** setting; `YYYY-MM-DD` is always unambiguous. You can also set a custom pattern (`DD_MM`, `YYYY.MM.DD`, …).
+
+- The calendar shows 🎉 on those days; hover to see the names
+- Age is shown when the note has a real year (1900 or later); placeholder years like `1000` show no age
+- Click the 🎉 mark or use the day's context menu to open the holiday notes
+- Holidays also appear in Upcoming and statistics, and can be used as a special-rule condition
+- Names that do not start with a recognizable date are counted in settings
+
+<p align="center">
+  <img src="images/holiday-mark.jpg" width="320" alt="Calendar day with a holiday mark and a tooltip showing the holiday note">
+</p>
+
+## Important days
+
+Right-click a day and choose **Mark as important…** to give it a title, a color, and an optional "prepare N days before" highlight (0–30). A note file is not required.
+
+- Several events can share one day (one color, separate rows in the list)
+- A collapsible **Upcoming important days** list under the calendar opens the note on click
+- Filter All / Holidays / Important; right-click (or long-press) a row to complete or dismiss it
+
+<p align="center">
+  <img src="images/important-days.jpg" width="320" alt="Calendar with colored outlines on important days and the Upcoming important days list">
+</p>
+
+## The ⋯ menu
+
+The ⋯ button in the calendar header and a right-click on the month title open the same menu. Every action is also a command — assign hotkeys in Obsidian Settings → Hotkeys.
+
+- Place the button left or right of "‹ Today ›", before the month title, on its own row, or hide it (right-click the title still works)
+- In Settings → ⋯ menu you can show, hide, and reorder items
+- Toggles on the menu turn holiday marks and important-day highlights on or off (display only)
+
+<p align="center">
+  <img src="images/overflow-menu.jpg" width="480" alt="Calendar overflow menu with holiday and important-day toggles and common actions">
+</p>
+
+## Create missing notes
+
+Commands create missing daily notes until the end of the week or month, for the week back or the whole week, or for a future month shown in the calendar. Existing notes are always skipped and never changed.
+
+- A confirmation lists the dates and the template chosen for each
+- You can start from today or from the open daily note
+- Right-click a day to create or open that day's note
+
+## Apply a template
+
+From the command, the ⋯ menu, or the day's context menu, apply the template that the rules would use for that date.
+
+- An empty note is filled at once
+- For a non-empty note you choose: append, insert at the beginning, replace (asks for confirmation), or skip (the default; Esc does the same)
+
+## Open today's note on startup
+
+Off by default. When it is on, NF-Calendar opens today's daily note when Obsidian starts, and creates it if needed (without the confirmation dialog). If the note is already open, that tab is focused.
+
+- You can turn the core Daily notes plugin off completely
+- If you keep it, turn off its own "Open daily note on startup" option to avoid duplicates
+
+## Organize daily notes
+
+From the command palette or Settings → Daily notes, move daily notes into year folders, year+month folders, or back to one flat folder: `Daily/2026-10-30.md` → `Daily/2026/2026-10-30.md`.
+
+- **Back up your vault before the first run.** A preview is shown first; nothing moves until you press **Move**
+- Nothing is overwritten; Obsidian updates links if "Automatically update internal links" is on
+- **Undo last organize** moves the notes back
+- You can store new notes in the same layout, and optionally remove empty year/month folders left behind
+
+<p align="center">
+  <img src="images/organize-preview.jpg" width="580" alt="Preview dialog before organizing daily notes into year folders">
+</p>
+
+<details>
+<summary>If a flat duplicate appears</summary>
+
+A second file such as `Daily/2026-11-05.md` next to `Daily/2026/2026-11-05.md` is usually created by the core **Daily notes** plugin or **Periodic Notes**, which do not know about year folders. Turn off that plugin (or at least its startup option). Delete the flat file if it is empty. If the real note looks missing, check the year folder, the trash, and File recovery.
+
+</details>
+
+## Statistics
+
+A month view with a table and charts: words, done and open tasks, holidays, and a current all-tasks-done streak. Click a day to open its note.
+
+- **✓** means the note has tasks and all of them are done
+- Charts: words per day, done vs open tasks, cumulative words, and a donut of days with ✓ / without ✓ / without a note
+- The chosen view, metric, and chart type are remembered
+
+<p align="center">
+  <img src="images/statistics-table.jpg" width="700" alt="Statistics table for October 2026: words and tasks per day, with monthly totals">
+</p>
+
+<p align="center">
+  <img src="images/statistics-tasks.png" width="360" alt="Statistics charts: tasks done versus open in November 2026">
+  <img src="images/statistics-days-donut.png" width="360" alt="Statistics donut chart of days with all tasks done, not all done, or no note">
+</p>
+
+<p align="center">
+  <img src="images/statistics-words-per-day.png" width="360" alt="Statistics line chart of words per day in October 2026">
+  <img src="images/statistics-cumulative-words.png" width="360" alt="Statistics line chart of cumulative words in November 2026">
+</p>
+
+## Previous / next daily note
+
+Jumps to the nearest *existing* daily note before or after the open one. Gaps are skipped and nothing is created.
 
 ## Installation
 
@@ -204,167 +222,37 @@ The plugin is **not yet in the Obsidian community plugin catalog**. Install it f
 3. Restart Obsidian, or click "Reload plugins" under Community plugins, then enable **NF-Calendar**.
 4. It is best to disable the original Calendar. Once this plugin is set up, Daily Notes and Periodic Notes can be disabled too.
 
-### Upgrading from an older settings file
-
-On the first start after an upgrade, the plugin **once** imports
-the folder, format and template from the core Daily Notes and Periodic Notes plugins (if they were configured), plus older
-weekday templates. It then saves the new settings and shows a notice. After that it no longer reads other plugins' settings. On a fresh
-install the import only runs when you click **Import from Daily Notes / Periodic Notes**.
-
-## Configuration
-
-- **General:**
-  - Language;
-  - what the dots under days mean: note exists (the default), done tasks (one dot per task up to 5, filled = done), word count (1–5 dots at 1 / 250 / 500 / 1000 / 2000 words), or no dots;
-  - start of the week (locale default or a fixed day);
-  - confirm before creating a note by click;
-  - template preview on hover;
-  - show upcoming important days and the look-ahead window.
-- **Daily / Weekly / Monthly notes:**
-  - enabled;
-  - folder (empty = vault root);
-  - file name format (moment.js, may contain `/` for subfolders; a live sample is shown);
-  - default template.
-
-  Default formats are `YYYY-MM-DD`, `gggg-[W]ww` and `YYYY-MM`. A missing template file or an unsafe path is highlighted.
-- **Weekday templates (daily notes):** one template per weekday, listed in your week-start order. Empty = default template.
-
-<p align="center">
-  <img src="images/weekday-templates.jpg" width="650" alt="Weekday templates in settings: a separate template file for each day of the week">
-</p>
-- **Special template rules:** see Features.
-- **Advanced:** override the moment.js locale.
-
-### Rule examples
-
-| Rule | Condition | Applies to | Template |
-| --- | --- | --- | --- |
-| Mom's birthday | Every year on `05-14` | Daily | `Templates/Birthday.md` |
-| Vacation | Date range `2026-07-01` → `2026-07-14` | Daily | `Templates/Vacation.md` |
-| Monthly review | N-th weekday: last Friday | Daily | `Templates/Review.md` |
-| Sprint planning | Even ISO week | Weekly | `Templates/Sprint.md` |
-| Release day | Specific date `2026-12-01` | Daily | `Templates/Release.md` |
-| Payday prep | Last 3 days of the month | Daily | `Templates/Budget.md` |
-| Workout | Weekdays Mon, Wed, Fri | Daily | `Templates/Gym.md` |
-| Quarter review | Last day of quarter | Daily | `Templates/Quarter.md` |
-| Watering | Every 3 days from `2026-11-01` | Daily | `Templates/Plants.md` |
-| Holiday | Holiday from folder | Daily | `Templates/Holiday.md` |
-
-Rules are checked top to bottom, so place more specific rules (a single date) above broader ones (a range).
-
-<p align="center">
-  <img src="images/special-template-rules.jpg" width="700" alt="Special template rules in settings, with the condition list open">
-</p>
-
-## Open daily note on startup
-
-Setting in the Daily notes section, **off** by default. When it is on and Obsidian starts, NF-Calendar opens today's note.
-If the note is missing, NF-Calendar creates it the usual way, without the confirmation dialog: special rules, then weekday template, then default; year folders are respected.
-Before creating, it checks every possible path on disk and never overwrites anything.
-If today's note is already open in a tab, that tab is focused instead of opening a second one. Enabling or reloading the plugin while Obsidian is running does not open anything.
-
-With this option on you can **turn the core Daily notes plugin off completely**. If you keep it, turn off its own "Open daily note on startup" option,
-otherwise both plugins open or create today's note and you may get duplicates, for example a flat copy next to the note in the year folder.
-
-## Organize daily notes by year
-
-Command **Organize daily notes by year** (command palette and Settings → Daily notes; not in the ⋯ menu) moves daily notes that lie
-directly in the daily folder into year subfolders: `Daily/2026-10-30.md` → `Daily/2026/2026-10-30.md`.
-
-- **Make a backup of your vault before the first run.**
-- A preview opens first: how many notes per year, and what is skipped and why. Nothing moves until you press **Move**.
-
-<p align="center">
-  <img src="images/organize-preview.jpg" width="580" alt="Preview dialog before organizing daily notes into year folders">
-</p>
-- Only `.md` files directly in the daily folder whose name matches the daily format are moved. Files in subfolders,
-  other file types, unrecognized names and anything in the config folder (`.obsidian`) are never touched.
-- If the target file already exists, the note is skipped. Nothing is overwritten.
-- Files are moved with Obsidian's `fileManager.renameFile`, so links are updated if "Automatically update internal links" is on.
-- **Undo last organize** moves the notes back. The list of moves is kept in `data.json`. A note is skipped if it was moved
-  again or if its old place is taken.
-- Afterwards the plugin offers to turn on **Keep new daily notes in year folders** (setting in the Daily section). With it on, new daily notes
-  go to `Daily/YYYY/`.
-- The plugin finds a note in either layout: the expected path first, then the other layout, then by date in any subfolder. Flat, year and
-  mixed folders all work, so the calendar does not break after organizing.
-- **A flat duplicate appeared (e.g. `Daily/2026-11-05.md` next to `Daily/2026/2026-11-05.md`)?** NF-Calendar does not create it:
-  with year folders on, it creates notes only in `Daily/YYYY/`, and before creating it checks every possible path on disk.
-  Usually the core **Daily notes** plugin (option "Open daily note on startup") or **Periodic Notes** creates it, because they do not know about year folders.
-  NF-Calendar shows a notice naming both files and keeps opening the one in the year folder.
-  To fix it, turn off the other plugin, or at least its startup option; the calendar does not need it.
-  Delete the flat file if it is empty. If your real note looks lost, check the year folder, the system trash or `.trash`, and File recovery (core plugin).
-- Weekly and monthly notes have no organize command and stay where they are. The year folder setting exists only for daily notes.
+On the first start after an upgrade, the plugin **once** imports the folder, format, and template from the core Daily Notes and Periodic Notes plugins (if they were configured), plus older weekday templates. After that it no longer reads other plugins' settings. On a fresh install, the import only runs when you click **Import from Daily Notes / Periodic Notes**.
 
 ## Templater compatibility
 
-- The plugin does not run Templater code. `<% … %>` is copied into the new note unchanged. If Templater's
-  **"Trigger Templater on new file creation"** is on, Templater processes the new note itself.
-- **Apply template** writes through `vault.process`, so Templater code is **not executed** there. Run Templater's
-  "Replace templates in the active file" command afterwards if you need it.
-- In text taken from older notes by `{{carryover}}`, `<%` is escaped as `<\%` so that Templater does not run it.
+- The plugin does not run Templater code. `<% … %>` is copied into the new note unchanged. If Templater's **"Trigger Templater on new file creation"** is on, Templater processes the new note itself.
+- After **Apply template**, run Templater's "Replace templates in the active file" if you need those tags processed.
+- In text brought in by `{{carryover}}`, `<%` is escaped so Templater does not run it.
 
 ## Limitations
 
-- Command names in the command palette use the language chosen when the plugin loaded. Reload the plugin after changing the
-  language.
+- Command names in the command palette use the language chosen when the plugin loaded. Reload the plugin after changing the language.
 - "Insert at beginning" with a template that has its own frontmatter can produce a second `---` block inside the note.
-- The Periodic Notes 1.0 beta format (calendar sets) is not supported by the import; Periodic Notes 0.x and the core Daily
-  Notes plugin are.
+- The Periodic Notes 1.0 beta format (calendar sets) is not supported by the import; Periodic Notes 0.x and the core Daily Notes plugin are.
 - Quarterly and yearly notes are not supported.
-- The plugin has been tested with unit tests and a mocked Obsidian API (see Development). Please report anything that
-  behaves differently in a real vault.
 
 ## Security
 
-What has been checked and enforced in the code (details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), in Russian):
+- Folders, file name formats, and template paths are checked so they cannot point outside the vault or into `.obsidian`
+- The plugin writes only through Obsidian's vault API and does not contact the network
+- Existing notes are never overwritten; the only way to change one is **Apply template**, after you pick an action
 
-- **Paths stay inside the vault.** Every folder, file name format and template path goes through one check
-  (`src/core/paths.ts`). The check rejects:
-  - `..` and dot-only segments;
-  - drive letters (`C:`) and `~`;
-  - control characters and over-long paths;
-  - paths inside the config folder (`.obsidian`).
+More detail is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (in Russian).
 
-  This also covers formats like `[../]YYYY`. An unsafe path blocks note creation with a notice, and settings show a warning.
-- **Vault API only.** The plugin reads and writes only through Obsidian's vault API. The release bundle has **no network
-  access** (`fetch` / XHR), **no `eval` / `new Function`**, **no `innerHTML`** and no `fs` / `child_process` usage.
-- **No silent overwrites.**
-  - Existing notes are never overwritten.
-  - Note creation re-checks the path right before writing, and concurrent creations of the same note are merged.
-  - The only way to change an existing note is "Apply template", after you pick an action; Replace also asks for confirmation.
-- **`data.json` validation.** On load, types, allowed values and limits are checked: week start, locale id, dots mode, custom colours (`#rrggbb` only),
-  rule conditions, important days, string lengths and number of rules (200) and important days (5000).
-- **Template injection / ReDoS.** Placeholder patterns are linear, values are inserted literally, and carried-over text is not
-  re-expanded. There are tests for this, including timing tests on hostile input.
-- **Cleanup.** Listeners, timers and open dialogs are released when the plugin unloads.
+<details>
+<summary>Known issues / dependency advisories</summary>
 
-## Known issues / dependency advisories
+`npm audit` on 2026-11-03 reported 48 vulnerabilities, almost all in dev tooling. The release bundle includes the Svelte 3 runtime and `obsidian-calendar-ui`; `obsidian` and `moment` are provided by Obsidian.
 
-Output of `npm audit` on 2026-11-03 for this repository:
-**48 vulnerabilities (5 low, 35 moderate, 8 high, 0 critical).** Of the packages, 10 are production dependencies and 429 are dev-only.
+Svelte 3 advisories are mostly about server-side rendering, which this plugin does not use. One remaining DOM-clobbering advisory stays open until the UI moves to a newer Svelte. A moment path-traversal advisory is mitigated by accepting only normal locale ids. Most other findings are in eslint, jest, and the build toolchain, which do not ship in the plugin.
 
-What actually ships in `main.js`: the Svelte 3 runtime and `obsidian-calendar-ui`. `obsidian` and `moment` are provided
-by Obsidian at runtime, and everything else is build or test tooling.
-
-- **svelte 3.35** (pulled in by `obsidian-calendar-ui`, which needs Svelte 3). `npm audit` reports **no fix** within
-  Svelte 3; the fixes need Svelte 4/5, which would mean rewriting the calendar UI.
-  - Most advisories concern **server-side rendering (SSR)**: GHSA-wv8q-r932-8hc7, GHSA-8266-84wp-wv5c, GHSA-crpf-4hrx-3jrp,
-    GHSA-m56q-vw4c-c2cp, GHSA-f7gr-6p89-r883, GHSA-phwv-c562-gvmh and GHSA-pr6f-5x2q-rwfp. The plugin renders only on the client,
-    inside Obsidian, so SSR is not used.
-  - GHSA-gw32-9rmw-qwww (high) is about `<textarea bind:value>`. Neither this plugin nor `obsidian-calendar-ui` uses a textarea binding.
-  - GHSA-rcqx-6q8c-2c42 (moderate, DOM clobbering of internal framework state) is not SSR-specific and has **not been fixed**
-    here. The calendar renders data from your own vault and settings only, but this stays open until the UI moves to a newer Svelte.
-- **moment** (GHSA-4p3w-j4w9-5jqw, path traversal via a crafted locale name, no fix in the installed range).
-  - Mitigated: the plugin passes only locale ids matching `^[a-z]{2,3}(-[a-z0-9]{2,8}){0,2}$` to moment, and other values from
-    `data.json` fall back to the system locale.
-  - moment is not bundled; Obsidian provides it.
-  - `obsidian`, `obsidian-daily-notes-interface` and `@types/moment` are flagged only because they depend on moment.
-- **Dev tooling only** (not in the release): `@typescript-eslint/*` and `minimatch` (ReDoS, high), `eslint` and its config
-  packages, `jest` / `ts-jest` / `babel-*` and `ejs` / `jake`, `svelte-check` / `svelte-preprocess` / `glob` / `rimraf` /
-  `sorcery`, and `@rollup/plugin-commonjs` / `@rollup/plugin-node-resolve` / `deepmerge`. Most fixes need breaking major
-  upgrades of the toolchain; they are planned but not done yet.
-- **Technical debt:** `src/ui/stores.ts` and the calendar sources in `src/ui/sources/` (`tags`, `dots`) still use
-  the global `window.app` instead of the plugin's `app` instance. This works in Obsidian but should be passed in explicitly.
+</details>
 
 ## Development
 
@@ -375,28 +263,16 @@ npm test        # jest unit tests (src/core/__tests__)
 npm run dist    # build + test + dist/ (zip and the three plugin files)
 ```
 
-Layout:
+- `src/core`: logic without Obsidian (templates, dates, rules, settings, stats, i18n), with tests in `src/core/__tests__`
+- `src/io`: finding, creating, and reading notes
+- `src/ui`: calendar view, menus, settings, and dialogs
+- `src/main.ts`: plugin lifecycle and commands
 
-- `src/core`: pure functions without Obsidian (template choice, placeholders, dates, rules, paths, settings
-  migration and validation, stats, i18n), covered by tests in `src/core/__tests__`;
-- `src/io`: vault access (finding, creating and reading notes);
-- `src/ui`: calendar view, menus, settings tab and dialogs (`src/ui/modals`);
-- `src/main.ts`: plugin lifecycle and commands.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CHANGELOG.md](CHANGELOG.md).
-
-## Contributing
-
-Issues and pull requests are welcome. Please:
-
-- keep `src/core` free of Obsidian imports and add or adjust tests there for logic changes;
-- run `npm run build` and `npm test` before submitting (formatting: `npx prettier --write "src/**/*.ts"`);
-- add user-visible strings to both languages in `src/core/i18n.ts`;
-- describe user-visible changes in `CHANGELOG.md`.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [CHANGELOG.md](CHANGELOG.md). Issues and pull requests are welcome: keep `src/core` free of Obsidian imports, add tests for logic changes, run `npm run build` and `npm test`, and update both languages in `src/core/i18n.ts`.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Original Calendar plugin © 2021 Liam Cain; this fork keeps the same license.
+MIT. See [LICENSE](LICENSE). Original Calendar plugin © 2021 Liam Cain; this fork keeps the same license. Author: Nomber.
 
 ## Support
 
@@ -405,5 +281,3 @@ If this plugin is useful to you, you can support its development:
 [![Donate to Nomber](https://img.shields.io/badge/Donate%20to-Nomber-6C5CE7?style=for-the-badge)](https://donatre.github.io/)
 
 More plugins by Nomber: [nomberobsidian.github.io](https://nomberobsidian.github.io/)
-
-<!-- A styled HTML version of this button (for sites that keep inline styles) is in docs/donate-button.html. -->
