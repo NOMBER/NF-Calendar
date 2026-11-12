@@ -1,5 +1,6 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
+import tseslint from "typescript-eslint";
 
 export default defineConfig([
   // Build output and Node tool configs are not plugin code. tsconfig.test.json
@@ -15,6 +16,10 @@ export default defineConfig([
   ]),
   ...obsidianmd.configs.recommended,
   {
+    files: ["**/*.{ts,cts,mts,tsx}"],
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+    },
     languageOptions: {
       parserOptions: {
         projectService: {
@@ -30,6 +35,12 @@ export default defineConfig([
       // a non-empty list, so a partial implementation would hide those
       // controls on 1.13+. minAppVersion stays below 1.13 for getLanguage().
       "obsidianmd/settings-tab/prefer-setting-definitions": "off",
+      // The community scanner still runs the upstream rule. Official
+      // recommended turns it off because Obsidian's chaining `then` makes
+      // Setting/components look thenable (e.g. forEach(v => d.addOption(...))).
+      // Re-enable it so implicit component returns in void callbacks fail here
+      // the same way they fail on the directory review.
+      "@typescript-eslint/no-misused-promises": "error",
     },
   },
   {

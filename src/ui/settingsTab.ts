@@ -212,7 +212,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
     const head = new Setting(wrap)
       .setName(t("settings.randomRangeN", { n: String(idx + 1) }))
       .addDropdown((d) => {
-        RANDOM_KINDS.forEach((k) => d.addOption(k, t(`randomKind.${k}` as I18nKey)));
+        RANDOM_KINDS.forEach((k) => {
+          d.addOption(k, t(`randomKind.${k}` as I18nKey));
+        });
         d.setValue(range.kind);
         d.onChange((v) => {
           range.kind = v as RandomKind;
@@ -396,7 +398,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.weekStartDesc"))
       .addDropdown((d) => {
         d.addOption("locale", t("settings.localeDefault", { day: names[localeDow] }));
-        names.forEach((day, i) => d.addOption(WEEK_START_KEYS[i], day));
+        names.forEach((day, i) => {
+          d.addOption(WEEK_START_KEYS[i], day);
+        });
         d.setValue(this.options.weekStart);
         d.onChange((v) => {
           launch(async () => {
@@ -487,7 +491,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setName(t("settings.dateFieldFormat"))
       .setDesc(t("settings.dateFieldFormatDesc"))
       .addDropdown((d) => {
-        DATE_FIELD_FORMATS.forEach((f) => d.addOption(f, dateFieldPlaceholder(f, getLanguage())));
+        DATE_FIELD_FORMATS.forEach((f) => {
+          d.addOption(f, dateFieldPlaceholder(f, getLanguage()));
+        });
         d.setValue(this.options.dateFieldFormat);
         d.onChange((v) => {
           launch(async () => {
@@ -503,7 +509,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setName(t("settings.menuPosition"))
       .setDesc(t("settings.menuPositionDesc"))
       .addDropdown((d) => {
-        MENU_POSITIONS.forEach((p) => d.addOption(p, t(`menuPos.${p}` as I18nKey)));
+        MENU_POSITIONS.forEach((p) => {
+          d.addOption(p, t(`menuPos.${p}` as I18nKey));
+        });
         d.setValue(this.options.menuPosition);
         d.onChange((v) => {
           launch(async () => {
@@ -728,7 +736,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .setName(t("settings.startupTab"))
         .setDesc(t("settings.startupTabDesc"))
         .addDropdown((d) => {
-          STARTUP_TAB_POSITIONS.forEach((p) => d.addOption(p, t(`startupTab.${p}` as I18nKey)));
+          STARTUP_TAB_POSITIONS.forEach((p) => {
+            d.addOption(p, t(`startupTab.${p}` as I18nKey));
+          });
           d.setValue(this.options.startupTabPosition);
           d.onChange((v) => {
           launch(async () => {
@@ -740,9 +750,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
         .setName(t("settings.folderLayout"))
         .setDesc(t("settings.folderLayoutDesc"))
         .addDropdown((d) => {
-          (["flat", "year", "year-month"] as const).forEach((v) =>
-            d.addOption(v, t(`settings.folderLayout.${v}` as I18nKey)),
-          );
+          (["flat", "year", "year-month"] as const).forEach((v) => {
+            d.addOption(v, t(`settings.folderLayout.${v}` as I18nKey));
+          });
           d.setValue(dailyFolderLayout(cfg));
           d.onChange((v) => {
             if (v === "flat" || v === "year" || v === "year-month") {
@@ -1052,7 +1062,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
           d.onChange((v) => set({ type: "annual", monthDay: `${mm || "01"}-${v}` }, true));
         });
         setting.addDropdown((d) => {
-          window.moment.months().forEach((name, i) => d.addOption(pad(i + 1), name));
+          window.moment.months().forEach((name, i) => {
+            d.addOption(pad(i + 1), name);
+          });
           d.setValue(mm || "01");
           d.onChange((v) => set({ type: "annual", monthDay: `${v}-${dd || "01"}` }, true));
         });
@@ -1106,7 +1118,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       }
       case "weekOfMonth":
         setting.addDropdown((d) => {
-          [1, 2, 3, 4, 5, 6].forEach((n) => d.addOption(String(n), t("cond.weekN", { n })));
+          [1, 2, 3, 4, 5, 6].forEach((n) => {
+            d.addOption(String(n), t("cond.weekN", { n }));
+          });
           d.addOption("-1", t("cond.weekLast"));
           d.setValue(String(c.week));
           d.onChange((v) => set({ type: "weekOfMonth", week: Number(v) }));
@@ -1124,13 +1138,17 @@ export class CalendarSettingsTab extends PluginSettingTab {
         break;
       case "nthWeekday":
         setting.addDropdown((d) => {
-          [1, 2, 3, 4, 5].forEach((n) => d.addOption(String(n), t(`cond.nth${n}` as I18nKey)));
+          [1, 2, 3, 4, 5].forEach((n) => {
+            d.addOption(String(n), t(`cond.nth${n}` as I18nKey));
+          });
           d.addOption("-1", t("cond.nthLast"));
           d.setValue(String(c.nth));
           d.onChange((v) => set({ ...c, nth: Number(v) }));
         });
         setting.addDropdown((d) => {
-          window.moment.weekdays().forEach((name, i) => d.addOption(String(i), name));
+          window.moment.weekdays().forEach((name, i) => {
+            d.addOption(String(i), name);
+          });
           d.setValue(String(c.weekday));
           d.onChange((v) => set({ ...c, weekday: Number(v) }));
         });
@@ -1155,7 +1173,9 @@ export class CalendarSettingsTab extends PluginSettingTab {
       .setDesc(t("settings.localeDesc"))
       .addDropdown((d) => {
         d.addOption("system-default", t("settings.localeSystem", { locale: sysLocale }));
-        window.moment.locales().forEach((l) => d.addOption(l, l));
+        window.moment.locales().forEach((l) => {
+          d.addOption(l, l);
+        });
         d.setValue(this.options.localeOverride);
         d.onChange((v) => {
           launch(async () => {
