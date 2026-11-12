@@ -219,6 +219,12 @@ export default class CalendarView extends ItemView {
     } else if (pos === "titleLeft" && nav) {
       nav.prepend(btn);
       placed = true;
+    } else if (pos === "titleRight" && nav) {
+      const title = nav.querySelector(".title");
+      if (title) {
+        title.after(btn);
+        placed = true;
+      }
     }
     if (!placed) {
       this.toolbarEl.append(btn);

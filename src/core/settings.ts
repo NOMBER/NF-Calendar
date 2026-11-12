@@ -49,11 +49,12 @@ export function shouldOpenOnStartup(
 }
 
 /** Where the ⋯ menu button sits. */
-export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "toolbar" | "hidden";
+export type MenuPosition = "navLeft" | "navRight" | "titleLeft" | "titleRight" | "toolbar" | "hidden";
 export const MENU_POSITIONS: MenuPosition[] = [
   "navRight",
   "navLeft",
   "titleLeft",
+  "titleRight",
   "toolbar",
   "hidden",
 ];
@@ -498,7 +499,7 @@ export function migrateSettings(
   return { settings, migratedFrom: version < SETTINGS_VERSION ? version : null };
 }
 
-export const HORIZON_MIN = 7;
+export const HORIZON_MIN = 2;
 export const HORIZON_MAX = 365;
 export const MAX_JOURNAL_MOVES = 50000;
 

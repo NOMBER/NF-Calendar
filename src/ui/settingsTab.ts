@@ -460,7 +460,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
       text.inputEl.max = String(HORIZON_MAX);
       text.inputEl.addClass("cwt-number-input");
       text.setValue(String(this.options.upcomingHorizonDays));
-      // Clamp on blur / Enter, so typing "2" on the way to "20" is not forced to 7.
+      // Clamp on blur / Enter, so a partial number is not forced to the minimum mid-typing.
       const commit = () => {
         if (text.getValue().trim() !== "") {
           void save(text.getValue(), "blur");
@@ -771,7 +771,7 @@ export class CalendarSettingsTab extends PluginSettingTab {
         b.addEventListener("click", onClick);
         return b;
       };
-      mk(t("settings.organizeButton"), () => launch(() => this.plugin.organizeDailyNotes("year")));
+      mk(t("cmd.organize"), () => launch(() => this.plugin.organizeDailyNotes("year")));
       mk(t("cmd.organizeYearMonth"), () => launch(() => this.plugin.organizeDailyNotes("year-month")));
       mk(t("cmd.organizeFlat"), () => launch(() => this.plugin.organizeDailyNotes("flat")));
       mk(t("cmd.undoOrganize"), () => launch(() => this.plugin.undoLastOrganize()), !this.options.lastOrganize);

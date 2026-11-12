@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Look-ahead for upcoming days can be set as low as 2 days (was 7).
+- Settings → Organize shows an always-visible **Organize daily notes by year** button next to the year+month and flat buttons.
+- ⋯ menu button position **After the year** (RU: «После года»), after the month/year title.
+- Settings dropdown option callbacks no longer return a thenable (community review warning).
+
 ## 1.0.1
 
 Code quality fixes for the Obsidian community review.

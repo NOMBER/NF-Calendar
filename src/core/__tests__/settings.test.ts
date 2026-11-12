@@ -1,4 +1,5 @@
 import {
+  clampHorizon,
   makeDefaultSettings,
   mergeExternal,
   migrateSettings,
@@ -212,7 +213,10 @@ describe("v5 (2.4.0) migration", () => {
     expect(settings.lastOrganize?.moves).toEqual([{ from: "D/a.md", to: "D/2026/a.md", year: "" }]);
     expect(
       migrateSettings({ upcomingHorizonDays: 2, settingsVersion: 5 }).settings.upcomingHorizonDays,
-    ).toBe(7);
+    ).toBe(2);
+    expect(
+      migrateSettings({ upcomingHorizonDays: 1, settingsVersion: 5 }).settings.upcomingHorizonDays,
+    ).toBe(2);
   });
 });
 
@@ -327,5 +331,24 @@ describe("v12 (2.12.0): multi-range random", () => {
     });
     expect(settings.random.ranges).toHaveLength(2);
     expect(settings.random.ranges[1].month).toBe(3);
+  });
+});
+
+describe("1.1.0: horizon minimum and titleRight menu position", () => {
+  it("clamps the look-ahead horizon to 2..365", () => {
+    expect(clampHorizon(1)).toBe(2);
+    expect(clampHorizon(2)).toBe(2);
+    expect(clampHorizon(7)).toBe(7);
+    expect(clampHorizon(0)).toBe(2);
+    expect(clampHorizon(-3)).toBe(2);
+    expect(clampHorizon(366)).toBe(365);
+    expect(clampHorizon("nope")).toBe(60);
+  });
+
+  it("accepts titleRight and keeps existing positions through migration", () => {
+    expect(migrateSettings({ menuPosition: "titleRight" }).settings.menuPosition).toBe("titleRight");
+    expect(migrateSettings({ menuPosition: "titleLeft" }).settings.menuPosition).toBe("titleLeft");
+    expect(migrateSettings({ menuPosition: "navRight" }).settings.menuPosition).toBe("navRight");
+    expect(migrateSettings({ menuPosition: "afterYear" }).settings.menuPosition).toBe("navRight");
   });
 });

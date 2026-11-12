@@ -479,6 +479,7 @@ const en = {
   "menuPos.navRight": "Right of “‹ Today ›”",
   "menuPos.navLeft": "Left of “‹ Today ›”",
   "menuPos.titleLeft": "Before the month title",
+  "menuPos.titleRight": "After the year",
   "menuPos.toolbar": "Separate row above calendar",
 };
 
@@ -947,6 +948,7 @@ const ru: Record<I18nKey, string> = {
   "menuPos.navRight": "Справа от «‹ Сегодня ›»",
   "menuPos.navLeft": "Слева от «‹ Сегодня ›»",
   "menuPos.titleLeft": "Перед названием месяца",
+  "menuPos.titleRight": "После года",
   "menuPos.toolbar": "Отдельной строкой над календарём",
 };
 
