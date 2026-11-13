@@ -194,19 +194,7 @@ A month view with a table and charts: words, done and open tasks, holidays, and 
 - Charts: words per day, done vs open tasks, cumulative words, and a donut of days with ✓ / without ✓ / without a note
 - The chosen view, metric, and chart type are remembered
 
-<p align="center">
-  <img src="images/statistics-table.jpg" width="700" alt="Statistics table for October 2026: words and tasks per day, with monthly totals">
-</p>
-
-<p align="center">
-  <img src="images/statistics-tasks.png" width="360" alt="Statistics charts: tasks done versus open in November 2026">
-  <img src="images/statistics-days-donut.png" width="360" alt="Statistics donut chart of days with all tasks done, not all done, or no note">
-</p>
-
-<p align="center">
-  <img src="images/statistics-words-per-day.png" width="360" alt="Statistics line chart of words per day in October 2026">
-  <img src="images/statistics-cumulative-words.png" width="360" alt="Statistics line chart of cumulative words in November 2026">
-</p>
+<img width="1408" height="653" alt="image" src="https://github.com/user-attachments/assets/07abda14-8a55-4239-ac9b-6117539d8a59" />
 
 ## Previous / next daily note
 
